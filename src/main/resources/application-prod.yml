@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    public:
+      jdbc-url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/billpay}
+      username: ${SPRING_DATASOURCE_USERNAME:postgres}
+      password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        schema: public
+        pool-name: HikariPool-Public
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        connection-test-query: SELECT 1
+    
+    tenant-template:
+      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/billpay}
+      username: ${SPRING_DATASOURCE_USERNAME:postgres}
+      password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+      driver-class-name: org.postgresql.Driver
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  flyway:
+    enabled: true
+    locations:
+      - classpath:db/migration/public
+      - classpath:db/migration/tenant
+    baseline-on-migrate: false
+    default-schema: public
+
+logging:
+  level:
+    root: INFO
+    com.korpay: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
