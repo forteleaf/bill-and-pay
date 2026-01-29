@@ -24,6 +24,8 @@ PostgreSQL Database: billpay
 ├── tenant_001 (총판A 스키마)
 │   ├── organizations           -- 조직 구조
 │   ├── users                   -- 사용자
+│   ├── businesses              -- 사업자 (1:N 가맹점)
+│   ├── fee_policies            -- 수수료 정책 (공유 가능)
 │   ├── merchants               -- 가맹점
 │   ├── merchant_pg_mappings    -- 가맹점-PG 매핑
 │   ├── transactions            -- 거래 현재 상태
@@ -284,33 +286,159 @@ CREATE INDEX idx_user_email ON users (email);
 CREATE INDEX idx_user_status ON users (status);
 ```
 
-### 4.3 merchants - 가맹점
+### 4.3 businesses - 사업자
+
+**1 사업자 : N 가맹점 관계**. 동일 사업자가 수수료 체계가 다른 여러 가맹점을 가질 수 있음.
 
 ```sql
-CREATE TABLE merchants (
+CREATE TABLE businesses (
     id              BIGSERIAL PRIMARY KEY,
     uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
 
-    -- 소속
-    org_id          BIGINT NOT NULL REFERENCES organizations(id),
-    org_path        LTREE NOT NULL,
+    -- 사업자 유형: CORPORATE(법인), INDIVIDUAL(일반), NON_BUSINESS(비사업자)
+    business_type   VARCHAR(20) NOT NULL,
 
-    -- 기본 정보
-    code            VARCHAR(20) NOT NULL UNIQUE,
-    name            VARCHAR(100) NOT NULL,
-    business_no     VARCHAR(20) NOT NULL,
-    representative  VARCHAR(50) NOT NULL,
+    -- 사업자 정보
+    business_no     VARCHAR(20),                  -- 사업자번호 (비사업자는 NULL)
+    business_name   VARCHAR(100) NOT NULL,        -- 상호명
+    representative  VARCHAR(50) NOT NULL,         -- 대표자명
+
+    -- 업종/업태
+    business_category VARCHAR(50),                -- 업종
+    business_item   VARCHAR(100),                 -- 업태
 
     -- 연락처
     phone           VARCHAR(20),
     email           VARCHAR(255),
     address         TEXT,
 
+    -- 상태
+    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+
+    -- 감사
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      BIGINT NOT NULL,
+
+    CONSTRAINT chk_business_type CHECK (
+        business_type IN ('CORPORATE', 'INDIVIDUAL', 'NON_BUSINESS')
+    ),
+    CONSTRAINT chk_business_status CHECK (
+        status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED')
+    ),
+    -- 사업자인 경우 사업자번호 필수
+    CONSTRAINT chk_business_no_required CHECK (
+        (business_type = 'NON_BUSINESS') OR (business_no IS NOT NULL)
+    ),
+    -- 사업자번호 유일성 (NULL 제외)
+    CONSTRAINT uq_business_no UNIQUE (business_no)
+);
+
+-- 인덱스
+CREATE INDEX idx_business_type ON businesses (business_type);
+CREATE INDEX idx_business_status ON businesses (status);
+CREATE INDEX idx_business_business_no ON businesses (business_no) WHERE business_no IS NOT NULL;
+```
+
+### 4.4 fee_policies - 수수료 정책
+
+**수수료 정책 공유 및 버전 관리**. 여러 가맹점이 동일한 수수료 정책을 참조할 수 있음.
+
+```sql
+CREATE TABLE fee_policies (
+    id              BIGSERIAL PRIMARY KEY,
+    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
+
+    -- 정책 기본 정보
+    code            VARCHAR(50) NOT NULL,         -- 정책 코드 (예: STANDARD_2026_01)
+    name            VARCHAR(100) NOT NULL,        -- 정책명
+    description     TEXT,
+
+    -- 버전 관리
+    version         INTEGER NOT NULL DEFAULT 1,
+    effective_from  DATE NOT NULL,                -- 적용 시작일
+    effective_to    DATE,                         -- 적용 종료일 (NULL = 현재 유효)
+
+    -- 수수료율 정의 (결제수단 × 카드등급)
+    rates           JSONB NOT NULL,
+
+    -- 상태
+    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+
+    -- 감사
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      BIGINT NOT NULL,
+
+    CONSTRAINT chk_fee_policy_status CHECK (
+        status IN ('DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED')
+    ),
+    CONSTRAINT chk_effective_dates CHECK (
+        effective_to IS NULL OR effective_to >= effective_from
+    ),
+    -- 동일 코드 내 버전 유일성
+    CONSTRAINT uq_policy_code_version UNIQUE (code, version)
+);
+
+-- 인덱스
+CREATE INDEX idx_fee_policy_code ON fee_policies (code);
+CREATE INDEX idx_fee_policy_status ON fee_policies (status);
+CREATE INDEX idx_fee_policy_effective ON fee_policies (effective_from, effective_to);
+CREATE INDEX idx_fee_policy_rates ON fee_policies USING gin (rates);
+```
+
+**rates JSONB 구조 예시**:
+
+```json
+{
+  "credit_card": {
+    "micro": { "rate": 1.5, "type": "percentage" },
+    "small1": { "rate": 2.0, "type": "percentage" },
+    "small2": { "rate": 2.3, "type": "percentage" },
+    "small3": { "rate": 2.5, "type": "percentage" },
+    "normal": { "rate": 3.0, "type": "percentage" }
+  },
+  "debit_card": {
+    "micro": { "rate": 1.0, "type": "percentage" },
+    "small1": { "rate": 1.5, "type": "percentage" },
+    "small2": { "rate": 1.8, "type": "percentage" },
+    "small3": { "rate": 2.0, "type": "percentage" },
+    "normal": { "rate": 2.5, "type": "percentage" }
+  },
+  "bank_transfer": {
+    "default": { "amount": 300, "type": "fixed" }
+  },
+  "virtual_account": {
+    "default": { "amount": 200, "type": "fixed" }
+  }
+}
+```
+
+### 4.5 merchants - 가맹점
+
+**가맹점은 수수료 체계의 단위**. 동일 사업자라도 수수료 체계가 다르면 별도 가맹점으로 분리.
+
+```sql
+CREATE TABLE merchants (
+    id              BIGSERIAL PRIMARY KEY,
+    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
+
+    -- 소속 조직
+    org_id          BIGINT NOT NULL REFERENCES organizations(id),
+    org_path        LTREE NOT NULL,
+
+    -- 사업자 참조 (1 사업자 : N 가맹점)
+    business_id     BIGINT NOT NULL REFERENCES businesses(id),
+
+    -- 기본 정보
+    code            VARCHAR(20) NOT NULL UNIQUE,
+    name            VARCHAR(100) NOT NULL,        -- 가맹점명 (상호와 다를 수 있음)
+
     -- 카드사 우대 등급
     card_grade      VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
 
-    -- 수수료 정책
-    fee_policy      JSONB NOT NULL DEFAULT '{}',
+    -- 수수료 정책 참조 (N 가맹점 : 1 정책, 정책 공유 가능)
+    fee_policy_id   BIGINT NOT NULL REFERENCES fee_policies(id),
 
     -- 정산 설정
     settlement_cycle VARCHAR(10) NOT NULL DEFAULT 'D+1',
@@ -332,13 +460,15 @@ CREATE TABLE merchants (
     CONSTRAINT chk_merchant_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED'))
 );
 
+-- 인덱스
 CREATE INDEX idx_merchant_org ON merchants (org_id);
 CREATE INDEX idx_merchant_org_path ON merchants USING GIST (org_path);
+CREATE INDEX idx_merchant_business ON merchants (business_id);
+CREATE INDEX idx_merchant_fee_policy ON merchants (fee_policy_id);
 CREATE INDEX idx_merchant_status ON merchants (status);
-CREATE INDEX idx_merchant_business_no ON merchants (business_no);
 ```
 
-### 4.4 merchant_pg_mappings - 가맹점 PG 매핑
+### 4.6 merchant_pg_mappings - 가맹점 PG 매핑
 
 **KORPAY 연동 시**: MID(pg_merchant_no)와 단말기번호(terminal_id)는 1:1 매핑 관계.
 MID는 온라인승인 계정으로도 사용됨.
@@ -376,7 +506,7 @@ CREATE INDEX idx_pg_mapping_terminal ON merchant_pg_mappings (pg_connection_id, 
 CREATE INDEX idx_pg_mapping_merchant ON merchant_pg_mappings (merchant_id);
 ```
 
-### 4.5 transactions - 거래 현재 상태
+### 4.7 transactions - 거래 현재 상태
 
 **하이브리드 방식**: 현재 상태를 저장하여 빠른 조회 제공 (이력은 transaction_events에서 관리)
 
@@ -444,7 +574,7 @@ CREATE INDEX idx_txn_status ON transactions (status);
 CREATE INDEX idx_txn_transacted ON transactions (transacted_at);
 ```
 
-### 4.6 transaction_events - 거래 이벤트 이력 (파티셔닝)
+### 4.8 transaction_events - 거래 이벤트 이력 (파티셔닝)
 
 **모든 거래 이벤트(승인/취소/부분취소)를 개별 레코드로 저장. 정산은 이 테이블 기준으로 처리.**
 
@@ -500,7 +630,7 @@ CREATE TABLE transaction_events_2026_01_29 PARTITION OF transaction_events
 -- ... 계속
 ```
 
-### 4.7 settlements - 정산 원장 (이벤트 기준)
+### 4.9 settlements - 정산 원장 (이벤트 기준)
 
 **각 transaction_event에 대한 정산을 기록. 복식부기 원칙 적용.**
 
@@ -550,7 +680,7 @@ CREATE INDEX idx_stl_status ON settlements (settlement_status);
 CREATE INDEX idx_stl_date ON settlements (settlement_date);
 ```
 
-### 4.8 unmapped_transactions - 미매핑 거래
+### 4.10 unmapped_transactions - 미매핑 거래
 
 ```sql
 CREATE TABLE unmapped_transactions (
@@ -580,7 +710,7 @@ CREATE INDEX idx_unmapped_status ON unmapped_transactions (status);
 CREATE INDEX idx_unmapped_pg ON unmapped_transactions (pg_connection_id, pg_merchant_no);
 ```
 
-### 4.9 notification_settings - 알림 설정
+### 4.11 notification_settings - 알림 설정
 
 ```sql
 CREATE TABLE notification_settings (
@@ -618,7 +748,7 @@ CREATE TABLE notification_settings (
 );
 ```
 
-### 4.10 audit_logs - 감사 로그
+### 4.12 audit_logs - 감사 로그
 
 ```sql
 CREATE TABLE audit_logs (
@@ -846,24 +976,42 @@ $$ LANGUAGE plpgsql;
 │                             TENANT SCHEMA                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  ┌──────────────┐         ┌──────────────┐         ┌──────────────┐        │
-│  │organizations │◄────────│   users      │         │  merchants   │        │
-│  ├──────────────┤    org_id├──────────────┤         ├──────────────┤        │
-│  │ id           │         │ id           │         │ id           │        │
-│  │ path (ltree) │         │ email        │    ┌───►│ org_id       │        │
-│  │ parent_id    │─────────│ org_id       │    │    │ org_path     │        │
-│  │ fee_policy   │    self │ role         │    │    │ fee_policy   │        │
-│  └──────┬───────┘         └──────────────┘    │    └──────┬───────┘        │
-│         │                                      │           │                │
-│         │ org_id                               │           │ merchant_id    │
-│         ▼                                      │           ▼                │
-│  ┌──────────────┐                             │    ┌──────────────┐        │
-│  │  merchants   │─────────────────────────────┘    │merchant_pg   │        │
-│  └──────────────┘                                  │_mappings     │        │
-│         │                                          ├──────────────┤        │
-│         │ merchant_id                              │ pg_merchant_no│        │
-│         ▼                                          │ terminal_id  │        │
-│  ┌──────────────────┐                              └──────────────┘        │
+│  ┌──────────────┐         ┌──────────────┐                                  │
+│  │organizations │◄────────│   users      │                                  │
+│  ├──────────────┤    org_id├──────────────┤                                  │
+│  │ id           │         │ id           │                                  │
+│  │ path (ltree) │         │ email        │                                  │
+│  │ parent_id    │─────────│ org_id       │                                  │
+│  │ fee_policy   │    self │ role         │                                  │
+│  └──────┬───────┘         └──────────────┘                                  │
+│         │                                                                    │
+│         │ org_id                                                             │
+│         ▼                                                                    │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
+│  │  merchants   │◄───│  businesses  │    │ fee_policies │                  │
+│  ├──────────────┤ N:1├──────────────┤    ├──────────────┤                  │
+│  │ id           │    │ id           │    │ id           │                  │
+│  │ org_id       │    │ business_type│    │ code         │                  │
+│  │ org_path     │    │ business_no  │    │ version      │                  │
+│  │ business_id ─┼───►│ business_name│    │ rates (JSONB)│                  │
+│  │ fee_policy_id├───────────────────────►│ effective_from│                  │
+│  │ card_grade   │ N:1│ representative│    │ status       │                  │
+│  │ name         │    │ phone, email │    └──────────────┘                  │
+│  └──────┬───────┘    │ address      │                                      │
+│         │            └──────────────┘                                      │
+│         │ merchant_id                                                       │
+│         ▼                                                                   │
+│  ┌──────────────┐                                                          │
+│  │merchant_pg   │                                                          │
+│  │_mappings     │  (1 merchant : N MID/단말기)                              │
+│  ├──────────────┤                                                          │
+│  │ pg_merchant_no│                                                          │
+│  │ terminal_id  │                                                          │
+│  └──────────────┘                                                          │
+│         │                                                                   │
+│         │ merchant_id                                                       │
+│         ▼                                                                   │
+│  ┌──────────────────┐                                                       │
 │  │  transactions    │  (현재 상태)                                          │
 │  ├──────────────────┤                                                       │
 │  │ id               │                                                       │
@@ -896,6 +1044,12 @@ $$ LANGUAGE plpgsql;
 │  │ entry_type       │  CREDIT (승인) / DEBIT (취소)                          │
 │  │ amount           │  항상 양수                                             │
 │  └──────────────────┘                                                       │
+│                                                                              │
+│  [주요 관계]                                                                 │
+│  • 1 Business : N Merchants (1 사업자 다수 가맹점)                           │
+│  • 1 FeePolicy : N Merchants (수수료 정책 공유)                              │
+│  • 1 Organization : N Merchants (조직 계층 소속)                             │
+│  • 1 Merchant : N PG Mappings (다중 PG/단말기)                               │
 │                                                                              │
 │  [데이터 흐름]                                                               │
 │  PG Webhook → transactions INSERT → transaction_events INSERT               │
@@ -942,11 +1096,14 @@ flyway/
 └── tenant/                    # 테넌트 스키마 (템플릿)
     ├── V1__create_organizations.sql
     ├── V2__create_users.sql
-    ├── V3__create_merchants.sql
-    ├── V4__create_transactions.sql
-    ├── V5__create_transaction_events.sql   # 이벤트 이력
-    ├── V6__create_settlements.sql          # 이벤트 기준 정산
-    └── V7__create_audit_logs.sql
+    ├── V3__create_businesses.sql           # 사업자
+    ├── V4__create_fee_policies.sql         # 수수료 정책
+    ├── V5__create_merchants.sql
+    ├── V6__create_merchant_pg_mappings.sql
+    ├── V7__create_transactions.sql
+    ├── V8__create_transaction_events.sql   # 이벤트 이력
+    ├── V9__create_settlements.sql          # 이벤트 기준 정산
+    └── V10__create_audit_logs.sql
 ```
 
 ### 9.2 테넌트 마이그레이션 실행
@@ -980,3 +1137,4 @@ public class TenantMigrationService {
 | v1.0 | 2026-01-28 | 초안 작성 |
 | v2.0 | 2026-01-28 | 하이브리드 이벤트 소싱 방식 적용 - transactions(현재상태) + transaction_events(이력) 분리 |
 | v3.0 | 2026-01-29 | KORPAY 연동 필드 추가 (GID/VID 제외), MID-단말기 1:1 매핑 반영 |
+| v4.0 | 2026-01-29 | 사업자-가맹점 분리 (businesses 테이블 추가), 수수료 정책 분리 (fee_policies 테이블 추가), merchants 테이블에서 business_id/fee_policy_id FK 참조로 변경 |
