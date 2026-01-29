@@ -78,3 +78,13 @@
 - `api-design-agent`: REST API, 권한
 - `test-generator-agent`: 테스트 생성
 - `code-review-agent`: PRD 준수, 코드 품질
+
+## 개발환경
+
+### DATABASE
+
+- postgres 18
+- host: localhost
+- port: 5432
+- POSTGRES_USER: postgres
+- POSTGRES_PASSWORD: postgres

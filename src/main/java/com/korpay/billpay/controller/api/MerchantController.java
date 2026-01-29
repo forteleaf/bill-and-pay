@@ -1,0 +1,107 @@
+package com.korpay.billpay.controller.api;
+
+import com.korpay.billpay.domain.entity.Merchant;
+import com.korpay.billpay.domain.entity.User;
+import com.korpay.billpay.dto.request.MerchantCreateRequest;
+import com.korpay.billpay.dto.request.MerchantUpdateRequest;
+import com.korpay.billpay.dto.response.ApiResponse;
+import com.korpay.billpay.dto.response.MerchantDto;
+import com.korpay.billpay.dto.response.MerchantStatisticsDto;
+import com.korpay.billpay.dto.response.PagedResponse;
+import com.korpay.billpay.service.auth.UserContextHolder;
+import com.korpay.billpay.service.merchant.MerchantService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/merchants")
+@RequiredArgsConstructor
+@Validated
+public class MerchantController {
+
+    private final MerchantService merchantService;
+    private final UserContextHolder userContextHolder;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<PagedResponse<MerchantDto>>> listMerchants(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        if (size > 100) {
+            size = 100;
+        }
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        Page<Merchant> merchantsPage = merchantService.findAccessibleMerchants(currentUser, pageable);
+        
+        List<MerchantDto> dtos = merchantsPage.getContent().stream()
+                .map(MerchantDto::from)
+                .collect(Collectors.toList());
+        
+        PagedResponse<MerchantDto> pagedResponse = PagedResponse.of(merchantsPage, dtos);
+        
+        return ResponseEntity.ok(ApiResponse.success(pagedResponse));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<MerchantDto>> getMerchant(@PathVariable UUID id) {
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        Merchant merchant = merchantService.findById(id, currentUser);
+        MerchantDto dto = MerchantDto.from(merchant);
+        
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    @GetMapping("/{id}/statistics")
+    public ResponseEntity<ApiResponse<MerchantStatisticsDto>> getMerchantStatistics(@PathVariable UUID id) {
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        MerchantStatisticsDto statistics = merchantService.getStatistics(id, currentUser);
+        
+        return ResponseEntity.ok(ApiResponse.success(statistics));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<MerchantDto>> createMerchant(
+            @Valid @RequestBody MerchantCreateRequest request) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        Merchant merchant = merchantService.create(request, currentUser);
+        MerchantDto dto = MerchantDto.from(merchant);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(dto));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<MerchantDto>> updateMerchant(
+            @PathVariable UUID id,
+            @Valid @RequestBody MerchantUpdateRequest request) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        Merchant merchant = merchantService.update(id, request, currentUser);
+        MerchantDto dto = MerchantDto.from(merchant);
+        
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+}
