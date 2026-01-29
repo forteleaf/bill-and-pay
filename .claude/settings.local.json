@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew:*)",
+      "Bash(./mvnw:*)",
+      "Bash(psql:*)",
+      "Bash(flyway:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}
