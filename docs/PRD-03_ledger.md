@@ -569,7 +569,113 @@ public class PartialCancelCalculator {
 
         return cancelSettlements;
     }
+
+    /**
+     * 단수 차이 조정 (총판에 흡수)
+     *
+     * 절사(FLOOR)로 인해 발생하는 단수 차이를 총판(MASTER) 정산에 흡수합니다.
+     * Zero-Sum 원칙: |취소금액| = SUM(정산금액) 을 보장합니다.
+     */
+    private void adjustRoundingDifference(
+            TransactionEvent cancelEvent,
+            List<Settlement> cancelSettlements) {
+
+        long cancelAbsAmount = Math.abs(cancelEvent.getAmount());
+        long currentTotal = cancelSettlements.stream()
+            .mapToLong(Settlement::getAmount)
+            .sum();
+
+        long difference = cancelAbsAmount - currentTotal;
+
+        if (difference == 0) {
+            return;  // 단수 차이 없음
+        }
+
+        // 총판(MASTER) 정산 찾기
+        Settlement masterSettlement = cancelSettlements.stream()
+            .filter(s -> s.getEntityType() == EntityType.MASTER)
+            .findFirst()
+            .orElseThrow(() -> new SettlementException("총판 정산이 없습니다."));
+
+        // 단수 차이를 총판에 흡수
+        masterSettlement.setAmount(masterSettlement.getAmount() + difference);
+
+        // Zero-Sum 검증
+        long finalTotal = cancelSettlements.stream()
+            .mapToLong(Settlement::getAmount)
+            .sum();
+
+        if (finalTotal != cancelAbsAmount) {
+            throw new SettlementException(
+                String.format("Zero-Sum 검증 실패: 취소금액=%d, 정산합=%d",
+                    cancelAbsAmount, finalTotal)
+            );
+        }
+    }
 }
+```
+
+### 8.3 단수처리 규칙
+
+#### 8.3.1 단수 발생 원인
+
+부분취소 시 취소비율을 적용하면 소수점 이하가 발생할 수 있습니다:
+
+```
+원금: 100,000원, 취소금: 33,333원
+취소비율: 33,333 / 100,000 = 0.33333
+
+가맹점 원정산: 97,000원
+가맹점 취소금: 97,000 × 0.33333 = 32,332.01원
+→ 절사 적용: 32,332원
+```
+
+각 entity별로 절사하면 합계가 취소금액에 미달하는 **단수 차이**가 발생합니다.
+
+#### 8.3.2 단수처리 원칙
+
+| 원칙 | 설명 |
+|------|------|
+| **절사 방식** | 모든 금액 계산은 `RoundingMode.FLOOR` (내림) 적용 |
+| **총판 흡수** | 단수 차이는 총판(MASTER)의 정산금에 흡수 |
+| **Zero-Sum 보장** | 최종 정산 합계는 반드시 이벤트 금액과 일치 |
+
+#### 8.3.3 단수처리 예시
+
+```
+[부분취소] 원금 100,000원 중 33,333원 취소 (33.333%)
+
+┌─────────────┬───────────┬───────────┬───────────┬───────────┐
+│ entity      │ 원정산    │ × 비율    │ 절사 후   │ 최종      │
+├─────────────┼───────────┼───────────┼───────────┼───────────┤
+│ 가맹점      │ 97,000    │ 32,332.01 │ 32,332    │ 32,332    │
+│ 벤더        │ 500       │ 166.665   │ 166       │ 166       │
+│ 셀러        │ 500       │ 166.665   │ 166       │ 166       │
+│ 딜러        │ 500       │ 166.665   │ 166       │ 166       │
+│ 에이전시    │ 500       │ 166.665   │ 166       │ 166       │
+│ 대리점      │ 500       │ 166.665   │ 166       │ 166       │
+│ 총판        │ 500       │ 166.665   │ 166       │ 171 (+5)  │
+├─────────────┼───────────┼───────────┼───────────┼───────────┤
+│ 합계        │ 100,000   │           │ 33,328    │ 33,333 ✅ │
+└─────────────┴───────────┴───────────┴───────────┴───────────┘
+
+단수 차이: 33,333 - 33,328 = 5원 → 총판이 흡수
+```
+
+#### 8.3.4 구현 시 주의사항
+
+```java
+// ✅ 올바른 방식: BigDecimal 사용
+BigDecimal cancelAmount = BigDecimal.valueOf(original.getAmount())
+    .multiply(cancelRatio)
+    .setScale(0, RoundingMode.FLOOR);  // 명시적 절사
+
+// ❌ 피해야 할 방식: double 사용 (부동소수점 오차)
+double cancelAmount = original.getAmount() * ratio;
+
+// ✅ 단수 조정은 마지막에 한 번만
+long difference = targetAmount - currentTotal;
+masterSettlement.setAmount(masterSettlement.getAmount() + difference);
 ```
 
 ---

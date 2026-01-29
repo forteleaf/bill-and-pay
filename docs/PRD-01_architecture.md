@@ -39,7 +39,7 @@
 | 영역 | 라이브러리 | 용도 |
 |------|-----------|------|
 | Frontend | TanStack Table v5 | 대용량 데이터 테이블 + 가상 스크롤 |
-| Frontend | Ant Design | UI 컴포넌트 시스템 |
+| Frontend | Svelte 5 + Shadcn-Svelte | UI 컴포넌트 시스템 |
 | Backend | HikariCP | 커넥션 풀 관리 |
 | Backend | Flyway | 스키마 마이그레이션 |
 | Infra | PgBouncer | 커넥션 풀링 (선택) |
