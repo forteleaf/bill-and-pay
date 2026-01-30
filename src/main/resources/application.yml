@@ -58,3 +58,8 @@ logging:
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+jwt:
+  secret: ${JWT_SECRET:billpay-secret-key-for-jwt-token-generation-minimum-256-bits-required-for-hs256-algorithm}
+  expiration: 86400000
+  refresh-expiration: 604800000
