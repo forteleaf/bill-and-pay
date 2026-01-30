@@ -36,4 +36,52 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     Optional<Transaction> findByPgTransactionId(String pgTransactionId);
 
     Optional<Transaction> findByCatIdAndTid(String catId, String tid);
+
+    @Query(value = """
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM transactions t
+        WHERE t.org_path <@ CAST(:orgPath AS ltree)
+        AND t.status = CAST(:status AS transaction_status)
+        AND t.created_at BETWEEN :startDate AND :endDate
+        """, nativeQuery = true)
+    Long sumAmountByOrgPathAndStatusAndDateRange(
+            @Param("orgPath") String orgPath,
+            @Param("status") TransactionStatus status,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate
+    );
+
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM transactions t
+        WHERE t.org_path <@ CAST(:orgPath AS ltree)
+        AND t.created_at BETWEEN :startDate AND :endDate
+        """, nativeQuery = true)
+    Long countByOrgPathStartingWithAndCreatedAtBetween(
+            @Param("orgPath") String orgPath,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate
+    );
+
+    @Query(value = """
+        SELECT 
+            m.id as merchantId,
+            m.name as merchantName,
+            SUM(t.amount) as totalAmount,
+            COUNT(t.id) as transactionCount
+        FROM transactions t
+        INNER JOIN merchants m ON t.merchant_id = m.id
+        WHERE t.org_path <@ CAST(:orgPath AS ltree)
+        AND t.status = 'APPROVED'
+        AND t.created_at BETWEEN :startDate AND :endDate
+        GROUP BY m.id, m.name
+        ORDER BY totalAmount DESC
+        LIMIT :limit
+        """, nativeQuery = true)
+    List<Object[]> findTopMerchantsByAmountAndOrgPath(
+            @Param("orgPath") String orgPath,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate,
+            @Param("limit") int limit
+    );
 }
