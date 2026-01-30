@@ -18,7 +18,7 @@
   let totalCount = $state(0);
   let totalPages = $state(0);
   
-  let sortField = $state<string>('createdAt');
+  let sortField = $state<string>('created_at');
   let sortDirection = $state<'asc' | 'desc'>('desc');
   
   const displaySettlements = $derived(settlements);
@@ -174,45 +174,45 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th onclick={() => sortBy('entityType')} class="sortable">
-              엔티티 타입
-              {#if sortField === 'entityType'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('entryType')} class="sortable">
-              구분
-              {#if sortField === 'entryType'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('amount')} class="sortable">
-              금액
-              {#if sortField === 'amount'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('feeAmount')} class="sortable">
-              수수료
-              {#if sortField === 'feeAmount'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('netAmount')} class="sortable">
-              순액
-              {#if sortField === 'netAmount'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('status')} class="sortable">
-              상태
-              {#if sortField === 'status'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('createdAt')} class="sortable">
-              생성 일시
-              {#if sortField === 'createdAt'}
+        <th onclick={() => sortBy('entity_type')} class="sortable">
+          엔티티 타입
+          {#if sortField === 'entity_type'}
+            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+        </th>
+        <th onclick={() => sortBy('entry_type')} class="sortable">
+          입출금
+          {#if sortField === 'entry_type'}
+            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+        </th>
+        <th onclick={() => sortBy('amount')} class="sortable">
+          금액
+          {#if sortField === 'amount'}
+            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+        </th>
+        <th onclick={() => sortBy('fee_amount')} class="sortable">
+          수수료
+          {#if sortField === 'fee_amount'}
+            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+        </th>
+        <th onclick={() => sortBy('net_amount')} class="sortable">
+          정산 금액
+          {#if sortField === 'net_amount'}
+            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+        </th>
+        <th onclick={() => sortBy('status')} class="sortable">
+          상태
+          {#if sortField === 'status'}
+            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+        </th>
+        <th onclick={() => sortBy('created_at')} class="sortable">
+          생성 일시
+          {#if sortField === 'created_at'}
                 <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
               {/if}
             </th>

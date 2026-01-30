@@ -1,7 +1,7 @@
 import { apiClient } from './api';
 
 class TenantStore {
-  current = $state<string>('');
+  current: string = '';
 
   setCurrent(tenantId: string) {
     this.current = tenantId;
