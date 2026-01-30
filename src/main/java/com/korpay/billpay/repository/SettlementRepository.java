@@ -2,6 +2,8 @@ package com.korpay.billpay.repository;
 
 import com.korpay.billpay.domain.entity.Settlement;
 import com.korpay.billpay.domain.enums.SettlementStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,5 +47,72 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
     Long countByEntityPathStartingWithAndStatus(
             @Param("entityPath") String entityPath,
             @Param("status") SettlementStatus status
+    );
+
+    /**
+     * Find accessible settlements using ltree descendant operator with filters and pagination.
+     * MASTER_ADMIN: Pass empty string or root path to see all.
+     * Regular users: Pass their orgPath to see only descendants.
+     */
+    @Query(value = """
+        SELECT s.* FROM settlements s
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        AND (:entityType IS NULL OR CAST(s.entity_type AS TEXT) = :entityType)
+        AND (:status IS NULL OR CAST(s.status AS TEXT) = :status)
+        AND (:startDate IS NULL OR s.created_at >= :startDate)
+        AND (:endDate IS NULL OR s.created_at <= :endDate)
+        ORDER BY s.created_at DESC
+        """,
+        countQuery = """
+        SELECT COUNT(*) FROM settlements s
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        AND (:entityType IS NULL OR CAST(s.entity_type AS TEXT) = :entityType)
+        AND (:status IS NULL OR CAST(s.status AS TEXT) = :status)
+        AND (:startDate IS NULL OR s.created_at >= :startDate)
+        AND (:endDate IS NULL OR s.created_at <= :endDate)
+        """,
+        nativeQuery = true)
+    Page<Settlement> findAccessibleSettlements(
+            @Param("userPath") String userPath,
+            @Param("entityType") String entityType,
+            @Param("status") String status,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate,
+            Pageable pageable
+    );
+
+    /**
+     * Find all accessible settlements for aggregation (no pagination).
+     * Used for summary calculations.
+     */
+    @Query(value = """
+        SELECT s.* FROM settlements s
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        AND (:entityType IS NULL OR CAST(s.entity_type AS TEXT) = :entityType)
+        AND (:startDate IS NULL OR s.created_at >= :startDate)
+        AND (:endDate IS NULL OR s.created_at <= :endDate)
+        """, nativeQuery = true)
+    List<Settlement> findAccessibleSettlementsForSummary(
+            @Param("userPath") String userPath,
+            @Param("entityType") String entityType,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate
+    );
+
+    /**
+     * Find accessible settlements within a specific date range.
+     * Used for daily batch reports.
+     */
+    @Query(value = """
+        SELECT s.* FROM settlements s
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        AND s.created_at >= :startDate
+        AND s.created_at < :endDate
+        ORDER BY s.created_at DESC
+        """, nativeQuery = true)
+    List<Settlement> findAccessibleSettlementsInDateRange(
+            @Param("userPath") String userPath,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate
     );
 }
