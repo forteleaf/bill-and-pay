@@ -57,14 +57,16 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
     private DataSource createTenantDataSource(String tenantId) {
         log.info("Creating new DataSource for tenant: {}", tenantId);
         
+        String schemaName = tenantId.startsWith("tenant_") ? tenantId : "tenant_" + tenantId;
+        
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(tenantDataSourceTemplate.getJdbcUrl());
         config.setUsername(tenantDataSourceTemplate.getUsername());
         config.setPassword(tenantDataSourceTemplate.getPassword());
         config.setDriverClassName(tenantDataSourceTemplate.getDriverClassName());
         
-        config.setSchema("tenant_" + tenantId);
-        config.setPoolName("HikariPool-" + tenantId);
+        config.setSchema(schemaName);
+        config.setPoolName("HikariPool-" + schemaName);
         
         config.setMaximumPoolSize(tenantDataSourceTemplate.getMaximumPoolSize());
         config.setMinimumIdle(tenantDataSourceTemplate.getMinimumIdle());
@@ -82,7 +84,7 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
     
     private boolean tenantExistsInDatabase(String tenantId) {
         return tenantExistenceCache.computeIfAbsent(tenantId, tid -> {
-            String sql = "SELECT EXISTS(SELECT 1 FROM tenants WHERE tenant_id = ? AND status = 'ACTIVE')";
+            String sql = "SELECT EXISTS(SELECT 1 FROM tenants WHERE schema_name = ? AND status = 'ACTIVE')";
             
             try (Connection conn = publicDataSource.getConnection();
                  var stmt = conn.prepareStatement(sql)) {

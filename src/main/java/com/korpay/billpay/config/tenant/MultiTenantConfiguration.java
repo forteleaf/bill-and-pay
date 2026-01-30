@@ -76,7 +76,8 @@ public class MultiTenantConfiguration implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/health",
                         "/api/actuator/**",
-                        "/api/public/**"
+                        "/api/public/**",
+                        "/api/v1/auth/**"
                 );
     }
 }

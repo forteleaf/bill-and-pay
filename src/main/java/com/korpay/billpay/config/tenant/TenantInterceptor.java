@@ -22,10 +22,14 @@ public class TenantInterceptor implements HandlerInterceptor {
                             @NonNull HttpServletResponse response, 
                             @NonNull Object handler) {
         
-        String tenantId = request.getHeader(TENANT_HEADER);
+        String tenantId = (String) request.getAttribute("tenantId");
         
         if (tenantId == null || tenantId.isBlank()) {
-            log.warn("Missing {} header for request: {} {}", 
+            tenantId = request.getHeader(TENANT_HEADER);
+        }
+        
+        if (tenantId == null || tenantId.isBlank()) {
+            log.warn("Missing {} header and no tenant from JWT for request: {} {}", 
                     TENANT_HEADER, request.getMethod(), request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return false;

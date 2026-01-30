@@ -10,6 +10,8 @@ import com.korpay.billpay.dto.request.MerchantUpdateRequest;
 import com.korpay.billpay.dto.response.MerchantStatisticsDto;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
+import com.korpay.billpay.domain.entity.MerchantOrgHistory;
+import com.korpay.billpay.repository.MerchantOrgHistoryRepository;
 import com.korpay.billpay.repository.MerchantRepository;
 import com.korpay.billpay.repository.OrganizationRepository;
 import com.korpay.billpay.repository.TransactionRepository;
@@ -35,6 +37,7 @@ public class MerchantService {
     private final MerchantRepository merchantRepository;
     private final OrganizationRepository organizationRepository;
     private final TransactionRepository transactionRepository;
+    private final MerchantOrgHistoryRepository merchantOrgHistoryRepository;
     private final AccessControlService accessControlService;
 
     public Page<Merchant> findAccessibleMerchants(User user, Pageable pageable) {
@@ -170,5 +173,44 @@ public class MerchantService {
                 .pendingTransactions(pendingTransactions)
                 .pendingAmount(pendingAmount)
                 .build();
+    }
+
+    @Transactional
+    public Merchant moveMerchant(UUID merchantId, UUID targetOrgId, String reason, User user) {
+        Merchant merchant = findById(merchantId, user);
+        
+        Organization targetOrg = organizationRepository.findById(targetOrgId)
+                .orElseThrow(() -> new EntityNotFoundException("Target organization not found: " + targetOrgId));
+        
+        accessControlService.validateOrganizationAccess(user, targetOrg);
+        
+        if (merchant.getOrganization().getId().equals(targetOrgId)) {
+            throw new ValidationException("Merchant is already in the target organization");
+        }
+        
+        UUID fromOrgId = merchant.getOrganization().getId();
+        String fromOrgPath = merchant.getOrgPath();
+        
+        MerchantOrgHistory history = MerchantOrgHistory.builder()
+                .merchantId(merchant.getId())
+                .fromOrgId(fromOrgId)
+                .fromOrgPath(fromOrgPath)
+                .toOrgId(targetOrgId)
+                .toOrgPath(targetOrg.getPath())
+                .movedBy(user.getUsername())
+                .reason(reason)
+                .build();
+        
+        merchantOrgHistoryRepository.save(history);
+        
+        merchant.setOrganization(targetOrg);
+        merchant.setOrgPath(targetOrg.getPath());
+        
+        return merchantRepository.save(merchant);
+    }
+
+    public Page<MerchantOrgHistory> getMerchantHistory(UUID merchantId, User user, Pageable pageable) {
+        Merchant merchant = findById(merchantId, user);
+        return merchantOrgHistoryRepository.findByMerchantIdOrderByMovedAtDesc(merchant.getId(), pageable);
     }
 }

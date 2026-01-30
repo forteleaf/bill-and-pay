@@ -1,8 +1,10 @@
 package com.korpay.billpay.controller.api;
 
 import com.korpay.billpay.domain.entity.Merchant;
+import com.korpay.billpay.domain.entity.MerchantOrgHistory;
 import com.korpay.billpay.domain.entity.User;
 import com.korpay.billpay.dto.request.MerchantCreateRequest;
+import com.korpay.billpay.dto.request.MerchantMoveRequest;
 import com.korpay.billpay.dto.request.MerchantUpdateRequest;
 import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.dto.response.MerchantDto;
@@ -103,5 +105,38 @@ public class MerchantController {
         MerchantDto dto = MerchantDto.from(merchant);
         
         return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    @PutMapping("/{id}/move")
+    public ResponseEntity<ApiResponse<MerchantDto>> moveMerchant(
+            @PathVariable UUID id,
+            @Valid @RequestBody MerchantMoveRequest request) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        Merchant merchant = merchantService.moveMerchant(id, request.getTargetOrgId(), request.getReason(), currentUser);
+        MerchantDto dto = MerchantDto.from(merchant);
+        
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<ApiResponse<PagedResponse<MerchantOrgHistory>>> getMerchantHistory(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        if (size > 100) {
+            size = 100;
+        }
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<MerchantOrgHistory> historyPage = merchantService.getMerchantHistory(id, currentUser, pageable);
+        
+        PagedResponse<MerchantOrgHistory> pagedResponse = PagedResponse.of(historyPage, historyPage.getContent());
+        
+        return ResponseEntity.ok(ApiResponse.success(pagedResponse));
     }
 }

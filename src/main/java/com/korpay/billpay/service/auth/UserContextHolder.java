@@ -1,36 +1,38 @@
 package com.korpay.billpay.service.auth;
 
+import com.korpay.billpay.domain.entity.AuthUser;
 import com.korpay.billpay.domain.entity.User;
 import com.korpay.billpay.exception.EntityNotFoundException;
-import com.korpay.billpay.repository.UserRepository;
+import com.korpay.billpay.repository.AuthUserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class UserContextHolder {
 
-    private final UserRepository userRepository;
-    
-    private static final ThreadLocal<UUID> currentUserId = new ThreadLocal<>();
-    
-    public void setCurrentUserId(UUID userId) {
-        currentUserId.set(userId);
-    }
-    
-    public void clear() {
-        currentUserId.remove();
-    }
+    private final AuthUserRepository authUserRepository;
     
     public User getCurrentUser() {
-        UUID userId = currentUserId.get();
-        if (userId == null) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new EntityNotFoundException("No authenticated user found");
         }
         
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+        String username = authentication.getName();
+        AuthUser authUser = authUserRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+        
+        User user = new User();
+        user.setId(authUser.getId());
+        user.setUsername(authUser.getUsername());
+        user.setEmail("temp@example.com");
+        user.setFullName(authUser.getUsername());
+        user.setRole("USER");
+        user.setPasswordHash("");
+        
+        return user;
     }
 }
