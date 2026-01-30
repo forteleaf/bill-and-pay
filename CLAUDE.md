@@ -92,3 +92,52 @@
 - port: 5432
 - POSTGRES_USER: postgres
 - POSTGRES_PASSWORD: postgres
+
+## 구현 현황
+
+### 백엔드 (Spring Boot)
+- ✅ 멀티테넌트 아키텍처 (ScopedValue, TenantRoutingDataSource)
+- ✅ PostgreSQL ltree 기반 5단계 조직 계층
+- ✅ 복식부기 정산 엔진 (Zero-Sum 검증, 부분취소 비례 계산)
+- ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
+- ✅ REST API 18개 엔드포인트 (조직/가맹점/거래/정산/대시보드)
+- ✅ Flyway 마이그레이션 (public 2개, tenant 9개)
+- ✅ JPA 엔티티 10개, Repository 10개
+- ✅ CORS 설정
+
+### 프론트엔드 (Svelte 5)
+- ✅ Runes API ($state, $derived, $effect)
+- ✅ 대시보드 (매출 지표, 캘린더, 상위 가맹점 랭킹) - API 연동 완료
+- ✅ 거래 내역 조회 (필터링, 정렬, 페이지네이션) - API 연동 완료
+- ✅ 정산 관리 (목록, 통계, 상태별 필터) - API 연동 완료
+- ✅ 에러 핸들링 및 로딩 상태 표시
+- ✅ 반응형 디자인
+
+### 인프라 (Finch/Docker)
+- ✅ PostgreSQL 18 + ltree 확장
+- ✅ Spring Boot 멀티스테이지 빌드
+- ✅ Svelte Vite 개발 서버
+- ✅ compose.yaml 통합 환경
+- ✅ 환경변수 관리 (.env)
+
+### 미구현 항목
+- ⏳ JWT 인증 (Spring Security)
+- ⏳ 통합 테스트
+- ⏳ Seed 데이터
+- ⏳ 로깅 및 모니터링
+
+## 실행 가이드
+
+### Finch로 전체 스택 실행
+
+```bash
+cp .env.example .env
+finch compose up -d
+
+# 접속
+# Frontend: http://localhost:5173
+# Backend API: http://localhost:8080/api
+# PostgreSQL: localhost:5432
+```
+
+상세 내용은 [DOCKER_GUIDE.md](DOCKER_GUIDE.md) 및 [API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md) 참조.
