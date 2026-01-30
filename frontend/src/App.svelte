@@ -4,6 +4,8 @@
   import Dashboard from './routes/Dashboard.svelte';
   import Transactions from './routes/Transactions.svelte';
   import Settlements from './routes/Settlements.svelte';
+  import SettlementBatches from './routes/SettlementBatches.svelte';
+  import SettlementSummary from './routes/SettlementSummary.svelte';
   import Login from './routes/Login.svelte';
   
   let currentRoute = $state('dashboard');
@@ -32,6 +34,10 @@
       <Transactions />
     {:else if currentRoute === 'settlements'}
       <Settlements />
+    {:else if currentRoute === 'settlement-batches'}
+      <SettlementBatches />
+    {:else if currentRoute === 'settlement-summary'}
+      <SettlementSummary />
     {/if}
   </Layout>
 {/if}
