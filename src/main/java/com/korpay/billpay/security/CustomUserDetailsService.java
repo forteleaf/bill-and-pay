@@ -1,7 +1,7 @@
 package com.korpay.billpay.security;
 
-import com.korpay.billpay.domain.entity.User;
-import com.korpay.billpay.repository.UserRepository;
+import com.korpay.billpay.domain.entity.AuthUser;
+import com.korpay.billpay.repository.AuthUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,28 +16,28 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final UserRepository userRepository;
+    private final AuthUserRepository authUserRepository;
 
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+        AuthUser user = authUserRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
-                .password(user.getPasswordHash())
+                .password(user.getPassword())
                 .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")))
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(false)
+                .disabled(!"ACTIVE".equals(user.getStatus()))
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public User loadUserEntityByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public AuthUser loadUserEntityByUsername(String username) {
+        return authUserRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
     }
 }

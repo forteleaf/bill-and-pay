@@ -1,6 +1,6 @@
 package com.korpay.billpay.service.auth;
 
-import com.korpay.billpay.domain.entity.User;
+import com.korpay.billpay.domain.entity.AuthUser;
 import com.korpay.billpay.dto.request.LoginRequest;
 import com.korpay.billpay.dto.request.RefreshTokenRequest;
 import com.korpay.billpay.dto.response.AuthResponse;
@@ -38,14 +38,14 @@ public class AuthService {
         String accessToken = tokenProvider.generateAccessToken(authentication);
         String refreshToken = tokenProvider.generateRefreshToken(request.getUsername());
 
-        User user = userDetailsService.loadUserEntityByUsername(request.getUsername());
+        AuthUser user = userDetailsService.loadUserEntityByUsername(request.getUsername());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
                 .username(user.getUsername())
-                .tenantId("tenant_001")
+                .tenantId(user.getTenantId())
                 .build();
     }
 
@@ -61,14 +61,14 @@ public class AuthService {
         String newAccessToken = tokenProvider.generateAccessToken(username);
         String newRefreshToken = tokenProvider.generateRefreshToken(username);
 
-        User user = userDetailsService.loadUserEntityByUsername(username);
+        AuthUser user = userDetailsService.loadUserEntityByUsername(username);
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
                 .username(user.getUsername())
-                .tenantId("tenant_001")
+                .tenantId(user.getTenantId())
                 .build();
     }
 }
