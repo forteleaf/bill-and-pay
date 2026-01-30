@@ -115,3 +115,15 @@ export interface SettlementSummary {
   transactionCount: number;
   currency: string;
 }
+
+export interface MerchantOrgHistory {
+  id: string;
+  merchantId: string;
+  fromOrgId: string;
+  fromOrgPath: string;
+  toOrgId: string;
+  toOrgPath: string;
+  movedBy: string;
+  reason?: string;
+  movedAt: string;
+}
