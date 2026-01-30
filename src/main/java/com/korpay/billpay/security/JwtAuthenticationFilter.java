@@ -1,5 +1,7 @@
 package com.korpay.billpay.security;
 
+import com.korpay.billpay.domain.entity.AuthUser;
+import com.korpay.billpay.repository.AuthUserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -23,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final AuthUserRepository authUserRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -40,6 +44,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 log.debug("Set Authentication for user: {}", username);
+                
+                Optional<AuthUser> authUser = authUserRepository.findByUsername(username);
+                if (authUser.isPresent()) {
+                    String rawTenantId = authUser.get().getTenantId();
+                    String tenantId = rawTenantId.startsWith("tenant_") ? rawTenantId : "tenant_" + rawTenantId;
+                    request.setAttribute("tenantId", tenantId);
+                    log.debug("Set tenant context: {}", tenantId);
+                }
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context", ex);
