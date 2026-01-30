@@ -3,9 +3,11 @@ package com.korpay.billpay.controller.api;
 import com.korpay.billpay.domain.entity.Settlement;
 import com.korpay.billpay.domain.entity.User;
 import com.korpay.billpay.domain.enums.OrganizationType;
+import com.korpay.billpay.domain.enums.SettlementBatchStatus;
 import com.korpay.billpay.domain.enums.SettlementStatus;
 import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.dto.response.PagedResponse;
+import com.korpay.billpay.dto.response.SettlementBatchDto;
 import com.korpay.billpay.dto.response.SettlementDto;
 import com.korpay.billpay.dto.response.SettlementSummaryDto;
 import com.korpay.billpay.service.auth.UserContextHolder;
@@ -92,5 +94,19 @@ public class SettlementController {
                 .collect(Collectors.toList());
         
         return ResponseEntity.ok(ApiResponse.success(dtos));
+    }
+
+    @GetMapping("/batches")
+    public ResponseEntity<ApiResponse<PagedResponse<SettlementBatchDto>>> listBatches(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) SettlementBatchStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        PagedResponse<SettlementBatchDto> result = settlementQueryService.findBatches(
+                startDate, endDate, status, page, size);
+        
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }
