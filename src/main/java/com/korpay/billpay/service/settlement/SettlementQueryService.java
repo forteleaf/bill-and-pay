@@ -16,10 +16,7 @@ import com.korpay.billpay.service.auth.AccessControlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,42 +44,18 @@ public class SettlementQueryService {
             OffsetDateTime endDate,
             Pageable pageable) {
         
-        List<Settlement> allSettlements = settlementRepository.findAll();
+        String userPath = accessControlService.isMasterAdmin(user) ? "" : user.getOrgPath();
+        String entityTypeStr = entityType != null ? entityType.name() : null;
+        String statusStr = status != null ? status.name() : null;
         
-        List<Settlement> accessibleSettlements = allSettlements.stream()
-                .filter(settlement -> accessControlService.hasAccessToOrganization(user, settlement.getEntityPath()))
-                .collect(Collectors.toList());
-        
-        if (entityType != null) {
-            accessibleSettlements = accessibleSettlements.stream()
-                    .filter(s -> s.getEntityType() == entityType)
-                    .collect(Collectors.toList());
-        }
-        
-        if (status != null) {
-            accessibleSettlements = accessibleSettlements.stream()
-                    .filter(s -> s.getStatus() == status)
-                    .collect(Collectors.toList());
-        }
-        
-        if (startDate != null) {
-            accessibleSettlements = accessibleSettlements.stream()
-                    .filter(s -> s.getCreatedAt().isAfter(startDate) || s.getCreatedAt().isEqual(startDate))
-                    .collect(Collectors.toList());
-        }
-        
-        if (endDate != null) {
-            accessibleSettlements = accessibleSettlements.stream()
-                    .filter(s -> s.getCreatedAt().isBefore(endDate) || s.getCreatedAt().isEqual(endDate))
-                    .collect(Collectors.toList());
-        }
-        
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), accessibleSettlements.size());
-        
-        List<Settlement> pageContent = accessibleSettlements.subList(start, end);
-        
-        return new PageImpl<>(pageContent, pageable, accessibleSettlements.size());
+        return settlementRepository.findAccessibleSettlements(
+                userPath,
+                entityTypeStr,
+                statusStr,
+                startDate,
+                endDate,
+                pageable
+        );
     }
 
     public SettlementSummaryDto getSummary(
@@ -91,14 +64,15 @@ public class SettlementQueryService {
             OffsetDateTime startDate,
             OffsetDateTime endDate) {
         
-        List<Settlement> allSettlements = settlementRepository.findAll();
+        String userPath = accessControlService.isMasterAdmin(user) ? "" : user.getOrgPath();
+        String entityTypeStr = entityType != null ? entityType.name() : null;
         
-        List<Settlement> filteredSettlements = allSettlements.stream()
-                .filter(settlement -> accessControlService.hasAccessToOrganization(user, settlement.getEntityPath()))
-                .filter(s -> entityType == null || s.getEntityType() == entityType)
-                .filter(s -> startDate == null || s.getCreatedAt().isAfter(startDate) || s.getCreatedAt().isEqual(startDate))
-                .filter(s -> endDate == null || s.getCreatedAt().isBefore(endDate) || s.getCreatedAt().isEqual(endDate))
-                .collect(Collectors.toList());
+        List<Settlement> filteredSettlements = settlementRepository.findAccessibleSettlementsForSummary(
+                userPath,
+                entityTypeStr,
+                startDate,
+                endDate
+        );
         
         long totalAmount = filteredSettlements.stream()
                 .mapToLong(Settlement::getAmount)
@@ -140,12 +114,13 @@ public class SettlementQueryService {
         OffsetDateTime startOfDay = date.atStartOfDay().atOffset(ZoneOffset.UTC);
         OffsetDateTime endOfDay = date.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
         
-        List<Settlement> allSettlements = settlementRepository.findAll();
+        String userPath = accessControlService.isMasterAdmin(user) ? "" : user.getOrgPath();
         
-        return allSettlements.stream()
-                .filter(settlement -> accessControlService.hasAccessToOrganization(user, settlement.getEntityPath()))
-                .filter(s -> s.getCreatedAt().isAfter(startOfDay) && s.getCreatedAt().isBefore(endOfDay))
-                .collect(Collectors.toList());
+        return settlementRepository.findAccessibleSettlementsInDateRange(
+                userPath,
+                startOfDay,
+                endOfDay
+        );
     }
 
     public PagedResponse<SettlementBatchDto> findBatches(
