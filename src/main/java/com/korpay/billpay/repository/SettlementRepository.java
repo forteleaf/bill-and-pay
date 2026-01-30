@@ -35,4 +35,15 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
             @Param("entityId") UUID entityId,
             @Param("status") String status
     );
+
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM settlements s
+        WHERE s.entity_path <@ CAST(:entityPath AS ltree)
+        AND s.status = CAST(:status AS settlement_status)
+        """, nativeQuery = true)
+    Long countByEntityPathStartingWithAndStatus(
+            @Param("entityPath") String entityPath,
+            @Param("status") SettlementStatus status
+    );
 }

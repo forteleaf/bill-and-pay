@@ -17,6 +17,13 @@
     transactionCount: number;
   }
   
+  interface MerchantRankingResponse {
+    merchantId: string;
+    merchantName: string;
+    totalAmount: number;
+    transactionCount: number;
+  }
+  
   let metrics = $state<DashboardMetrics>({
     todaySales: 0,
     monthSales: 0,
@@ -52,31 +59,33 @@
       return;
     }
     
+    apiClient.setTenantId(tenantStore.current);
     loading = true;
     error = null;
     
     try {
-      // Mock data for demonstration
-      // In production, fetch from API endpoints
-      metrics = {
-        todaySales: 12500000,
-        monthSales: 342000000,
-        pendingSettlements: 156,
-        transactionCount: 1523
-      };
+      const [metricsResponse, merchantsResponse] = await Promise.all([
+        apiClient.get<DashboardMetrics>('/dashboard/metrics'),
+        apiClient.get<MerchantRankingResponse[]>('/dashboard/top-merchants')
+      ]);
       
-      topMerchants = [
-        { merchantName: '강남 치킨', amount: 15000000, transactionCount: 342 },
-        { merchantName: '서초 카페', amount: 12000000, transactionCount: 289 },
-        { merchantName: '역삼 음식점', amount: 9500000, transactionCount: 201 },
-        { merchantName: '논현 편의점', amount: 8200000, transactionCount: 523 },
-        { merchantName: '신사 약국', amount: 7100000, transactionCount: 178 }
-      ];
+      if (metricsResponse.success && metricsResponse.data) {
+        metrics = metricsResponse.data;
+      }
+      
+      if (merchantsResponse.success && merchantsResponse.data) {
+        topMerchants = merchantsResponse.data.map(m => ({
+          merchantName: m.merchantName,
+          amount: m.totalAmount,
+          transactionCount: m.transactionCount
+        }));
+      }
       
       loading = false;
     } catch (err) {
       error = '데이터를 불러오는데 실패했습니다.';
       loading = false;
+      console.error(err);
     }
   }
   
