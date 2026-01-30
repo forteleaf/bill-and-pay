@@ -14,53 +14,13 @@
   let currentPage = $state(0);
   let pageSize = $state(20);
   let totalCount = $state(0);
+  let totalPages = $state(0);
   
   // Sorting
-  let sortField = $state<keyof Transaction>('transactedAt');
+  let sortField = $state<string>('createdAt');
   let sortDirection = $state<'asc' | 'desc'>('desc');
   
-  const filteredTransactions = $derived(() => {
-    let result = transactions;
-    
-    if (statusFilter !== 'ALL') {
-      result = result.filter(t => t.status === statusFilter);
-    }
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(t => 
-        t.pgTid.toLowerCase().includes(query) ||
-        t.merchantId.toLowerCase().includes(query)
-      );
-    }
-    
-    // Sorting
-    result = [...result].sort((a, b) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
-      
-      if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return sortDirection === 'asc' 
-          ? aVal.localeCompare(bVal)
-          : bVal.localeCompare(aVal);
-      }
-      
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-      
-      return 0;
-    });
-    
-    return result;
-  });
-  
-  const paginatedTransactions = $derived(() => {
-    const start = currentPage * pageSize;
-    return filteredTransactions().slice(start, start + pageSize);
-  });
-  
-  const totalPages = $derived(Math.ceil(filteredTransactions().length / pageSize));
+  const displayTransactions = $derived(transactions);
   
   function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('ko-KR', {
@@ -89,13 +49,14 @@
     return labels[status] || status;
   }
   
-  function sortBy(field: keyof Transaction) {
+  function sortBy(field: string) {
     if (sortField === field) {
       sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       sortField = field;
       sortDirection = 'asc';
     }
+    loadTransactions();
   }
   
   async function loadTransactions() {
@@ -103,26 +64,36 @@
       return;
     }
     
+    apiClient.setTenantId(tenantStore.current);
     loading = true;
     error = null;
     
     try {
-      // Mock data for demonstration
-      transactions = Array.from({ length: 50 }, (_, i) => ({
-        id: `txn-${i + 1}`,
-        pgTid: `TID${1000 + i}`,
-        merchantId: `merchant-${(i % 5) + 1}`,
-        originalAmount: Math.floor(Math.random() * 500000) + 10000,
-        currentAmount: Math.floor(Math.random() * 500000) + 10000,
-        status: ['APPROVED', 'CANCELED', 'PARTIAL_CANCELED'][Math.floor(Math.random() * 3)],
-        transactedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
-      }));
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        size: pageSize.toString(),
+        sortBy: sortField,
+        direction: sortDirection.toUpperCase()
+      });
       
-      totalCount = transactions.length;
+      if (statusFilter !== 'ALL') {
+        params.append('status', statusFilter);
+      }
+      
+      const response = await apiClient.get<PagedResponse<Transaction>>(`/transactions?${params}`);
+      
+      if (response.success && response.data) {
+        transactions = response.data.content;
+        totalCount = response.data.totalElements;
+        totalPages = response.data.totalPages;
+        currentPage = response.data.page;
+      }
+      
       loading = false;
     } catch (err) {
       error = '데이터를 불러오는데 실패했습니다.';
       loading = false;
+      console.error(err);
     }
   }
   
@@ -172,9 +143,9 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th onclick={() => sortBy('pgTid')} class="sortable">
+            <th onclick={() => sortBy('tid')} class="sortable">
               거래 ID
-              {#if sortField === 'pgTid'}
+              {#if sortField === 'tid'}
                 <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
               {/if}
             </th>
@@ -184,15 +155,9 @@
                 <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
               {/if}
             </th>
-            <th onclick={() => sortBy('originalAmount')} class="sortable">
-              원 금액
-              {#if sortField === 'originalAmount'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-            <th onclick={() => sortBy('currentAmount')} class="sortable">
-              현재 금액
-              {#if sortField === 'currentAmount'}
+            <th onclick={() => sortBy('amount')} class="sortable">
+              금액
+              {#if sortField === 'amount'}
                 <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
               {/if}
             </th>
@@ -202,9 +167,15 @@
                 <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
               {/if}
             </th>
-            <th onclick={() => sortBy('transactedAt')} class="sortable">
-              거래 일시
-              {#if sortField === 'transactedAt'}
+            <th onclick={() => sortBy('approvedAt')} class="sortable">
+              승인 일시
+              {#if sortField === 'approvedAt'}
+                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+              {/if}
+            </th>
+            <th onclick={() => sortBy('createdAt')} class="sortable">
+              생성 일시
+              {#if sortField === 'createdAt'}
                 <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
               {/if}
             </th>
@@ -212,25 +183,25 @@
           </tr>
         </thead>
         <tbody>
-          {#each paginatedTransactions() as transaction}
+          {#each displayTransactions as transaction}
             <tr>
-              <td class="mono">{transaction.pgTid}</td>
+              <td class="mono">{transaction.tid}</td>
               <td>{transaction.merchantId}</td>
-              <td class="amount">{formatCurrency(transaction.originalAmount)}</td>
-              <td class="amount">{formatCurrency(transaction.currentAmount)}</td>
+              <td class="amount">{formatCurrency(transaction.amount)}</td>
               <td>
                 <span class="badge badge-{getStatusBadge(transaction.status)}">
                   {getStatusLabel(transaction.status)}
                 </span>
               </td>
-              <td>{format(new Date(transaction.transactedAt), 'yyyy-MM-dd HH:mm:ss')}</td>
+              <td>{transaction.approvedAt ? format(new Date(transaction.approvedAt), 'yyyy-MM-dd HH:mm:ss') : '-'}</td>
+              <td>{format(new Date(transaction.createdAt), 'yyyy-MM-dd HH:mm:ss')}</td>
               <td>
                 <button class="btn-small">상세</button>
               </td>
             </tr>
           {/each}
           
-          {#if paginatedTransactions().length === 0}
+          {#if displayTransactions.length === 0}
             <tr>
               <td colspan="7" class="empty">조회된 거래가 없습니다.</td>
             </tr>
@@ -244,14 +215,14 @@
       <button 
         class="btn-page" 
         disabled={currentPage === 0}
-        onclick={() => currentPage = 0}
+        onclick={() => { currentPage = 0; loadTransactions(); }}
       >
         처음
       </button>
       <button 
         class="btn-page" 
         disabled={currentPage === 0}
-        onclick={() => currentPage--}
+        onclick={() => { currentPage--; loadTransactions(); }}
       >
         이전
       </button>
@@ -263,14 +234,14 @@
       <button 
         class="btn-page" 
         disabled={currentPage >= totalPages - 1}
-        onclick={() => currentPage++}
+        onclick={() => { currentPage++; loadTransactions(); }}
       >
         다음
       </button>
       <button 
         class="btn-page" 
         disabled={currentPage >= totalPages - 1}
-        onclick={() => currentPage = totalPages - 1}
+        onclick={() => { currentPage = totalPages - 1; loadTransactions(); }}
       >
         마지막
       </button>
