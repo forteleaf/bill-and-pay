@@ -3,11 +3,10 @@ package com.korpay.billpay.config.tenant;
 import com.korpay.billpay.exception.InvalidTenantException;
 
 import java.lang.ScopedValue;
-import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
 /**
- * Thread-safe tenant context holder using Java 21 ScopedValue.
+ * Thread-safe tenant context holder using Java 25 ScopedValue.
  * 
  * <p>This class manages the current tenant context for multi-tenant operations.
  * Unlike ThreadLocal, ScopedValue provides structured concurrency guarantees and
@@ -42,16 +41,16 @@ public final class TenantContextHolder {
     
     /**
      * Returns the current tenant ID from the scoped context.
-     * 
+     *
      * @return the current tenant ID, or null if no tenant context is active
      */
     public static String getCurrentTenant() {
-        return TENANT_ID.orElse(null);
+        return TENANT_ID.isBound() ? TENANT_ID.get() : null;
     }
     
     /**
      * Executes a supplier within a tenant context scope.
-     * 
+     *
      * @param tenantId the tenant ID to set for this execution scope
      * @param operation the operation to execute with tenant context
      * @param <R> the return type
@@ -60,20 +59,21 @@ public final class TenantContextHolder {
      */
     public static <R> R runInTenant(String tenantId, Supplier<R> operation) {
         validateTenantId(tenantId);
-        return ScopedValue.where(TENANT_ID, tenantId).call(() -> operation.get());
+        return ScopedValue.where(TENANT_ID, tenantId).call(operation::get);
     }
     
     /**
-     * Executes a callable within a tenant context scope.
-     * 
+     * Executes a CallableOp within a tenant context scope.
+     *
      * @param tenantId the tenant ID to set for this execution scope
-     * @param operation the callable to execute with tenant context
+     * @param operation the operation to execute with tenant context
      * @param <R> the return type
+     * @param <X> the exception type that may be thrown
      * @return the result of the operation
      * @throws InvalidTenantException if tenant ID format is invalid
-     * @throws Exception if the callable throws an exception
+     * @throws X if the operation throws an exception
      */
-    public static <R> R runInTenant(String tenantId, Callable<R> operation) throws Exception {
+    public static <R, X extends Throwable> R runInTenant(String tenantId, ScopedValue.CallableOp<R, X> operation) throws X {
         validateTenantId(tenantId);
         return ScopedValue.where(TENANT_ID, tenantId).call(operation);
     }

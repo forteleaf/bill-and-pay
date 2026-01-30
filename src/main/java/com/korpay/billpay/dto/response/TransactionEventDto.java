@@ -22,9 +22,8 @@ public class TransactionEventDto {
     private EventType eventType;
     private Long amount;
     private String currency;
-    private UUID relatedEventId;
     private Map<String, Object> metadata;
-    private OffsetDateTime eventAt;
+    private OffsetDateTime occurredAt;
     private OffsetDateTime createdAt;
     
     public static TransactionEventDto from(TransactionEvent event) {
@@ -34,9 +33,8 @@ public class TransactionEventDto {
                 .eventType(event.getEventType())
                 .amount(event.getAmount())
                 .currency(event.getCurrency())
-                .relatedEventId(event.getRelatedEventId())
                 .metadata(event.getMetadata())
-                .eventAt(event.getEventAt())
+                .occurredAt(event.getOccurredAt())
                 .createdAt(event.getCreatedAt())
                 .build();
     }

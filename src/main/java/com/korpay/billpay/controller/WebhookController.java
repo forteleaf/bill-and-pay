@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/webhook")
+@RequestMapping("/webhook")
 @RequiredArgsConstructor
 public class WebhookController {
 
