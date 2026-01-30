@@ -30,12 +30,7 @@ public class UserContextHolder {
         AuthUser authUser = authUserRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
         
-        try {
-            return userRepository.findByUsername(username)
-                    .orElseGet(() -> createFallbackUser(authUser));
-        } catch (Exception e) {
-            return createFallbackUser(authUser);
-        }
+        return createFallbackUser(authUser);
     }
     
     private User createFallbackUser(AuthUser authUser) {

@@ -21,10 +21,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     Page<Transaction> findByMerchantId(UUID merchantId, Pageable pageable);
 
-    @Query(value = "SELECT * FROM transactions WHERE merchant_path <@ CAST(:path AS ltree)", nativeQuery = true)
+    @Query(value = "SELECT * FROM transactions WHERE merchant_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
     List<Transaction> findByMerchantPathDescendants(@Param("path") String path);
 
-    @Query(value = "SELECT * FROM transactions WHERE org_path <@ CAST(:path AS ltree)", nativeQuery = true)
+    @Query(value = "SELECT * FROM transactions WHERE org_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
     List<Transaction> findByOrgPathDescendants(@Param("path") String path);
 
     List<Transaction> findByStatusAndCreatedAtBetween(
@@ -40,9 +40,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query(value = """
         SELECT COALESCE(SUM(t.amount), 0)
         FROM transactions t
-        WHERE t.org_path <@ CAST(:orgPath AS ltree)
-        AND t.status = CAST(:status AS transaction_status)
-        AND t.created_at BETWEEN :startDate AND :endDate
+        WHERE t.org_path <@ CAST(:orgPath AS public.ltree)
+        AND CAST(t.status AS TEXT) = CAST(:status AS TEXT)
+        AND t.created_at BETWEEN CAST(:startDate AS TIMESTAMP WITH TIME ZONE) AND CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         """, nativeQuery = true)
     Long sumAmountByOrgPathAndStatusAndDateRange(
             @Param("orgPath") String orgPath,
@@ -54,8 +54,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query(value = """
         SELECT COUNT(*)
         FROM transactions t
-        WHERE t.org_path <@ CAST(:orgPath AS ltree)
-        AND t.created_at BETWEEN :startDate AND :endDate
+        WHERE t.org_path <@ CAST(:orgPath AS public.ltree)
+        AND t.created_at BETWEEN CAST(:startDate AS TIMESTAMP WITH TIME ZONE) AND CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         """, nativeQuery = true)
     Long countByOrgPathStartingWithAndCreatedAtBetween(
             @Param("orgPath") String orgPath,
@@ -71,9 +71,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             COUNT(t.id) as transactionCount
         FROM transactions t
         INNER JOIN merchants m ON t.merchant_id = m.id
-        WHERE t.org_path <@ CAST(:orgPath AS ltree)
+        WHERE t.org_path <@ CAST(:orgPath AS public.ltree)
         AND t.status = 'APPROVED'
-        AND t.created_at BETWEEN :startDate AND :endDate
+        AND t.created_at BETWEEN CAST(:startDate AS TIMESTAMP WITH TIME ZONE) AND CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         GROUP BY m.id, m.name
         ORDER BY totalAmount DESC
         LIMIT :limit
