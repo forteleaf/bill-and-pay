@@ -9,14 +9,13 @@ export interface ApiResponse<T> {
 }
 
 export interface PagedResponse<T> {
-  success: boolean;
-  data: T[];
-  meta: {
-    page: number;
-    size: number;
-    total: number;
-    hasNext: boolean;
-  };
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }
 
 export interface Organization {
@@ -39,20 +38,46 @@ export interface Merchant {
 
 export interface Transaction {
   id: string;
-  pgTid: string;
+  transactionId: string;
   merchantId: string;
-  originalAmount: number;
-  currentAmount: number;
+  merchantPath: string;
+  orgPath: string;
+  paymentMethodId: string;
+  cardCompanyId?: string;
+  amount: number;
+  currency: string;
   status: string;
-  transactedAt: string;
+  pgTransactionId: string;
+  approvalNumber?: string;
+  approvedAt?: string;
+  cancelledAt?: string;
+  catId: string;
+  tid: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Settlement {
   id: string;
+  settlementBatchId?: string;
   transactionEventId: string;
-  entityType: string;
+  transactionId: string;
+  merchantId: string;
+  merchantPath: string;
   entityId: string;
+  entityType: string;
+  entityPath: string;
   entryType: string;
   amount: number;
-  settlementStatus: string;
+  feeAmount: number;
+  netAmount: number;
+  currency: string;
+  feeRate: number;
+  feeConfig?: Record<string, any>;
+  status: string;
+  settledAt?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
 }

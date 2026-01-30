@@ -11,6 +11,10 @@
 | Frontend | Svelte | 5 |
 | Runtime | Java | 21 LTS |
 
+### 개발 도구
+
+# do not use npm, use bun
+
 ## 핵심 아키텍처 원칙
 
 ### 1. 복식부기 정산 (PRD-03)
