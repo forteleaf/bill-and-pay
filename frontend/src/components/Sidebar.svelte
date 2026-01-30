@@ -14,7 +14,9 @@
   <nav>
     <button onclick={() => navigate('dashboard')}>🏦 대시보드</button>
     <button onclick={() => navigate('transactions')}>🧮 거래 내역</button>
-    <button onclick={() => navigate('settlements')}>💸 정산 관리</button>
+    <button onclick={() => navigate('settlements')}>💸 정산 내역</button>
+    <button onclick={() => navigate('settlement-batches')}>📦 정산 배치</button>
+    <button onclick={() => navigate('settlement-summary')}>📊 정산 요약</button>
   </nav>
 </aside>
 

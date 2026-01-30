@@ -88,3 +88,30 @@ export interface AuthResponse {
   username: string;
   tenantId: string;
 }
+
+export interface SettlementBatch {
+  id: string;
+  batchNumber: string;
+  settlementDate: string;
+  status: string;
+  totalTransactions: number;
+  totalAmount: number;
+  totalFeeAmount: number;
+  processedAt: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SettlementSummary {
+  entityId: string;
+  entityType: string;
+  entityPath: string;
+  totalAmount: number;
+  totalFeeAmount: number;
+  totalNetAmount: number;
+  creditAmount: number;
+  debitAmount: number;
+  transactionCount: number;
+  currency: string;
+}
