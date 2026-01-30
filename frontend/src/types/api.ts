@@ -24,7 +24,7 @@ export interface Organization {
   name: string;
   orgType: string;
   path: string;
-  depth: number;
+  level: number;
   status: string;
 }
 
@@ -126,4 +126,41 @@ export interface MerchantOrgHistory {
   movedBy: string;
   reason?: string;
   movedAt: string;
+}
+
+// Organization Management Types
+export enum OrgType {
+  DISTRIBUTOR = 'DISTRIBUTOR',
+  AGENCY = 'AGENCY',
+  DEALER = 'DEALER',
+  SELLER = 'SELLER',
+  VENDOR = 'VENDOR'
+}
+
+export enum OrgStatus {
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  TERMINATED = 'TERMINATED'
+}
+
+export interface CreateOrgRequest {
+  orgCode?: string;
+  name: string;
+  orgType: OrgType;
+  parentId?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface UpdateOrgRequest {
+  name?: string;
+  status?: OrgStatus;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface OrgTree extends Organization {
+  children: OrgTree[];
 }

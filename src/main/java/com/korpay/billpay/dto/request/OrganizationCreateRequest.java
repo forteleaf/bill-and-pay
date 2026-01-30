@@ -18,7 +18,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class OrganizationCreateRequest {
     
-    @NotBlank(message = "Organization code is required")
     private String orgCode;
     
     @NotBlank(message = "Organization name is required")
@@ -27,7 +26,6 @@ public class OrganizationCreateRequest {
     @NotNull(message = "Organization type is required")
     private OrganizationType orgType;
     
-    @NotNull(message = "Parent organization ID is required")
     private UUID parentId;
     
     private String businessNumber;

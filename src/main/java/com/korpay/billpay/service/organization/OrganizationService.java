@@ -62,24 +62,43 @@ public class OrganizationService {
 
     @Transactional
     public Organization create(OrganizationCreateRequest request, User user) {
-        Organization parent = organizationRepository.findById(request.getParentId())
-                .orElseThrow(() -> new EntityNotFoundException("Parent organization not found: " + request.getParentId()));
+        Organization parent = null;
+        String newPath;
+        int newLevel;
         
-        accessControlService.validateOrganizationCreation(user, parent.getPath());
-        
-        if (organizationRepository.findByOrgCode(request.getOrgCode()).isPresent()) {
-            throw new ValidationException("Organization code already exists: " + request.getOrgCode());
+        if (request.getParentId() != null) {
+            parent = organizationRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new EntityNotFoundException("Parent organization not found: " + request.getParentId()));
+            
+            accessControlService.validateOrganizationCreation(user, parent.getPath());
+            
+            newPath = generatePath(parent, request.getOrgType());
+            newLevel = parent.getLevel() + 1;
+        } else {
+            if (request.getOrgType() != com.korpay.billpay.domain.enums.OrganizationType.DISTRIBUTOR) {
+                throw new ValidationException("Only DISTRIBUTOR can be created without parent");
+            }
+            
+            String prefix = getPathPrefix(request.getOrgType());
+            long count = organizationRepository.count() + 1;
+            String segment = String.format("%s%03d", prefix, count);
+            newPath = segment;
+            newLevel = 1;
         }
         
-        String newPath = generatePath(parent, request.getOrgType());
+        String orgCode = generateOrgCode(request.getOrgCode(), newPath);
+        
+        if (organizationRepository.findByOrgCode(orgCode).isPresent()) {
+            throw new ValidationException("Organization code already exists: " + orgCode);
+        }
         
         Organization organization = Organization.builder()
-                .orgCode(request.getOrgCode())
+                .orgCode(orgCode)
                 .name(request.getName())
                 .orgType(request.getOrgType())
                 .path(newPath)
                 .parent(parent)
-                .level(parent.getLevel() + 1)
+                .level(newLevel)
                 .businessNumber(request.getBusinessNumber())
                 .businessName(request.getBusinessName())
                 .representativeName(request.getRepresentativeName())
@@ -149,5 +168,13 @@ public class OrganizationService {
             case SELLER -> "sell_";
             case VENDOR -> "vend_";
         };
+    }
+    
+    private String generateOrgCode(String requestedCode, String path) {
+        if (requestedCode != null && !requestedCode.isBlank()) {
+            return requestedCode;
+        }
+        
+        return path.replace('.', '_');
     }
 }

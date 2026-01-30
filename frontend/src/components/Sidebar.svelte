@@ -18,6 +18,7 @@
     <button onclick={() => navigate('settlement-batches')}>📦 정산 배치</button>
     <button onclick={() => navigate('settlement-summary')}>📊 정산 요약</button>
     <button onclick={() => navigate('merchants')}>🏪 가맹점 관리</button>
+    <button onclick={() => navigate('organizations')}>🏢 조직 관리</button>
   </nav>
 </aside>
 

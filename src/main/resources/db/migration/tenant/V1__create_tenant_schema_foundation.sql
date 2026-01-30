@@ -53,7 +53,7 @@ CREATE TABLE organizations (
   deleted_at TIMESTAMPTZ,
   
   CONSTRAINT organizations_type_check CHECK (org_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')),
-  CONSTRAINT organizations_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),
+  CONSTRAINT organizations_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED')),
   CONSTRAINT organizations_level_check CHECK (level BETWEEN 1 AND 5),
   CONSTRAINT organizations_parent_fk FOREIGN KEY (parent_id) REFERENCES organizations(id)
 );
