@@ -30,8 +30,9 @@ public class UserContextHolder {
         user.setUsername(authUser.getUsername());
         user.setEmail("temp@example.com");
         user.setFullName(authUser.getUsername());
-        user.setRole("USER");
+        user.setRole("MASTER_ADMIN");
         user.setPasswordHash("");
+        user.setOrgPath("");
         
         return user;
     }

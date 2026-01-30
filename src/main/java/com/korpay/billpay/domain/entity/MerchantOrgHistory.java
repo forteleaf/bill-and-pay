@@ -1,12 +1,12 @@
 package com.korpay.billpay.domain.entity;
 
+import com.korpay.billpay.domain.type.LtreeType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.Type;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -27,15 +27,15 @@ public class MerchantOrgHistory {
     @Column(name = "from_org_id", nullable = false)
     private UUID fromOrgId;
 
+    @Type(LtreeType.class)
     @Column(name = "from_org_path", nullable = false, columnDefinition = "ltree")
-    @JdbcTypeCode(SqlTypes.VARCHAR)
     private String fromOrgPath;
 
     @Column(name = "to_org_id", nullable = false)
     private UUID toOrgId;
 
+    @Type(LtreeType.class)
     @Column(name = "to_org_path", nullable = false, columnDefinition = "ltree")
-    @JdbcTypeCode(SqlTypes.VARCHAR)
     private String toOrgPath;
 
     @Column(name = "moved_at", nullable = false)

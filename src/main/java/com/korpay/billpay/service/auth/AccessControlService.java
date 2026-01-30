@@ -164,9 +164,18 @@ public class AccessControlService {
             return true;
         }
 
+        String userOrgPath = user.getOrgPath();
+        if (userOrgPath == null || userOrgPath.isEmpty()) {
+            return false;
+        }
+
+        if (targetPath == null || targetPath.isEmpty()) {
+            return false;
+        }
+
         // Check if target path is a descendant of user's path
         // In ltree terms: targetPath <@ userPath means target is descendant
         // In Java string terms: targetPath.startsWith(userPath)
-        return targetPath.startsWith(user.getOrgPath());
+        return targetPath.startsWith(userOrgPath);
     }
 }
