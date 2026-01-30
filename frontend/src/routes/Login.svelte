@@ -1,6 +1,7 @@
 <script lang="ts">
   import { apiClient } from '../lib/api';
   import { authStore } from '../lib/authStore';
+  import { tenantStore } from '../lib/stores';
   import type { AuthResponse } from '../types/api';
 
   let username = $state('');
@@ -33,9 +34,9 @@
           response.data.tenantId
         );
 
-        apiClient.setTenantId(response.data.tenantId);
+        tenantStore.setCurrent(response.data.tenantId);
         
-        window.location.href = '/';
+        window.location.reload();
       } else {
         error = response.error?.message || '로그인에 실패했습니다.';
       }

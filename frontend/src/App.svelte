@@ -1,5 +1,6 @@
 <script lang="ts">
   import { authStore } from './lib/authStore';
+  import { tenantStore } from './lib/stores';
   import Layout from './components/Layout.svelte';
   import Dashboard from './routes/Dashboard.svelte';
   import Transactions from './routes/Transactions.svelte';
@@ -14,6 +15,13 @@
   
   $effect(() => {
     isAuthenticated = authStore.isAuthenticated();
+    
+    if (isAuthenticated && !tenantStore.current) {
+      const tenantId = authStore.getTenantId();
+      if (tenantId) {
+        tenantStore.setCurrent(tenantId);
+      }
+    }
     
     if (!isAuthenticated && currentRoute !== 'login') {
       currentRoute = 'login';
