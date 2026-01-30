@@ -20,7 +20,7 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
 
     List<Settlement> findByEntityIdAndStatus(UUID entityId, SettlementStatus status);
 
-    @Query(value = "SELECT * FROM settlements WHERE entity_path <@ CAST(:path AS ltree)", nativeQuery = true)
+    @Query(value = "SELECT * FROM settlements WHERE entity_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
     List<Settlement> findByEntityPathDescendants(@Param("path") String path);
 
     List<Settlement> findBySettlementBatchId(UUID settlementBatchId);
@@ -41,8 +41,8 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
     @Query(value = """
         SELECT COUNT(*)
         FROM settlements s
-        WHERE s.entity_path <@ CAST(:entityPath AS ltree)
-        AND s.status = CAST(:status AS settlement_status)
+        WHERE s.entity_path <@ CAST(:entityPath AS public.ltree)
+        AND CAST(s.status AS TEXT) = CAST(:status AS TEXT)
         """, nativeQuery = true)
     Long countByEntityPathStartingWithAndStatus(
             @Param("entityPath") String entityPath,
@@ -56,20 +56,20 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
      */
     @Query(value = """
         SELECT s.* FROM settlements s
-        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS public.ltree))
         AND (:entityType IS NULL OR CAST(s.entity_type AS TEXT) = :entityType)
         AND (:status IS NULL OR CAST(s.status AS TEXT) = :status)
-        AND (:startDate IS NULL OR s.created_at >= :startDate)
-        AND (:endDate IS NULL OR s.created_at <= :endDate)
+        AND (CAST(:startDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at >= CAST(:startDate AS TIMESTAMP WITH TIME ZONE))
+        AND (CAST(:endDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at <= CAST(:endDate AS TIMESTAMP WITH TIME ZONE))
         ORDER BY s.created_at DESC
         """,
         countQuery = """
         SELECT COUNT(*) FROM settlements s
-        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS public.ltree))
         AND (:entityType IS NULL OR CAST(s.entity_type AS TEXT) = :entityType)
         AND (:status IS NULL OR CAST(s.status AS TEXT) = :status)
-        AND (:startDate IS NULL OR s.created_at >= :startDate)
-        AND (:endDate IS NULL OR s.created_at <= :endDate)
+        AND (CAST(:startDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at >= CAST(:startDate AS TIMESTAMP WITH TIME ZONE))
+        AND (CAST(:endDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at <= CAST(:endDate AS TIMESTAMP WITH TIME ZONE))
         """,
         nativeQuery = true)
     Page<Settlement> findAccessibleSettlements(
@@ -87,10 +87,10 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
      */
     @Query(value = """
         SELECT s.* FROM settlements s
-        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS public.ltree))
         AND (:entityType IS NULL OR CAST(s.entity_type AS TEXT) = :entityType)
-        AND (:startDate IS NULL OR s.created_at >= :startDate)
-        AND (:endDate IS NULL OR s.created_at <= :endDate)
+        AND (CAST(:startDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at >= CAST(:startDate AS TIMESTAMP WITH TIME ZONE))
+        AND (CAST(:endDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at <= CAST(:endDate AS TIMESTAMP WITH TIME ZONE))
         """, nativeQuery = true)
     List<Settlement> findAccessibleSettlementsForSummary(
             @Param("userPath") String userPath,
@@ -105,9 +105,9 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
      */
     @Query(value = """
         SELECT s.* FROM settlements s
-        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS ltree))
-        AND s.created_at >= :startDate
-        AND s.created_at < :endDate
+        WHERE (:userPath = '' OR s.entity_path <@ CAST(:userPath AS public.ltree))
+        AND s.created_at >= CAST(:startDate AS TIMESTAMP WITH TIME ZONE)
+        AND s.created_at < CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         ORDER BY s.created_at DESC
         """, nativeQuery = true)
     List<Settlement> findAccessibleSettlementsInDateRange(

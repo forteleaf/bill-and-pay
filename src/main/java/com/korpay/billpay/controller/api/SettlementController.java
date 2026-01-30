@@ -46,7 +46,7 @@ public class SettlementController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "created_at") String sortBy,
             @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
         
         User currentUser = userContextHolder.getCurrentUser();

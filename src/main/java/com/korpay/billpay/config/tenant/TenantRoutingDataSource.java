@@ -68,6 +68,9 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
         config.setSchema(schemaName);
         config.setPoolName("HikariPool-" + schemaName);
         
+        // Set search_path to include both tenant schema and public (for ltree operators)
+        config.setConnectionInitSql("SET search_path TO " + schemaName + ", public");
+        
         config.setMaximumPoolSize(tenantDataSourceTemplate.getMaximumPoolSize());
         config.setMinimumIdle(tenantDataSourceTemplate.getMinimumIdle());
         config.setConnectionTimeout(tenantDataSourceTemplate.getConnectionTimeout());
