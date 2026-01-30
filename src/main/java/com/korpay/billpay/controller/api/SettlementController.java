@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/settlements")
+@RequestMapping("/v1/settlements")
 @RequiredArgsConstructor
 @Validated
 public class SettlementController {

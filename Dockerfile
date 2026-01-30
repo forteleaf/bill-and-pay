@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk:21-jre-headless as builder
+FROM azul/zulu-openjdk:25-jre-headless as builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ COPY src ./src
 
 RUN ./gradlew clean bootJar --no-daemon
 
-FROM azul/zulu-openjdk:21-jre-headless
+FROM azul/zulu-openjdk:25-jre-headless
 
 WORKDIR /app
 

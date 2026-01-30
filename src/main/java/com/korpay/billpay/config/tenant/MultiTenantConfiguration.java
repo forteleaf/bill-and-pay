@@ -57,6 +57,8 @@ public class MultiTenantConfiguration implements WebMvcConfigurer {
                 publicDataSource, 
                 tenantDataSourceTemplate
         );
+        routingDataSource.setDefaultTargetDataSource(publicDataSource);
+        routingDataSource.setTargetDataSources(new java.util.HashMap<>());
         routingDataSource.afterPropertiesSet();
         return routingDataSource;
     }

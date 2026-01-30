@@ -9,7 +9,7 @@
 | Database | PostgreSQL | 18 |
 | Backend | Spring Boot | 3.5.10 |
 | Frontend | Svelte | 5 |
-| Runtime | Java | 21 LTS |
+| Runtime | Java | 25 LTS |
 
 ### 개발 도구
 
@@ -55,7 +55,7 @@
 ## 코딩 규칙
 
 ### Java/Spring Boot
-- Virtual Threads 활용 (Java 21)
+- Virtual Threads 활용 (Java 25)
 - ScopedValue로 테넌트 컨텍스트 전파
 - 모든 금액 계산은 BigDecimal 사용
 
@@ -104,6 +104,12 @@
 - ✅ Flyway 마이그레이션 (public 2개, tenant 9개)
 - ✅ JPA 엔티티 10개, Repository 10개
 - ✅ CORS 설정
+- ✅ JWT 인증 (Spring Security + JWT)
+  - JwtTokenProvider (토큰 생성/검증)
+  - JwtAuthenticationFilter (Bearer 토큰 처리)
+  - CustomUserDetailsService (사용자 조회)
+  - AuthService (로그인/리프레시)
+  - AuthController (인증 API 3개)
 
 ### 프론트엔드 (Svelte 5)
 - ✅ Runes API ($state, $derived, $effect)
@@ -112,6 +118,12 @@
 - ✅ 정산 관리 (목록, 통계, 상태별 필터) - API 연동 완료
 - ✅ 에러 핸들링 및 로딩 상태 표시
 - ✅ 반응형 디자인
+- ✅ JWT 인증 통합
+  - Auth Store (localStorage 기반 토큰 관리)
+  - API 클라이언트 (토큰 자동 포함, 401 자동 리프레시)
+  - 로그인 화면 (Login.svelte)
+  - 로그아웃 기능 (Header.svelte)
+  - 인증 가드 (App.svelte)
 
 ### 인프라 (Finch/Docker)
 - ✅ PostgreSQL 18 + ltree 확장
@@ -121,10 +133,11 @@
 - ✅ 환경변수 관리 (.env)
 
 ### 미구현 항목
-- ⏳ JWT 인증 (Spring Security)
-- ⏳ 통합 테스트
-- ⏳ Seed 데이터
-- ⏳ 로깅 및 모니터링
+- ⏳ 통합 테스트 (JUnit + MockMvc)
+- ⏳ Seed 데이터 (Flyway)
+- ⏳ 로깅 및 모니터링 (Logback, Micrometer)
+- ⏳ 2FA (TOTP)
+- ⏳ 사용자 관리 UI
 
 ## 실행 가이드
 
@@ -140,4 +153,7 @@ finch compose up -d
 # PostgreSQL: localhost:5432
 ```
 
-상세 내용은 [DOCKER_GUIDE.md](DOCKER_GUIDE.md) 및 [API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md) 참조.
+상세 내용은 다음 문서 참조:
+- [DOCKER_GUIDE.md](DOCKER_GUIDE.md) - Docker/Finch 실행 가이드
+- [API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md) - API 연동 가이드
+- [AUTH_TESTING_GUIDE.md](AUTH_TESTING_GUIDE.md) - JWT 인증 테스트 가이드

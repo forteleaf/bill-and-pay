@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/organizations")
+@RequestMapping("/v1/organizations")
 @RequiredArgsConstructor
 @Validated
 public class OrganizationController {

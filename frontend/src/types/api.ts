@@ -81,3 +81,10 @@ export interface Settlement {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  username: string;
+  tenantId: string;
+}
