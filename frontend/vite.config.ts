@@ -18,5 +18,8 @@ export default defineConfig({
       '@': '/src',
       '$lib': '/src/lib'
     }
+  },
+  optimizeDeps: {
+    include: ['@dagrejs/dagre', '@dagrejs/graphlib']
   }
 });
