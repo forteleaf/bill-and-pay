@@ -1,5 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import {
+    SvelteFlow,
+    Controls,
+    Background,
+    MiniMap,
+    Position,
+    type Node,
+    type Edge,
+    type NodeTypes,
+  } from '@xyflow/svelte';
+  import '@xyflow/svelte/dist/style.css';
+  import dagre from '@dagrejs/dagre';
   import type { Organization, OrgTree as OrgTreeType, CreateOrgRequest, OrgType } from '../../types/api';
   import { apiClient } from '../../lib/api';
   import { tabStore } from '../../lib/tabStore';
@@ -8,36 +20,13 @@
   import { Input } from '$lib/components/ui/input';
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // TYPES & CONSTANTS
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
-  interface MindmapNode extends OrgTreeType {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    collapsed: boolean;
-  }
-  
-  interface DragState {
-    isDragging: boolean;
-    nodeId: string | null;
-    startX: number;
-    startY: number;
-    offsetX: number;
-    offsetY: number;
-  }
-  
-  interface PanState {
-    isPanning: boolean;
-    startX: number;
-    startY: number;
-  }
-  
+  import OrgFlowNode, { type OrgNodeData } from '../../components/OrgFlowNode.svelte';
+
+  const NODE_WIDTH = 200;
+  const NODE_HEIGHT = 80;
+
   const ORG_TYPE_ORDER = ['DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR'];
-  
+
   const ORG_TYPE_LABELS: Record<string, string> = {
     DISTRIBUTOR: '총판',
     AGENCY: '대리점',
@@ -45,13 +34,13 @@
     SELLER: '판매점',
     VENDOR: '가맹점'
   };
-  
+
   const STATUS_LABELS: Record<string, string> = {
     ACTIVE: '정상',
     SUSPENDED: '정지',
     TERMINATED: '해지'
   };
-  
+
   const ORG_TYPE_COLORS: Record<string, { bg: string; border: string; text: string; gradient: string }> = {
     DISTRIBUTOR: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/40', text: 'text-indigo-600', gradient: 'from-indigo-500 to-indigo-600' },
     AGENCY: { bg: 'bg-violet-500/10', border: 'border-violet-500/40', text: 'text-violet-600', gradient: 'from-violet-500 to-violet-600' },
@@ -60,106 +49,63 @@
     VENDOR: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/40', text: 'text-emerald-600', gradient: 'from-emerald-500 to-emerald-600' }
   };
 
-  const STATUS_COLORS: Record<string, string> = {
-    ACTIVE: 'fill-emerald-500',
-    SUSPENDED: 'fill-amber-500',
-    TERMINATED: 'fill-rose-500'
+  const nodeTypes: NodeTypes = {
+    org: OrgFlowNode
   };
-  
-  // Layout constants
-  const NODE_WIDTH = 180;
-  const NODE_HEIGHT = 64;
-  const HORIZONTAL_GAP = 80;
-  const VERTICAL_GAP = 20;
-  const INITIAL_X = 60;
-  const INITIAL_Y = 60;
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // STATE
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
   let organizations = $state<OrgTreeType[]>([]);
-  let mindmapNodes = $state<MindmapNode[]>([]);
+  let flatOrganizations = $state<Organization[]>([]);
+  let nodes = $state.raw<Node<OrgNodeData>[]>([]);
+  let edges = $state.raw<Edge[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let selectedNodeId = $state<string | null>(null);
-  let hoveredNodeId = $state<string | null>(null);
-  
-  // Edit state
+
   let editingNodeId = $state<string | null>(null);
   let editName = $state('');
   let editStatus = $state<string>('ACTIVE');
-  
-  // Add child modal state
+
   let showAddModal = $state(false);
   let addParentId = $state<string | null>(null);
   let newOrgName = $state('');
   let newOrgType = $state<string>('');
-  
-  // Move confirmation modal
+
   let showMoveModal = $state(false);
   let moveNodeId = $state<string | null>(null);
   let moveTargetId = $state<string | null>(null);
-  
-  // Zoom & Pan
-  let scale = $state(1);
-  let translateX = $state(0);
-  let translateY = $state(0);
-  let panState = $state<PanState>({ isPanning: false, startX: 0, startY: 0 });
-  
-  // Drag & Drop
-  let dragState = $state<DragState>({
-    isDragging: false,
-    nodeId: null,
-    startX: 0,
-    startY: 0,
-    offsetX: 0,
-    offsetY: 0
-  });
-  let dropTargetId = $state<string | null>(null);
-  
-  // SVG container ref
-  let svgContainer: SVGSVGElement | null = null;
-  
-  // Toast notifications
+
   let toasts = $state<Array<{ id: number; message: string; type: 'success' | 'error' }>>([]);
   let toastCounter = 0;
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // DERIVED VALUES
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
   let stats = $derived({
     total: countNodes(organizations),
     byType: countByType(organizations),
     byStatus: countByStatus(organizations)
   });
-  
-  let selectedNode = $derived(mindmapNodes.find(n => n.id === selectedNodeId) || null);
-  
-  let visibleNodes = $derived(getVisibleNodes(mindmapNodes));
-  
-  let connections = $derived(generateConnections(visibleNodes));
-  
-  let svgDimensions = $derived(calculateSvgDimensions(visibleNodes));
-  
-  // Next available org type for adding children
+
+  let selectedNode = $derived(flatOrganizations.find(n => n.id === selectedNodeId) || null);
+  let selectedNodeChildren = $derived.by(() => {
+    if (!selectedNode) return [];
+    return flatOrganizations.filter(org => {
+      const pathParts = org.path.split('.');
+      const selectedPathParts = selectedNode.path.split('.');
+      return pathParts.length === selectedPathParts.length + 1 && 
+             org.path.startsWith(selectedNode.path + '.');
+    });
+  });
+
   let availableChildTypes = $derived.by(() => {
     if (!addParentId) return [];
-    const parent = mindmapNodes.find(n => n.id === addParentId);
+    const parent = flatOrganizations.find(n => n.id === addParentId);
     if (!parent) return [];
     const parentTypeIndex = ORG_TYPE_ORDER.indexOf(parent.orgType);
     return ORG_TYPE_ORDER.slice(parentTypeIndex + 1);
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // HELPER FUNCTIONS
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
   function countNodes(nodes: OrgTreeType[]): number {
     return nodes.reduce((acc, node) => acc + 1 + (node.children ? countNodes(node.children) : 0), 0);
   }
-  
+
   function countByType(nodes: OrgTreeType[]): Record<string, number> {
     const counts: Record<string, number> = {};
     function traverse(nodeList: OrgTreeType[]) {
@@ -171,7 +117,7 @@
     traverse(nodes);
     return counts;
   }
-  
+
   function countByStatus(nodes: OrgTreeType[]): Record<string, number> {
     const counts: Record<string, number> = {};
     function traverse(nodeList: OrgTreeType[]) {
@@ -183,19 +129,19 @@
     traverse(nodes);
     return counts;
   }
-  
+
   function buildTree(flatOrgs: Organization[]): OrgTreeType[] {
     const orgMap = new Map<string, OrgTreeType>();
     const roots: OrgTreeType[] = [];
-    
+
     flatOrgs.forEach(org => {
       orgMap.set(org.id, { ...org, children: [] });
     });
-    
+
     flatOrgs.forEach(org => {
       const node = orgMap.get(org.id)!;
       const pathSegments = org.path.split('.');
-      
+
       if (pathSegments.length === 1) {
         roots.push(node);
       } else {
@@ -207,7 +153,7 @@
         }
       }
     });
-    
+
     function sortNodes(nodes: OrgTreeType[]): OrgTreeType[] {
       return nodes
         .sort((a, b) => {
@@ -218,128 +164,81 @@
         })
         .map(node => ({ ...node, children: node.children ? sortNodes(node.children) : [] }));
     }
-    
+
     return sortNodes(roots);
   }
-  
-  function treeToMindmap(
-    nodes: OrgTreeType[],
-    parentX: number = INITIAL_X,
-    startY: number = INITIAL_Y,
-    collapsedSet: Set<string> = new Set()
-  ): { nodes: MindmapNode[]; totalHeight: number } {
-    const result: MindmapNode[] = [];
-    let currentY = startY;
-    
-    for (const node of nodes) {
-      const collapsed = collapsedSet.has(node.id);
-      const x = parentX;
-      const y = currentY;
+
+  function organizationsToFlow(orgs: OrgTreeType[]): { nodes: Node<OrgNodeData>[]; edges: Edge[] } {
+    const flowNodes: Node<OrgNodeData>[] = [];
+    const flowEdges: Edge[] = [];
+
+    function traverse(org: OrgTreeType, parentId?: string) {
+      const hasChildren = org.children && org.children.length > 0;
       
-      const mindmapNode: MindmapNode = {
+      flowNodes.push({
+        id: org.id,
+        type: 'org',
+        position: { x: 0, y: 0 },
+        data: {
+          name: org.name,
+          orgCode: org.orgCode,
+          orgType: org.orgType,
+          status: org.status,
+          path: org.path,
+          level: org.level,
+          hasChildren,
+          onAddChild: handleAddChild,
+          onDoubleClick: handleNodeDoubleClick
+        }
+      });
+
+      if (parentId) {
+        flowEdges.push({
+          id: `e-${parentId}-${org.id}`,
+          source: parentId,
+          target: org.id,
+          type: 'smoothstep',
+          animated: false,
+          style: 'stroke-width: 2px; stroke: hsl(var(--muted-foreground) / 0.4);'
+        });
+      }
+
+      org.children?.forEach(child => traverse(child, org.id));
+    }
+
+    orgs.forEach(org => traverse(org));
+    return { nodes: flowNodes, edges: flowEdges };
+  }
+
+  function layoutNodes(inputNodes: Node<OrgNodeData>[], inputEdges: Edge[]): Node<OrgNodeData>[] {
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+    dagreGraph.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 60 });
+
+    inputNodes.forEach(node => {
+      dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    });
+
+    inputEdges.forEach(edge => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    return inputNodes.map(node => {
+      const nodeWithPosition = dagreGraph.node(node.id);
+      return {
         ...node,
-        x,
-        y,
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
-        collapsed
+        position: {
+          x: nodeWithPosition.x - NODE_WIDTH / 2,
+          y: nodeWithPosition.y - NODE_HEIGHT / 2
+        },
+        targetPosition: Position.Top,
+        sourcePosition: Position.Bottom
       };
-      
-      result.push(mindmapNode);
-      
-      let subtreeHeight = NODE_HEIGHT;
-      
-      if (node.children && node.children.length > 0 && !collapsed) {
-        const childResult = treeToMindmap(
-          node.children,
-          x + NODE_WIDTH + HORIZONTAL_GAP,
-          currentY,
-          collapsedSet
-        );
-        result.push(...childResult.nodes);
-        subtreeHeight = Math.max(subtreeHeight, childResult.totalHeight);
-      }
-      
-      currentY += subtreeHeight + VERTICAL_GAP;
-    }
-    
-    return { nodes: result, totalHeight: currentY - startY - VERTICAL_GAP };
+    });
   }
-  
-  function getCollapsedSet(): Set<string> {
-    const set = new Set<string>();
-    for (const node of mindmapNodes) {
-      if (node.collapsed) set.add(node.id);
-    }
-    return set;
-  }
-  
-  function recalculateLayout() {
-    const collapsedSet = getCollapsedSet();
-    const { nodes } = treeToMindmap(organizations, INITIAL_X, INITIAL_Y, collapsedSet);
-    mindmapNodes = nodes;
-  }
-  
-  function getVisibleNodes(nodes: MindmapNode[]): MindmapNode[] {
-    const collapsedIds = new Set(nodes.filter(n => n.collapsed).map(n => n.id));
-    const hiddenIds = new Set<string>();
-    
-    for (const node of nodes) {
-      const pathParts = node.path.split('.');
-      for (let i = 1; i < pathParts.length; i++) {
-        const ancestorPath = pathParts.slice(0, i).join('.');
-        const ancestor = nodes.find(n => n.path === ancestorPath);
-        if (ancestor && collapsedIds.has(ancestor.id)) {
-          hiddenIds.add(node.id);
-          break;
-        }
-      }
-    }
-    
-    return nodes.filter(n => !hiddenIds.has(n.id));
-  }
-  
-  function generateConnections(nodes: MindmapNode[]): Array<{ from: MindmapNode; to: MindmapNode; path: string }> {
-    const connections: Array<{ from: MindmapNode; to: MindmapNode; path: string }> = [];
-    const nodeMap = new Map(nodes.map(n => [n.path, n]));
-    
-    for (const node of nodes) {
-      const pathParts = node.path.split('.');
-      if (pathParts.length > 1) {
-        const parentPath = pathParts.slice(0, -1).join('.');
-        const parent = nodeMap.get(parentPath);
-        if (parent) {
-          // Create smooth bezier curve
-          const startX = parent.x + parent.width;
-          const startY = parent.y + parent.height / 2;
-          const endX = node.x;
-          const endY = node.y + node.height / 2;
-          const controlX1 = startX + HORIZONTAL_GAP / 2;
-          const controlX2 = endX - HORIZONTAL_GAP / 2;
-          
-          const path = `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
-          connections.push({ from: parent, to: node, path });
-        }
-      }
-    }
-    
-    return connections;
-  }
-  
-  function calculateSvgDimensions(nodes: MindmapNode[]): { width: number; height: number } {
-    if (nodes.length === 0) return { width: 800, height: 600 };
-    
-    let maxX = 0;
-    let maxY = 0;
-    
-    for (const node of nodes) {
-      maxX = Math.max(maxX, node.x + node.width);
-      maxY = Math.max(maxY, node.y + node.height);
-    }
-    
-    return { width: maxX + 100, height: maxY + 100 };
-  }
-  
+
   function showToast(message: string, type: 'success' | 'error') {
     const id = ++toastCounter;
     toasts = [...toasts, { id, message, type }];
@@ -348,10 +247,6 @@
     }, 3000);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // API FUNCTIONS
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
   async function loadOrganizations() {
     loading = true;
     error = null;
@@ -361,14 +256,16 @@
         error = rootResponse.error?.message || 'Failed to load root organization';
         return;
       }
-      
+
       const rootId = rootResponse.data.id;
       const response = await apiClient.get<Organization[]>(`/organizations/${rootId}/descendants`);
-      
+
       if (response.success && response.data) {
+        flatOrganizations = response.data;
         organizations = buildTree(response.data);
-        const { nodes } = treeToMindmap(organizations);
-        mindmapNodes = nodes;
+        const { nodes: flowNodes, edges: flowEdges } = organizationsToFlow(organizations);
+        nodes = layoutNodes(flowNodes, flowEdges);
+        edges = flowEdges;
       } else {
         error = response.error?.message || 'Failed to load organizations';
       }
@@ -378,8 +275,8 @@
       loading = false;
     }
   }
-  
-  async function updateOrganization(id: string, data: { name?: string; status?: string }) {
+
+  async function updateOrganization(id: string, data: { name?: string; status?: string; parentId?: string }) {
     try {
       const response = await apiClient.put<Organization>(`/organizations/${id}`, data);
       if (response.success) {
@@ -392,7 +289,7 @@
       showToast(e instanceof Error ? e.message : '수정 실패', 'error');
     }
   }
-  
+
   async function createOrganization(data: CreateOrgRequest) {
     try {
       const response = await apiClient.post<Organization>('/organizations', data);
@@ -409,87 +306,49 @@
       return false;
     }
   }
-  
-  async function moveOrganization(nodeId: string, newParentId: string) {
-    try {
-      const response = await apiClient.put<Organization>(`/organizations/${nodeId}`, {
-        parentId: newParentId
-      });
-      if (response.success) {
-        showToast('조직이 이동되었습니다.', 'success');
-        await loadOrganizations();
-        return true;
-      } else {
-        showToast(response.error?.message || '이동 실패', 'error');
-        return false;
-      }
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : '이동 실패', 'error');
-      return false;
+
+  function handleNodeClick({ node }: { node: Node<OrgNodeData> }) {
+    selectedNodeId = node.id;
+  }
+
+  function handleNodeDoubleClick(nodeId: string) {
+    const org = flatOrganizations.find(o => o.id === nodeId);
+    if (org) {
+      editingNodeId = nodeId;
+      editName = org.name;
+      editStatus = org.status;
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // EVENT HANDLERS
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
-  function handleNodeClick(node: MindmapNode) {
-    if (dragState.isDragging) return;
-    selectedNodeId = node.id;
-  }
-  
-  function handleNodeDoubleClick(node: MindmapNode) {
-    editingNodeId = node.id;
-    editName = node.name;
-    editStatus = node.status;
-  }
-  
   function handleEditSave() {
     if (editingNodeId && editName.trim()) {
       updateOrganization(editingNodeId, { name: editName.trim(), status: editStatus });
       editingNodeId = null;
     }
   }
-  
+
   function handleEditCancel() {
     editingNodeId = null;
     editName = '';
     editStatus = 'ACTIVE';
   }
-  
-  function handleEditKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      handleEditSave();
-    } else if (e.key === 'Escape') {
-      handleEditCancel();
-    }
-  }
-  
-  function handleToggleCollapse(nodeId: string, e: MouseEvent) {
-    e.stopPropagation();
-    const node = mindmapNodes.find(n => n.id === nodeId);
-    if (node) {
-      node.collapsed = !node.collapsed;
-      recalculateLayout();
-    }
-  }
-  
+
   function handleAddChild(parentId: string) {
     addParentId = parentId;
     newOrgName = '';
     newOrgType = '';
     showAddModal = true;
   }
-  
+
   async function handleAddChildSubmit() {
     if (!addParentId || !newOrgName.trim() || !newOrgType) return;
-    
+
     const success = await createOrganization({
       name: newOrgName.trim(),
       orgType: newOrgType as OrgType,
       parentId: addParentId
     });
-    
+
     if (success) {
       showAddModal = false;
       addParentId = null;
@@ -497,8 +356,8 @@
       newOrgType = '';
     }
   }
-  
-  function handleOpenDetail(org: MindmapNode) {
+
+  function handleOpenDetail(org: Organization) {
     tabStore.openTab({
       id: `branch-${org.id}`,
       title: org.name,
@@ -508,186 +367,68 @@
       props: { branchId: org.id }
     });
   }
-  
-  // Drag & Drop handlers
-  function handleDragStart(nodeId: string, e: MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const node = mindmapNodes.find(n => n.id === nodeId);
-    if (!node || node.orgType === 'DISTRIBUTOR') return; // Can't drag root
-    
-    dragState = {
-      isDragging: true,
-      nodeId,
-      startX: e.clientX,
-      startY: e.clientY,
-      offsetX: 0,
-      offsetY: 0
-    };
-  }
-  
-  function handleDragMove(e: MouseEvent) {
-    if (!dragState.isDragging) return;
-    
-    dragState.offsetX = (e.clientX - dragState.startX) / scale;
-    dragState.offsetY = (e.clientY - dragState.startY) / scale;
-    
-    // Find potential drop target
-    const dragNode = mindmapNodes.find(n => n.id === dragState.nodeId);
-    if (!dragNode) return;
-    
-    const dragX = dragNode.x + dragState.offsetX + NODE_WIDTH / 2;
-    const dragY = dragNode.y + dragState.offsetY + NODE_HEIGHT / 2;
-    
-    // Find closest valid drop target
-    let closestNode: MindmapNode | null = null;
+
+  function handleNodeDragStop({ targetNode }: { targetNode: Node<OrgNodeData> | null }) {
+    if (!targetNode || targetNode.data.orgType === 'DISTRIBUTOR') return;
+
+    const draggedNodePos = targetNode.position;
+    const draggedOrgType = targetNode.data.orgType;
+    const draggedTypeIndex = ORG_TYPE_ORDER.indexOf(draggedOrgType);
+
+    let closestNode: Node<OrgNodeData> | null = null;
     let closestDist = Infinity;
-    
-    for (const node of visibleNodes) {
-      if (node.id === dragState.nodeId) continue;
-      
-      // Check if this is a valid parent (higher in hierarchy)
-      const dragTypeIndex = ORG_TYPE_ORDER.indexOf(dragNode.orgType);
-      const targetTypeIndex = ORG_TYPE_ORDER.indexOf(node.orgType);
-      
-      if (targetTypeIndex >= dragTypeIndex) continue; // Can only move to higher level
-      
-      // Check if not descendant of drag node
-      if (node.orgCode.startsWith(dragNode.orgCode + '.')) continue;
-      
-      const dist = Math.sqrt(
-        Math.pow(dragX - (node.x + NODE_WIDTH / 2), 2) +
-        Math.pow(dragY - (node.y + NODE_HEIGHT / 2), 2)
-      );
-      
-      if (dist < closestDist && dist < 150) {
+
+    for (const node of nodes) {
+      if (node.id === targetNode.id) continue;
+
+      const targetTypeIndex = ORG_TYPE_ORDER.indexOf(node.data.orgType);
+      if (targetTypeIndex >= draggedTypeIndex) continue;
+
+      if (node.data.path && targetNode.data.path.startsWith(node.data.path + '.')) {
+        continue;
+      }
+
+      const dx = draggedNodePos.x - node.position.x;
+      const dy = draggedNodePos.y - node.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < closestDist && dist < 200) {
         closestDist = dist;
         closestNode = node;
       }
     }
-    
-    dropTargetId = closestNode?.id || null;
-  }
-  
-  function handleDragEnd() {
-    if (dragState.isDragging && dragState.nodeId && dropTargetId) {
-      moveNodeId = dragState.nodeId;
-      moveTargetId = dropTargetId;
+
+    if (closestNode) {
+      moveNodeId = targetNode.id;
+      moveTargetId = closestNode.id;
       showMoveModal = true;
     }
-    
-    dragState = {
-      isDragging: false,
-      nodeId: null,
-      startX: 0,
-      startY: 0,
-      offsetX: 0,
-      offsetY: 0
-    };
-    dropTargetId = null;
+
+    loadOrganizations();
   }
-  
+
   async function handleMoveConfirm() {
     if (moveNodeId && moveTargetId) {
-      await moveOrganization(moveNodeId, moveTargetId);
+      await updateOrganization(moveNodeId, { parentId: moveTargetId });
     }
     showMoveModal = false;
     moveNodeId = null;
     moveTargetId = null;
   }
-  
+
   function handleMoveCancel() {
     showMoveModal = false;
     moveNodeId = null;
     moveTargetId = null;
-  }
-  
-  // Zoom & Pan handlers
-  function handleWheel(e: WheelEvent) {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    const newScale = Math.max(0.3, Math.min(2, scale + delta));
-    
-    // Zoom toward cursor position
-    if (svgContainer) {
-      const rect = svgContainer.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      const scaleDiff = newScale - scale;
-      translateX -= (x - translateX) * scaleDiff / scale;
-      translateY -= (y - translateY) * scaleDiff / scale;
-    }
-    
-    scale = newScale;
-  }
-  
-  function handlePanStart(e: MouseEvent) {
-    if (dragState.isDragging) return;
-    if (e.target !== svgContainer && !(e.target as Element).classList.contains('mindmap-background')) return;
-    
-    panState = {
-      isPanning: true,
-      startX: e.clientX - translateX,
-      startY: e.clientY - translateY
-    };
-  }
-  
-  function handlePanMove(e: MouseEvent) {
-    if (!panState.isPanning) return;
-    translateX = e.clientX - panState.startX;
-    translateY = e.clientY - panState.startY;
-  }
-  
-  function handlePanEnd() {
-    panState = { isPanning: false, startX: 0, startY: 0 };
-  }
-  
-  function handleResetZoom() {
-    scale = 1;
-    translateX = 0;
-    translateY = 0;
-  }
-  
-  function handleZoomIn() {
-    scale = Math.min(2, scale + 0.2);
-  }
-  
-  function handleZoomOut() {
-    scale = Math.max(0.3, scale - 0.2);
-  }
-  
-  // Global mouse move/up handlers
-  function handleGlobalMouseMove(e: MouseEvent) {
-    handleDragMove(e);
-    handlePanMove(e);
-  }
-  
-  function handleGlobalMouseUp() {
-    handleDragEnd();
-    handlePanEnd();
+    loadOrganizations();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // LIFECYCLE
-  // ═══════════════════════════════════════════════════════════════════════════════
-  
   onMount(() => {
     loadOrganizations();
-    
-    window.addEventListener('mousemove', handleGlobalMouseMove);
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    
-    return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
   });
 </script>
 
 <div class="flex flex-col gap-6 p-6 max-w-[2000px] mx-auto h-[calc(100vh-80px)]">
-  <!-- Header -->
   <header class="flex justify-between items-center shrink-0">
     <div class="flex items-baseline gap-4">
       <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -701,29 +442,6 @@
       </span>
     </div>
     <div class="flex items-center gap-3">
-      <!-- Zoom Controls -->
-      <div class="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
-        <Button variant="ghost" size="sm" onclick={handleZoomOut} class="h-8 w-8 p-0">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M21 21l-4.35-4.35M8 11h6"/>
-          </svg>
-        </Button>
-        <span class="text-xs font-medium text-muted-foreground w-12 text-center">
-          {Math.round(scale * 100)}%
-        </span>
-        <Button variant="ghost" size="sm" onclick={handleZoomIn} class="h-8 w-8 p-0">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
-          </svg>
-        </Button>
-        <div class="w-px h-4 bg-border mx-1"></div>
-        <Button variant="ghost" size="sm" onclick={handleResetZoom} class="h-8 px-2 text-xs">
-          리셋
-        </Button>
-      </div>
-      
       <Button variant="outline" onclick={() => loadOrganizations()} disabled={loading}>
         <svg class="w-4 h-4 mr-2 {loading ? 'animate-spin' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
@@ -734,7 +452,6 @@
     </div>
   </header>
 
-  <!-- Statistics Strip -->
   <div class="flex items-center gap-3 overflow-x-auto pb-2 shrink-0">
     {#each ORG_TYPE_ORDER as type}
       {@const colors = ORG_TYPE_COLORS[type]}
@@ -757,253 +474,59 @@
     </div>
   </div>
 
-  <!-- Main Content -->
   <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
-    <!-- Mindmap Canvas -->
-    <div class="lg:col-span-3 relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {#if loading}
-        <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 text-muted-foreground bg-background/80 backdrop-blur-sm z-10">
-          <div class="w-12 h-12 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
-          <span class="font-medium">조직 정보를 불러오는 중...</span>
-        </div>
-      {:else if error}
-        <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 text-destructive">
-          <svg class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 8v4m0 4h.01"/>
-          </svg>
-          <span class="font-medium text-lg">{error}</span>
-          <Button variant="outline" onclick={() => loadOrganizations()}>다시 시도</Button>
-        </div>
-      {:else}
-        <svg
-          bind:this={svgContainer}
-          class="w-full h-full cursor-grab {panState.isPanning ? 'cursor-grabbing' : ''}"
-          viewBox="0 0 {svgDimensions.width} {svgDimensions.height}"
-          preserveAspectRatio="xMinYMin meet"
-          onwheel={handleWheel}
-          onmousedown={handlePanStart}
-        >
-          <!-- Background Pattern -->
-          <defs>
-            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.5" fill="currentColor" class="text-muted-foreground/20"/>
-            </pattern>
-            <!-- Glow filter for nodes -->
-            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-            <!-- Shadow filter -->
-            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.15"/>
-            </filter>
-          </defs>
-          
-          <rect class="mindmap-background" width="100%" height="100%" fill="url(#grid)"/>
-          
-          <g transform="translate({translateX}, {translateY}) scale({scale})">
-            <!-- Connections (Bezier Curves) -->
-            {#each connections as conn}
-              <path
-                d={conn.path}
-                fill="none"
-                stroke="url(#gradient-{conn.from.orgType})"
-                stroke-width="2"
-                stroke-linecap="round"
-                class="transition-all duration-300 {dropTargetId === conn.from.id ? 'stroke-[3] opacity-100' : 'opacity-60'}"
-              />
-            {/each}
-            
-            <!-- Gradient definitions for connections -->
-            {#each ORG_TYPE_ORDER as type}
-              <defs>
-                <linearGradient id="gradient-{type}" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" class="{type === 'DISTRIBUTOR' ? 'stop-indigo-500' : type === 'AGENCY' ? 'stop-violet-500' : type === 'DEALER' ? 'stop-blue-500' : type === 'SELLER' ? 'stop-cyan-500' : 'stop-emerald-500'}" stop-color="currentColor"/>
-                  <stop offset="100%" class="{type === 'DISTRIBUTOR' ? 'stop-violet-500' : type === 'AGENCY' ? 'stop-blue-500' : type === 'DEALER' ? 'stop-cyan-500' : type === 'SELLER' ? 'stop-emerald-500' : 'stop-teal-500'}" stop-color="currentColor"/>
-                </linearGradient>
-              </defs>
-            {/each}
-            
-            <!-- Nodes -->
-            {#each visibleNodes as node (node.id)}
-              {@const isSelected = selectedNodeId === node.id}
-              {@const isHovered = hoveredNodeId === node.id}
-              {@const isEditing = editingNodeId === node.id}
-              {@const isDragging = dragState.nodeId === node.id}
-              {@const isDropTarget = dropTargetId === node.id}
-              {@const hasChildren = node.children && node.children.length > 0}
-              {@const offsetX = isDragging ? dragState.offsetX : 0}
-              {@const offsetY = isDragging ? dragState.offsetY : 0}
-              
-              <g
-                transform="translate({node.x + offsetX}, {node.y + offsetY})"
-                class="transition-transform duration-150 {isDragging ? 'opacity-70' : ''}"
-                onmouseenter={() => hoveredNodeId = node.id}
-                onmouseleave={() => hoveredNodeId = null}
+    <div class="lg:col-span-3">
+      <Card class="h-full">
+        <CardContent class="p-0 h-full">
+          {#if loading}
+            <div class="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+              <div class="w-12 h-12 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
+              <span class="font-medium">조직 정보를 불러오는 중...</span>
+            </div>
+          {:else if error}
+            <div class="flex flex-col items-center justify-center h-full gap-4 text-destructive">
+              <svg class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4m0 4h.01"/>
+              </svg>
+              <span class="font-medium text-lg">{error}</span>
+              <Button variant="outline" onclick={() => loadOrganizations()}>다시 시도</Button>
+            </div>
+          {:else}
+            <div class="h-full w-full" style="height: calc(100vh - 360px); min-height: 500px;">
+              <SvelteFlow
+                {nodes}
+                {edges}
+                {nodeTypes}
+                fitView
+                nodesDraggable={true}
+                nodesConnectable={false}
+                onnodeclick={handleNodeClick}
+                onnodedragstop={handleNodeDragStop}
+                proOptions={{ hideAttribution: true }}
               >
-                <!-- Node background with glass effect -->
-                <rect
-                  x="0"
-                  y="0"
-                  width={NODE_WIDTH}
-                  height={NODE_HEIGHT}
-                  rx="12"
-                  class="fill-white dark:fill-slate-800 cursor-pointer transition-all duration-200
-                    {isSelected ? 'stroke-2' : 'stroke-1'}
-                    {isDropTarget ? 'stroke-emerald-500 stroke-[3] stroke-dashed' : ''}
-                    {node.orgType === 'DISTRIBUTOR' ? 'stroke-indigo-400' : 
-                     node.orgType === 'AGENCY' ? 'stroke-violet-400' : 
-                     node.orgType === 'DEALER' ? 'stroke-blue-400' : 
-                     node.orgType === 'SELLER' ? 'stroke-cyan-400' : 'stroke-emerald-400'}"
-                  filter="{isSelected || isHovered ? 'url(#shadow)' : ''}"
-                  onclick={() => handleNodeClick(node)}
-                  ondblclick={() => handleNodeDoubleClick(node)}
-                  onmousedown={(e) => handleDragStart(node.id, e)}
+                <Controls position="bottom-left" />
+                <Background gap={20} />
+                <MiniMap 
+                  nodeColor={(node) => {
+                    const colors: Record<string, string> = {
+                      DISTRIBUTOR: '#6366f1',
+                      AGENCY: '#8b5cf6',
+                      DEALER: '#3b82f6',
+                      SELLER: '#06b6d4',
+                      VENDOR: '#10b981'
+                    };
+                    return colors[node.data?.orgType as string] || '#94a3b8';
+                  }}
+                  class="!bg-slate-100 dark:!bg-slate-800 !border-slate-200 dark:!border-slate-700"
                 />
-                
-                <!-- Type indicator bar -->
-                <rect
-                  x="0"
-                  y="0"
-                  width="6"
-                  height={NODE_HEIGHT}
-                  rx="3"
-                  class="{node.orgType === 'DISTRIBUTOR' ? 'fill-indigo-500' : 
-                         node.orgType === 'AGENCY' ? 'fill-violet-500' : 
-                         node.orgType === 'DEALER' ? 'fill-blue-500' : 
-                         node.orgType === 'SELLER' ? 'fill-cyan-500' : 'fill-emerald-500'}"
-                />
-                
-                <!-- Status indicator -->
-                <circle
-                  cx={NODE_WIDTH - 12}
-                  cy="12"
-                  r="4"
-                  class="{STATUS_COLORS[node.status]}"
-                />
-                
-                {#if isEditing}
-                  <!-- Edit mode -->
-                  <foreignObject x="14" y="8" width={NODE_WIDTH - 28} height={NODE_HEIGHT - 16}>
-                    <div class="flex flex-col gap-1">
-                      <input
-                        type="text"
-                        bind:value={editName}
-                        onkeydown={handleEditKeydown}
-                        class="w-full px-2 py-1 text-sm font-semibold bg-white dark:bg-slate-700 border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                        autofocus
-                      />
-                      <div class="flex gap-1">
-                        <select
-                          bind:value={editStatus}
-                          class="flex-1 px-1 py-0.5 text-xs bg-white dark:bg-slate-700 border border-border rounded"
-                        >
-                          <option value="ACTIVE">정상</option>
-                          <option value="SUSPENDED">정지</option>
-                          <option value="TERMINATED">해지</option>
-                        </select>
-                        <button onclick={handleEditSave} class="px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90">✓</button>
-                        <button onclick={handleEditCancel} class="px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded hover:bg-muted/80">✕</button>
-                      </div>
-                    </div>
-                  </foreignObject>
-                {:else}
-                  <!-- Display mode -->
-                  <text
-                    x="16"
-                    y="24"
-                    class="text-sm font-semibold fill-foreground pointer-events-none select-none"
-                    dominant-baseline="middle"
-                  >
-                    {node.name.length > 12 ? node.name.slice(0, 12) + '...' : node.name}
-                  </text>
-                  
-                  <text
-                    x="16"
-                    y="46"
-                    class="text-xs fill-muted-foreground pointer-events-none select-none"
-                    dominant-baseline="middle"
-                  >
-                    {ORG_TYPE_LABELS[node.orgType]} · {node.path.split('.').pop()}
-                  </text>
-                {/if}
-                
-                <!-- Expand/Collapse button -->
-                {#if hasChildren}
-                  <g
-                    transform="translate({NODE_WIDTH - 8}, {NODE_HEIGHT / 2})"
-                    onclick={(e) => handleToggleCollapse(node.id, e)}
-                    class="cursor-pointer"
-                  >
-                    <circle r="10" class="fill-muted hover:fill-muted-foreground/20 transition-colors"/>
-                    <text
-                      class="text-xs font-bold fill-muted-foreground pointer-events-none"
-                      text-anchor="middle"
-                      dominant-baseline="middle"
-                    >
-                      {node.collapsed ? '+' : '−'}
-                    </text>
-                    {#if node.collapsed}
-                      <text
-                        x="0"
-                        y="18"
-                        class="text-[10px] fill-muted-foreground pointer-events-none"
-                        text-anchor="middle"
-                      >
-                        {node.children.length}
-                      </text>
-                    {/if}
-                  </g>
-                {/if}
-                
-                <!-- Add child button (on hover) -->
-                {#if (isHovered || isSelected) && !isEditing && ORG_TYPE_ORDER.indexOf(node.orgType) < ORG_TYPE_ORDER.length - 1}
-                  <g
-                    transform="translate({NODE_WIDTH + 20}, {NODE_HEIGHT / 2})"
-                    onclick={() => handleAddChild(node.id)}
-                    class="cursor-pointer opacity-0 hover:opacity-100 transition-opacity {isHovered ? 'opacity-70' : ''}"
-                  >
-                    <circle r="14" class="fill-primary/10 hover:fill-primary/20 stroke-primary stroke-1 transition-colors"/>
-                    <text
-                      class="text-sm font-bold fill-primary pointer-events-none"
-                      text-anchor="middle"
-                      dominant-baseline="middle"
-                    >
-                      +
-                    </text>
-                  </g>
-                {/if}
-              </g>
-            {/each}
-          </g>
-        </svg>
-      {/if}
-      
-      <!-- Legend -->
-      <div class="absolute bottom-4 left-4 flex items-center gap-4 px-4 py-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-xl border border-border shadow-lg text-xs">
-        <span class="text-muted-foreground font-medium">범례:</span>
-        <div class="flex items-center gap-1">
-          <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-          <span>정상</span>
-        </div>
-        <div class="flex items-center gap-1">
-          <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-          <span>정지</span>
-        </div>
-        <div class="flex items-center gap-1">
-          <div class="w-2 h-2 rounded-full bg-rose-500"></div>
-          <span>해지</span>
-        </div>
-        <div class="w-px h-4 bg-border"></div>
-        <span class="text-muted-foreground">더블클릭: 편집 | 드래그: 이동 | 휠: 줌</span>
-      </div>
+              </SvelteFlow>
+            </div>
+          {/if}
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Detail Panel -->
     <div class="lg:col-span-1">
       <Card class="h-full flex flex-col">
         <CardHeader class="pb-4 border-b border-border shrink-0">
@@ -1018,7 +541,6 @@
           {#if selectedNode}
             {@const colors = ORG_TYPE_COLORS[selectedNode.orgType]}
             <div class="flex flex-col gap-6">
-              <!-- Header -->
               <div class="flex items-start gap-3">
                 <div class="w-12 h-12 rounded-xl bg-gradient-to-br {colors.gradient} flex items-center justify-center text-white font-bold text-lg shadow-lg">
                   {ORG_TYPE_LABELS[selectedNode.orgType].charAt(0)}
@@ -1028,8 +550,7 @@
                   <p class="text-sm text-muted-foreground font-mono">{selectedNode.orgCode}</p>
                 </div>
               </div>
-              
-              <!-- Badges -->
+
               <div class="flex flex-wrap gap-2">
                 <Badge class="{colors.bg} {colors.text} {colors.border} border">
                   {ORG_TYPE_LABELS[selectedNode.orgType]}
@@ -1038,8 +559,7 @@
                   {STATUS_LABELS[selectedNode.status]}
                 </Badge>
               </div>
-              
-              <!-- Details Grid -->
+
               <div class="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-xl">
                 <div>
                   <span class="text-xs text-muted-foreground uppercase tracking-wide">계층 레벨</span>
@@ -1047,20 +567,19 @@
                 </div>
                 <div>
                   <span class="text-xs text-muted-foreground uppercase tracking-wide">하위 조직</span>
-                  <p class="font-semibold text-foreground mt-1">{selectedNode.children?.length || 0}개</p>
+                  <p class="font-semibold text-foreground mt-1">{selectedNodeChildren.length}개</p>
                 </div>
                 <div class="col-span-2">
                   <span class="text-xs text-muted-foreground uppercase tracking-wide">경로</span>
                   <p class="font-mono text-sm text-foreground mt-1 break-all">{selectedNode.path}</p>
                 </div>
               </div>
-              
-              <!-- Children List -->
-              {#if selectedNode.children && selectedNode.children.length > 0}
+
+              {#if selectedNodeChildren.length > 0}
                 <div>
                   <span class="text-sm font-medium text-muted-foreground mb-2 block">하위 조직</span>
                   <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                    {#each selectedNode.children.slice(0, 15) as child}
+                    {#each selectedNodeChildren.slice(0, 15) as child}
                       {@const childColors = ORG_TYPE_COLORS[child.orgType]}
                       <button
                         onclick={() => selectedNodeId = child.id}
@@ -1069,16 +588,15 @@
                         {child.name}
                       </button>
                     {/each}
-                    {#if selectedNode.children.length > 15}
+                    {#if selectedNodeChildren.length > 15}
                       <span class="px-2 py-1 text-xs text-muted-foreground">
-                        +{selectedNode.children.length - 15} more
+                        +{selectedNodeChildren.length - 15} more
                       </span>
                     {/if}
                   </div>
                 </div>
               {/if}
-              
-              <!-- Actions -->
+
               <div class="flex flex-col gap-2 pt-4 border-t border-border">
                 <Button class="w-full" onclick={() => selectedNode && handleOpenDetail(selectedNode)}>
                   <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1087,7 +605,7 @@
                   </svg>
                   상세 정보 보기
                 </Button>
-                <Button variant="outline" class="w-full" onclick={() => selectedNode && handleNodeDoubleClick(selectedNode)}>
+                <Button variant="outline" class="w-full" onclick={() => selectedNode && handleNodeDoubleClick(selectedNode.id)}>
                   <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -1113,7 +631,7 @@
               </div>
               <div class="text-center">
                 <p class="font-medium">조직을 선택하세요</p>
-                <p class="text-sm mt-1">마인드맵에서 노드를 클릭하면<br/>상세 정보가 표시됩니다</p>
+                <p class="text-sm mt-1">조직도에서 노드를 클릭하면<br/>상세 정보가 표시됩니다</p>
               </div>
             </div>
           {/if}
@@ -1123,7 +641,6 @@
   </div>
 </div>
 
-<!-- Add Child Modal -->
 {#if showAddModal}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
@@ -1168,10 +685,53 @@
   </div>
 {/if}
 
-<!-- Move Confirmation Modal -->
+{#if editingNodeId}
+  {@const editingOrg = flatOrganizations.find(o => o.id === editingNodeId)}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="px-6 py-4 border-b border-border bg-muted/30">
+        <h3 class="text-lg font-bold text-foreground">조직 정보 편집</h3>
+        <p class="text-sm text-muted-foreground mt-1">{editingOrg?.name || ''} 정보를 수정합니다</p>
+      </div>
+      <div class="p-6 flex flex-col gap-4">
+        <div>
+          <Label for="edit-name" class="text-sm font-medium">조직명</Label>
+          <Input
+            id="edit-name"
+            value={editName}
+            oninput={(e) => editName = e.currentTarget.value}
+            placeholder="조직명을 입력하세요"
+            class="mt-1.5"
+          />
+        </div>
+        <div>
+          <Label for="edit-status" class="text-sm font-medium">상태</Label>
+          <select
+            id="edit-status"
+            bind:value={editStatus}
+            class="mt-1.5 w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="ACTIVE">정상</option>
+            <option value="SUSPENDED">정지</option>
+            <option value="TERMINATED">해지</option>
+          </select>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-border bg-muted/30 flex justify-end gap-3">
+        <Button variant="outline" onclick={handleEditCancel}>
+          취소
+        </Button>
+        <Button onclick={handleEditSave} disabled={!editName.trim()}>
+          저장
+        </Button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 {#if showMoveModal}
-  {@const moveNode = mindmapNodes.find(n => n.id === moveNodeId)}
-  {@const targetNode = mindmapNodes.find(n => n.id === moveTargetId)}
+  {@const moveNode = flatOrganizations.find(n => n.id === moveNodeId)}
+  {@const targetNode = flatOrganizations.find(n => n.id === moveTargetId)}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
       <div class="px-6 py-4 border-b border-border bg-amber-500/10">
@@ -1203,7 +763,6 @@
   </div>
 {/if}
 
-<!-- Toast Notifications -->
 <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
   {#each toasts as toast (toast.id)}
     <div
