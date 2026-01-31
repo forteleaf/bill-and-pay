@@ -70,6 +70,16 @@ public class OrganizationController {
         return ResponseEntity.ok(ApiResponse.success(pagedResponse));
     }
 
+    @GetMapping("/root")
+    public ResponseEntity<ApiResponse<OrganizationDto>> getRootOrganization() {
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        Organization organization = organizationService.findRoot(currentUser);
+        OrganizationDto dto = OrganizationDto.from(organization);
+        
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrganizationDto>> getOrganization(@PathVariable UUID id) {
         User currentUser = userContextHolder.getCurrentUser();

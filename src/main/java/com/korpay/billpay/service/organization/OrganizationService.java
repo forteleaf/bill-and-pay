@@ -108,6 +108,18 @@ public class OrganizationService {
         return organization;
     }
 
+    public Organization findRoot(User user) {
+        Organization root = organizationRepository.findByOrgType(OrganizationType.DISTRIBUTOR)
+                .stream()
+                .filter(org -> org.getLevel() == 1)
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Root organization not found"));
+        
+        accessControlService.validateOrganizationAccess(user, root);
+        
+        return root;
+    }
+
     public List<Organization> findDescendants(UUID id, User user) {
         Organization organization = findById(id, user);
         
