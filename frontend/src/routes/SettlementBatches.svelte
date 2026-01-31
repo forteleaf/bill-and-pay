@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { apiClient } from '../lib/api';
   import { tenantStore } from '../lib/stores';
   import { format } from 'date-fns';
@@ -91,7 +92,7 @@
     }
   }
   
-  $effect(() => {
+  onMount(() => {
     loadBatches();
   });
 </script>

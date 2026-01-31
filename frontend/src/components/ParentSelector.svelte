@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Organization, OrgType } from '../types/api';
   import { apiClient } from '../lib/api';
   import { Label } from '$lib/components/ui/label';
@@ -55,35 +56,36 @@
     return `${indent}${org.name} (${org.orgCode}) [${org.orgType}]`;
   }
   
-  $effect(() => {
-    const loadParentOptions = async () => {
-      loading = true;
-      error = null;
-      try {
-        const response = await apiClient.get<Organization[]>(
-          `/organizations/${currentUserOrgId}/descendants`
-        );
-        if (response.success && response.data) {
-          const allOrgs = response.data;
-          
-          const currentUserOrg = allOrgs.find(o => o.id === currentUserOrgId);
-          if (currentUserOrg) {
-            allOrgs.unshift(currentUserOrg);
-          }
-          
-          parentOptions = allOrgs.filter(org => {
-            const childType = orgTypeHierarchy[org.orgType as OrgType];
-            return childType !== null;
-          });
-        } else {
-          error = response.error?.message || 'Failed to load parent options';
+  async function loadParentOptions() {
+    loading = true;
+    error = null;
+    try {
+      const response = await apiClient.get<Organization[]>(
+        `/organizations/${currentUserOrgId}/descendants`
+      );
+      if (response.success && response.data) {
+        const allOrgs = response.data;
+        
+        const currentUserOrg = allOrgs.find(o => o.id === currentUserOrgId);
+        if (currentUserOrg) {
+          allOrgs.unshift(currentUserOrg);
         }
-      } catch (e) {
-        error = e instanceof Error ? e.message : 'Failed to load parent options';
-      } finally {
-        loading = false;
+        
+        parentOptions = allOrgs.filter(org => {
+          const childType = orgTypeHierarchy[org.orgType as OrgType];
+          return childType !== null;
+        });
+      } else {
+        error = response.error?.message || 'Failed to load parent options';
       }
-    };
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to load parent options';
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
     loadParentOptions();
   });
 </script>

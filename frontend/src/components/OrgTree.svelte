@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Organization, OrgTree as OrgTreeType } from '../types/api';
   import { apiClient } from '../lib/api';
   import OrgTreeNode from './OrgTreeNode.svelte';
@@ -51,25 +52,26 @@
     return roots;
   }
   
-  $effect(() => {
-    const loadTree = async () => {
-      loading = true;
-      error = null;
-      try {
-        const response = await apiClient.get<Organization[]>(
-          `/organizations/${rootOrgId}/descendants`
-        );
-        if (response.success && response.data) {
-          organizations = buildTree(response.data);
-        } else {
-          error = response.error?.message || 'Failed to load organizations';
-        }
-      } catch (e) {
-        error = e instanceof Error ? e.message : 'Failed to load organizations';
-      } finally {
-        loading = false;
+  async function loadTree() {
+    loading = true;
+    error = null;
+    try {
+      const response = await apiClient.get<Organization[]>(
+        `/organizations/${rootOrgId}/descendants`
+      );
+      if (response.success && response.data) {
+        organizations = buildTree(response.data);
+      } else {
+        error = response.error?.message || 'Failed to load organizations';
       }
-    };
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to load organizations';
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(() => {
     loadTree();
   });
 </script>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { apiClient } from '../lib/api';
   import { tenantStore } from '../lib/stores';
   import type { SettlementSummary } from '../types/api';
@@ -70,7 +71,7 @@
     }
   }
   
-  $effect(() => {
+  onMount(() => {
     loadSummary();
   });
 </script>
