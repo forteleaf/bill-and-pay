@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Organization, OrgType } from '../types/api';
+  import type { Organization } from '../types/api';
+  import { OrgType } from '../types/api';
   import OrgTree from '../components/OrgTree.svelte';
   import OrgForm from '../components/OrgForm.svelte';
   
@@ -8,7 +9,7 @@
   let treeKey = $state(0);
   
   const currentUserOrgId = 'temp-root-org-id';
-  const currentUserOrgType: OrgType = 'DISTRIBUTOR';
+  const currentUserOrgType = OrgType.DISTRIBUTOR;
   
   function handleTreeSelect(org: Organization) {
     if (mode === 'view') {

@@ -1,4 +1,4 @@
-import type { ApiResponse, PagedResponse } from '../types/api';
+import type { ApiResponse } from '../types/api';
 import { authStore } from './authStore';
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
@@ -56,10 +56,13 @@ class ApiClient {
     options: RequestInit = {},
     isRetry = false
   ): Promise<ApiResponse<T>> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers
     };
+
+    if (options.headers) {
+      Object.assign(headers, options.headers as Record<string, string>);
+    }
 
     const accessToken = authStore.getAccessToken();
     if (accessToken) {

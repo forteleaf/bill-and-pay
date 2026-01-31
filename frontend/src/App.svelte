@@ -1,17 +1,10 @@
 <script lang="ts">
   import { authStore } from './lib/authStore';
   import { tenantStore } from './lib/stores';
-  import Layout from './components/Layout.svelte';
-  import Dashboard from './routes/Dashboard.svelte';
-  import Transactions from './routes/Transactions.svelte';
-  import Settlements from './routes/Settlements.svelte';
-  import SettlementBatches from './routes/SettlementBatches.svelte';
-  import SettlementSummary from './routes/SettlementSummary.svelte';
-  import MerchantManagement from './routes/MerchantManagement.svelte';
-  import Organizations from './routes/Organizations.svelte';
+  import { tabStore } from './lib/tabStore';
+  import NewLayout from './components/NewLayout.svelte';
   import Login from './routes/Login.svelte';
   
-  let currentRoute = $state('dashboard');
   let isAuthenticated = $state(false);
   
   $effect(() => {
@@ -24,34 +17,24 @@
       }
     }
     
-    if (!isAuthenticated && currentRoute !== 'login') {
-      currentRoute = 'login';
+    // Initialize Dashboard tab on authentication
+    if (isAuthenticated) {
+      const tabs = tabStore.getTabs();
+      if (tabs.length === 0) {
+        tabStore.openTab({
+          id: 'dashboard',
+          title: '대시보드',
+          icon: '📊',
+          component: 'Dashboard',
+          closeable: false
+        });
+      }
     }
   });
-  
-  function navigate(route: string) {
-    currentRoute = route;
-  }
 </script>
 
-{#if currentRoute === 'login' || !isAuthenticated}
+{#if !isAuthenticated}
   <Login />
 {:else}
-  <Layout {navigate}>
-    {#if currentRoute === 'dashboard'}
-      <Dashboard />
-    {:else if currentRoute === 'transactions'}
-      <Transactions />
-    {:else if currentRoute === 'settlements'}
-      <Settlements />
-    {:else if currentRoute === 'settlement-batches'}
-      <SettlementBatches />
-    {:else if currentRoute === 'settlement-summary'}
-      <SettlementSummary />
-    {:else if currentRoute === 'merchants'}
-      <MerchantManagement />
-    {:else if currentRoute === 'organizations'}
-      <Organizations />
-    {/if}
-  </Layout>
+  <NewLayout />
 {/if}

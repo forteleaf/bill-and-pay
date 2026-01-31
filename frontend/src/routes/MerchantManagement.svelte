@@ -119,12 +119,13 @@
       return;
     }
     
+    const merchantId = selectedMerchant.id;
     moveLoading = true;
     moveError = null;
     moveSuccess = null;
     
     try {
-      const response = await apiClient.put<Merchant>(`/merchants/${selectedMerchant.id}/move`, {
+      const response = await apiClient.put<Merchant>(`/merchants/${merchantId}/move`, {
         targetOrgId: targetOrgId,
         reason: moveReason
       });
@@ -133,14 +134,14 @@
         moveSuccess = '가맹점 조직 이동이 완료되었습니다.';
         
         // Update merchant in list
-        const index = merchants.findIndex(m => m.id === selectedMerchant.id);
+        const index = merchants.findIndex(m => m.id === merchantId);
         if (index !== -1) {
           merchants[index] = response.data;
         }
         selectedMerchant = response.data;
         
         // Reload history
-        await loadHistory(selectedMerchant.id);
+        await loadHistory(response.data.id);
         
         // Close modal after 1.5 seconds
         setTimeout(() => {
