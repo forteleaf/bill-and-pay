@@ -44,7 +44,7 @@
       title: '가맹점 관리',
       icon: '🏪',
       children: [
-        { id: 'merchant-register', title: '가맹점 등록', icon: '➕', component: 'ComingSoon' },
+        { id: 'merchant-register', title: '가맹점 등록', icon: '➕', component: 'MerchantRegistration' },
         { id: 'merchant-list', title: '가맹점 목록', icon: '📑', component: 'ComingSoon' },
         { id: 'terminal-mgmt', title: '단말기 관리', icon: '💻', component: 'ComingSoon' }
       ]

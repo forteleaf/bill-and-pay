@@ -7,8 +7,10 @@ import com.korpay.billpay.dto.request.MerchantCreateRequest;
 import com.korpay.billpay.dto.request.MerchantMoveRequest;
 import com.korpay.billpay.dto.request.MerchantUpdateRequest;
 import com.korpay.billpay.dto.response.ApiResponse;
+import com.korpay.billpay.dto.response.BlacklistCheckResponse;
 import com.korpay.billpay.dto.response.MerchantDto;
 import com.korpay.billpay.dto.response.MerchantStatisticsDto;
+import com.korpay.billpay.dto.response.OrganizationDto;
 import com.korpay.billpay.dto.response.PagedResponse;
 import com.korpay.billpay.service.auth.UserContextHolder;
 import com.korpay.billpay.service.merchant.MerchantService;
@@ -138,5 +140,28 @@ public class MerchantController {
         PagedResponse<MerchantOrgHistory> pagedResponse = PagedResponse.of(historyPage, historyPage.getContent());
         
         return ResponseEntity.ok(ApiResponse.success(pagedResponse));
+    }
+
+    @GetMapping("/accessible-organizations")
+    public ResponseEntity<ApiResponse<List<OrganizationDto>>> getAccessibleOrganizations() {
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        List<OrganizationDto> organizations = merchantService.getAccessibleOrganizations(currentUser);
+        
+        return ResponseEntity.ok(ApiResponse.success(organizations));
+    }
+
+    @GetMapping("/blacklist-check")
+    public ResponseEntity<ApiResponse<BlacklistCheckResponse>> checkBlacklist(
+            @RequestParam(value = "businessNumber") String businessNumber) {
+        
+        if (businessNumber == null || businessNumber.isBlank()) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error("INVALID_REQUEST", "businessNumber parameter is required"));
+        }
+        
+        BlacklistCheckResponse response = merchantService.checkBlacklist(businessNumber);
+        
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

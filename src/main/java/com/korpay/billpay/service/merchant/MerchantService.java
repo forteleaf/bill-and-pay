@@ -7,7 +7,9 @@ import com.korpay.billpay.domain.enums.MerchantStatus;
 import com.korpay.billpay.domain.enums.TransactionStatus;
 import com.korpay.billpay.dto.request.MerchantCreateRequest;
 import com.korpay.billpay.dto.request.MerchantUpdateRequest;
+import com.korpay.billpay.dto.response.BlacklistCheckResponse;
 import com.korpay.billpay.dto.response.MerchantStatisticsDto;
+import com.korpay.billpay.dto.response.OrganizationDto;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
 import com.korpay.billpay.domain.entity.MerchantOrgHistory;
@@ -24,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -212,5 +215,26 @@ public class MerchantService {
     public Page<MerchantOrgHistory> getMerchantHistory(UUID merchantId, User user, Pageable pageable) {
         Merchant merchant = findById(merchantId, user);
         return merchantOrgHistoryRepository.findByMerchantIdOrderByMovedAtDesc(merchant.getId(), pageable);
+    }
+
+    public List<OrganizationDto> getAccessibleOrganizations(User user) {
+        List<Organization> allOrgs = organizationRepository.findAll();
+        
+        return allOrgs.stream()
+                .filter(org -> accessControlService.hasAccessToOrganization(user, org.getPath()))
+                .map(OrganizationDto::from)
+                .collect(Collectors.toList());
+    }
+
+    public BlacklistCheckResponse checkBlacklist(String businessNumber) {
+        // Mock implementation: hardcode "1234567890" as blacklisted
+        boolean isBlacklisted = "1234567890".equals(businessNumber);
+        String reason = isBlacklisted ? "테스트용 블랙리스트" : null;
+        
+        return BlacklistCheckResponse.builder()
+                .isBlacklisted(isBlacklisted)
+                .reason(reason)
+                .checkedAt(OffsetDateTime.now())
+                .build();
     }
 }
