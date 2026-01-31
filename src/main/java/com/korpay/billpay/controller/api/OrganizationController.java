@@ -21,9 +21,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import com.korpay.billpay.domain.enums.OrganizationStatus;
+import com.korpay.billpay.domain.enums.OrganizationType;
 
 @Slf4j
 @RestController
@@ -40,7 +44,12 @@ public class OrganizationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
+            @RequestParam(defaultValue = "DESC") Sort.Direction direction,
+            @RequestParam(required = false) OrganizationType type,
+            @RequestParam(required = false) OrganizationStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
         
         User currentUser = userContextHolder.getCurrentUser();
         
@@ -49,7 +58,8 @@ public class OrganizationController {
         }
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<Organization> organizationsPage = organizationService.findAccessibleOrganizations(currentUser, pageable);
+        Page<Organization> organizationsPage = organizationService.findAccessibleOrganizations(
+                currentUser, pageable, type, status, search, startDate, endDate);
         
         List<OrganizationDto> dtos = organizationsPage.getContent().stream()
                 .map(OrganizationDto::from)

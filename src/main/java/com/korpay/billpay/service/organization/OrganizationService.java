@@ -3,6 +3,7 @@ package com.korpay.billpay.service.organization;
 import com.korpay.billpay.domain.entity.Organization;
 import com.korpay.billpay.domain.entity.User;
 import com.korpay.billpay.domain.enums.OrganizationStatus;
+import com.korpay.billpay.domain.enums.OrganizationType;
 import com.korpay.billpay.dto.request.OrganizationCreateRequest;
 import com.korpay.billpay.dto.request.OrganizationUpdateRequest;
 import com.korpay.billpay.exception.EntityNotFoundException;
@@ -17,9 +18,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -31,14 +35,64 @@ public class OrganizationService {
     private final AccessControlService accessControlService;
 
     public Page<Organization> findAccessibleOrganizations(User user, Pageable pageable) {
+        return findAccessibleOrganizations(user, pageable, null, null, null, null, null);
+    }
+
+    public Page<Organization> findAccessibleOrganizations(
+            User user, 
+            Pageable pageable,
+            OrganizationType type,
+            OrganizationStatus status,
+            String search,
+            LocalDate startDate,
+            LocalDate endDate) {
+        
         List<Organization> allOrgs = organizationRepository.findAll();
         
-        List<Organization> accessibleOrgs = allOrgs.stream()
-                .filter(org -> accessControlService.hasAccessToOrganization(user, org.getPath()))
+        Stream<Organization> stream = allOrgs.stream()
+                .filter(org -> accessControlService.hasAccessToOrganization(user, org.getPath()));
+        
+        if (type != null) {
+            stream = stream.filter(org -> org.getOrgType() == type);
+        }
+        
+        if (status != null) {
+            stream = stream.filter(org -> org.getStatus() == status);
+        }
+        
+        if (search != null && !search.isBlank()) {
+            String searchLower = search.toLowerCase().trim();
+            stream = stream.filter(org -> {
+                boolean matchOrgCode = org.getOrgCode() != null && 
+                        org.getOrgCode().toLowerCase().contains(searchLower);
+                boolean matchName = org.getName() != null && 
+                        org.getName().toLowerCase().contains(searchLower);
+                boolean matchRepresentative = org.getRepresentativeName() != null && 
+                        org.getRepresentativeName().toLowerCase().contains(searchLower);
+                return matchOrgCode || matchName || matchRepresentative;
+            });
+        }
+        
+        if (startDate != null) {
+            stream = stream.filter(org -> org.getCreatedAt() != null && 
+                    !org.getCreatedAt().toLocalDate().isBefore(startDate));
+        }
+        if (endDate != null) {
+            stream = stream.filter(org -> org.getCreatedAt() != null && 
+                    !org.getCreatedAt().toLocalDate().isAfter(endDate));
+        }
+        
+        List<Organization> accessibleOrgs = stream
+                .sorted(Comparator.comparing(Organization::getCreatedAt, 
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
         
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), accessibleOrgs.size());
+        
+        if (start > accessibleOrgs.size()) {
+            return new PageImpl<>(List.of(), pageable, accessibleOrgs.size());
+        }
         
         List<Organization> pageContent = accessibleOrgs.subList(start, end);
         
