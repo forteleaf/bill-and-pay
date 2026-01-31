@@ -26,7 +26,7 @@
       title: '우대사업자',
       icon: '📋',
       children: [
-        { id: 'business-lookup', title: '사업자 조회', icon: '🔍', component: 'ComingSoon' }
+        { id: 'business-lookup', title: '사업자 조회', icon: '🔍', component: 'PreferentialBusinessInquiry' }
       ]
     },
     {

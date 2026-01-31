@@ -164,3 +164,14 @@ export interface UpdateOrgRequest {
 export interface OrgTree extends Organization {
   children: OrgTree[];
 }
+
+export interface PreferentialBusinessRequest {
+  businessNumbers: string;
+}
+
+export interface PreferentialBusinessResponse {
+  businessNumber: string;
+  smeCategoryGrade: string;
+  firstHalf2025Grade: string;
+  secondHalf2025Grade: string;
+}

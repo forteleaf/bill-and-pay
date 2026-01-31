@@ -16,6 +16,7 @@
   import BranchList from '../routes/branch/BranchList.svelte';
   import BranchDetail from '../routes/branch/BranchDetail.svelte';
   import BranchOrganization from '../routes/branch/BranchOrganization.svelte';
+  import PreferentialBusinessInquiry from '../routes/PreferentialBusinessInquiry.svelte';
   
   import type { Component } from 'svelte';
   
@@ -31,6 +32,7 @@
     'BranchList': BranchList,
     'BranchDetail': BranchDetail,
     'BranchOrganization': BranchOrganization,
+    'PreferentialBusinessInquiry': PreferentialBusinessInquiry,
     'ComingSoon': null,
   };
   
