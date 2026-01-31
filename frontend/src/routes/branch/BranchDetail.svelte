@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { branchApi } from '../../lib/branchApi';
   import {
     BRANCH_TYPE_LABELS,
@@ -41,7 +42,8 @@
     { key: 'recurring', label: '정기과금' }
   ];
 
-  $effect(() => {
+  // Initial load on mount - prevents infinite loop from $effect
+  onMount(() => {
     if (branchId) {
       loadBranch();
     }
