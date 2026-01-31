@@ -2,6 +2,11 @@
   import { apiClient } from '../lib/api';
   import { tenantStore } from '../lib/stores';
   import type { SettlementSummary } from '../types/api';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Label } from '$lib/components/ui/label';
+  import { Input } from '$lib/components/ui/input';
   
   let summary = $state<SettlementSummary | null>(null);
   let loading = $state(true);
@@ -59,7 +64,7 @@
       
       loading = false;
     } catch (err) {
-      error = '데이터를 불러오는데 실패했습니다.';
+      error = 'Failed to load data.';
       loading = false;
       console.error(err);
     }
@@ -70,508 +75,211 @@
   });
 </script>
 
-<div class="settlement-summary">
-  <div class="header">
-    <h1>정산 요약</h1>
-    <p class="subtitle">전체 정산 현황 대시보드</p>
+<div class="max-w-7xl mx-auto space-y-6">
+  <div>
+    <h1 class="text-3xl font-bold text-foreground">Settlement Summary</h1>
+    <p class="text-muted-foreground mt-1">Overall settlement status dashboard</p>
   </div>
   
-  <div class="filters">
-    <div class="filter-group">
-      <label for="entityType">엔티티 타입:</label>
-      <select id="entityType" bind:value={entityType} onchange={() => loadSummary()}>
-        <option value="">전체</option>
-        <option value="DISTRIBUTOR">총판</option>
-        <option value="AGENCY">대리점</option>
-        <option value="DEALER">딜러</option>
-        <option value="SELLER">판매점</option>
-        <option value="VENDOR">벤더</option>
-      </select>
-    </div>
-    
-    <div class="filter-group">
-      <label for="startDate">시작일:</label>
-      <input 
-        type="date" 
-        id="startDate" 
-        bind:value={startDate}
-        onchange={() => loadSummary()}
-      />
-    </div>
-    
-    <div class="filter-group">
-      <label for="endDate">종료일:</label>
-      <input 
-        type="date" 
-        id="endDate" 
-        bind:value={endDate}
-        onchange={() => loadSummary()}
-      />
-    </div>
-    
-    <button class="btn-primary" onclick={() => loadSummary()}>
-      🔄 새로고침
-    </button>
-  </div>
+  <Card>
+    <CardContent class="pt-6">
+      <div class="flex flex-wrap gap-4 items-end">
+        <div class="space-y-2">
+          <Label for="entityType">Entity Type</Label>
+          <select 
+            id="entityType" 
+            bind:value={entityType}
+            onchange={() => loadSummary()}
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">All</option>
+            <option value="DISTRIBUTOR">Distributor</option>
+            <option value="AGENCY">Agency</option>
+            <option value="DEALER">Dealer</option>
+            <option value="SELLER">Seller</option>
+            <option value="VENDOR">Vendor</option>
+          </select>
+        </div>
+        
+        <div class="space-y-2">
+          <Label for="startDate">Start Date</Label>
+          <Input 
+            type="date" 
+            id="startDate" 
+            value={startDate}
+            oninput={(e) => { startDate = e.currentTarget.value; loadSummary(); }}
+          />
+        </div>
+        
+        <div class="space-y-2">
+          <Label for="endDate">End Date</Label>
+          <Input 
+            type="date" 
+            id="endDate" 
+            value={endDate}
+            oninput={(e) => { endDate = e.currentTarget.value; loadSummary(); }}
+          />
+        </div>
+        
+        <Button onclick={() => loadSummary()}>
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
   
   {#if loading}
-    <div class="loading">데이터를 불러오는 중...</div>
+    <div class="text-center py-12 text-lg text-muted-foreground">Loading data...</div>
   {:else if error}
-    <div class="error">{error}</div>
+    <div class="text-center py-12 text-lg text-destructive">{error}</div>
   {:else if summary}
-    <div class="zero-sum-status">
-      <div class="status-card {isZeroSumValid ? 'valid' : 'invalid'}">
-        <span class="icon">{isZeroSumValid ? '✅' : '⚠️'}</span>
-        <span class="label">Zero-Sum 검증:</span>
-        <span class="value">{isZeroSumValid ? '정상' : '불일치'}</span>
-      </div>
-      {#if !isZeroSumValid}
-        <p class="warning-text">
-          ⚠️ Credit + Debit ≠ Total Amount. 데이터 불일치가 감지되었습니다.
-        </p>
-      {/if}
-    </div>
-    
-    <div class="entity-info">
-      <div class="info-item">
-        <span class="label">엔티티 타입</span>
-        <span class="value">{summary.entityType}</span>
-      </div>
-      <div class="info-item">
-        <span class="label">엔티티 경로</span>
-        <span class="value code">{summary.entityPath}</span>
-      </div>
-      <div class="info-item">
-        <span class="label">거래 건수</span>
-        <span class="value">{formatNumber(summary.transactionCount)}건</span>
-      </div>
-    </div>
-    
-    <div class="summary-grid">
-      <div class="summary-card total">
-        <div class="card-header">
-          <span class="icon">💰</span>
-          <span class="title">총 정산금액</span>
+    <Card class={isZeroSumValid ? 'border-green-500' : 'border-destructive'}>
+      <CardContent class="pt-6">
+        <div class="flex items-center gap-4 p-4 rounded-lg {isZeroSumValid ? 'bg-green-50 text-green-800' : 'bg-destructive/10 text-destructive'}">
+          <span class="text-2xl">{isZeroSumValid ? 'V' : '!'}</span>
+          <span class="font-semibold">Zero-Sum Validation:</span>
+          <span>{isZeroSumValid ? 'Valid' : 'Invalid'}</span>
         </div>
-        <div class="amount-large">{formatCurrency(summary.totalAmount)}</div>
-        <div class="detail">
-          수수료: {formatCurrency(summary.totalFeeAmount)}
-        </div>
-        <div class="detail">
-          순액: {formatCurrency(summary.totalNetAmount)}
-        </div>
-      </div>
-      
-      <div class="summary-card credit">
-        <div class="card-header">
-          <span class="icon">➕</span>
-          <span class="title">입금 (CREDIT)</span>
-        </div>
-        <div class="amount">{formatCurrency(summary.creditAmount)}</div>
-        <div class="badge positive">수취</div>
-      </div>
-      
-      <div class="summary-card debit">
-        <div class="card-header">
-          <span class="icon">➖</span>
-          <span class="title">출금 (DEBIT)</span>
-        </div>
-        <div class="amount">{formatCurrency(summary.debitAmount)}</div>
-        <div class="badge negative">지급</div>
-      </div>
-      
-      <div class="summary-card net">
-        <div class="card-header">
-          <span class="icon">🧾</span>
-          <span class="title">순 정산금액</span>
-        </div>
-        <div class="amount">{formatCurrency(summary.totalNetAmount)}</div>
-        <div class="detail">
-          수수료 차감 후
-        </div>
-      </div>
-    </div>
-    
-    <div class="balance-visualization">
-      <h3>정산 Balance 시각화</h3>
-      <div class="balance-bar">
-        <div class="bar-section credit" style="width: {Math.abs(summary.creditAmount) / (Math.abs(summary.creditAmount) + Math.abs(summary.debitAmount)) * 100}%">
-          <span class="bar-label">Credit: {formatCurrency(summary.creditAmount)}</span>
-        </div>
-        <div class="bar-section debit" style="width: {Math.abs(summary.debitAmount) / (Math.abs(summary.creditAmount) + Math.abs(summary.debitAmount)) * 100}%">
-          <span class="bar-label">Debit: {formatCurrency(summary.debitAmount)}</span>
-        </div>
-      </div>
-      <div class="balance-formula">
-        <span class="formula-item credit">{formatCurrency(summary.creditAmount)}</span>
-        <span class="operator">+</span>
-        <span class="formula-item debit">({formatCurrency(summary.debitAmount)})</span>
-        <span class="operator">=</span>
-        <span class="formula-item total">{formatCurrency(summary.totalAmount)}</span>
-        {#if isZeroSumValid}
-          <span class="check">✅</span>
-        {:else}
-          <span class="cross">❌</span>
+        {#if !isZeroSumValid}
+          <p class="mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
+            Warning: Credit + Debit does not equal Total Amount. Data inconsistency detected.
+          </p>
         {/if}
-      </div>
+      </CardContent>
+    </Card>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium text-muted-foreground">Entity Type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-xl font-bold">{summary.entityType}</div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium text-muted-foreground">Entity Path</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="font-mono text-sm text-primary">{summary.entityPath}</div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium text-muted-foreground">Transaction Count</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-xl font-bold">{formatNumber(summary.transactionCount)}</div>
+        </CardContent>
+      </Card>
     </div>
+    
+    <Card class="bg-gradient-to-br from-primary to-purple-600 text-primary-foreground">
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2 text-primary-foreground/90">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Total Settlement Amount
+        </CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="text-4xl font-bold">{formatCurrency(summary.totalAmount)}</div>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="opacity-80">Fee Amount</div>
+            <div class="font-semibold">{formatCurrency(summary.totalFeeAmount)}</div>
+          </div>
+          <div>
+            <div class="opacity-80">Net Amount</div>
+            <div class="font-semibold">{formatCurrency(summary.totalNetAmount)}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card class="border-l-4 border-l-green-500">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <span class="text-green-500">+</span>
+            Credit (Incoming)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{formatCurrency(summary.creditAmount)}</div>
+          <Badge class="mt-2 bg-green-100 text-green-800 hover:bg-green-100">Receive</Badge>
+        </CardContent>
+      </Card>
+      
+      <Card class="border-l-4 border-l-red-500">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <span class="text-red-500">-</span>
+            Debit (Outgoing)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{formatCurrency(summary.debitAmount)}</div>
+          <Badge variant="destructive" class="mt-2">Pay</Badge>
+        </CardContent>
+      </Card>
+      
+      <Card class="border-l-4 border-l-blue-500">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Net Settlement
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{formatCurrency(summary.totalNetAmount)}</div>
+          <span class="text-sm text-muted-foreground">After fee deduction</span>
+        </CardContent>
+      </Card>
+    </div>
+    
+    <Card>
+      <CardHeader>
+        <CardTitle>Balance Visualization</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-6">
+        {#if summary}
+          {@const creditRatio = Math.abs(summary.creditAmount) / (Math.abs(summary.creditAmount) + Math.abs(summary.debitAmount)) * 100}
+          {@const debitRatio = 100 - creditRatio}
+          <div class="flex h-16 rounded-lg overflow-hidden shadow-inner">
+            <div 
+              class="bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center text-white font-semibold text-sm"
+              style="width: {creditRatio}%"
+            >
+              Credit: {formatCurrency(summary.creditAmount)}
+            </div>
+            <div 
+              class="bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center text-white font-semibold text-sm"
+              style="width: {debitRatio}%"
+            >
+              Debit: {formatCurrency(summary.debitAmount)}
+            </div>
+          </div>
+        {/if}
+        
+        <div class="flex items-center justify-center gap-4 p-4 bg-muted/50 rounded-lg text-lg font-semibold">
+          <span class="px-4 py-2 bg-background rounded shadow-sm text-green-600">{formatCurrency(summary.creditAmount)}</span>
+          <span class="text-muted-foreground">+</span>
+          <span class="px-4 py-2 bg-background rounded shadow-sm text-red-600">({formatCurrency(summary.debitAmount)})</span>
+          <span class="text-muted-foreground">=</span>
+          <span class="px-4 py-2 bg-background rounded shadow-sm text-primary font-bold">{formatCurrency(summary.totalAmount)}</span>
+          <span class="text-2xl">{isZeroSumValid ? 'V' : 'X'}</span>
+        </div>
+      </CardContent>
+    </Card>
   {/if}
 </div>
-
-<style>
-  .settlement-summary {
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  
-  .header {
-    margin-bottom: 2rem;
-  }
-  
-  h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-  }
-  
-  .subtitle {
-    color: #666;
-    font-size: 0.95rem;
-  }
-  
-  .loading, .error {
-    text-align: center;
-    padding: 3rem;
-    font-size: 1.1rem;
-  }
-  
-  .error {
-    color: #dc2626;
-  }
-  
-  .filters {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
-  
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .filter-group label {
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-  
-  .filter-group select,
-  .filter-group input {
-    padding: 0.5rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-  }
-  
-  .btn-primary {
-    padding: 0.5rem 1.5rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  
-  .btn-primary:hover {
-    background: #5568d3;
-  }
-  
-  .zero-sum-status {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
-  
-  .status-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    padding: 1rem;
-    border-radius: 0.5rem;
-  }
-  
-  .status-card.valid {
-    background: #d1fae5;
-    color: #065f46;
-  }
-  
-  .status-card.invalid {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-  
-  .status-card .icon {
-    font-size: 1.5rem;
-  }
-  
-  .warning-text {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: #fef3c7;
-    color: #92400e;
-    border-radius: 0.5rem;
-    font-size: 0.95rem;
-  }
-  
-  .entity-info {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-  
-  .info-item {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 0.75rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .info-item .label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-weight: 500;
-  }
-  
-  .info-item .value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1f2937;
-  }
-  
-  .info-item .value.code {
-    font-family: monospace;
-    font-size: 1rem;
-    color: #667eea;
-  }
-  
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  
-  .summary-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .summary-card.total {
-    grid-column: span 4;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-  }
-  
-  .summary-card.credit {
-    border-left: 4px solid #10b981;
-  }
-  
-  .summary-card.debit {
-    border-left: 4px solid #dc2626;
-  }
-  
-  .summary-card.net {
-    border-left: 4px solid #3b82f6;
-  }
-  
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    opacity: 0.9;
-  }
-  
-  .card-header .icon {
-    font-size: 1.5rem;
-  }
-  
-  .amount-large {
-    font-size: 2.5rem;
-    font-weight: 800;
-    line-height: 1;
-  }
-  
-  .amount {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #1f2937;
-  }
-  
-  .summary-card.total .amount-large,
-  .summary-card.total .detail {
-    color: white;
-  }
-  
-  .detail {
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
-  
-  .badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    width: fit-content;
-  }
-  
-  .badge.positive {
-    background: #d1fae5;
-    color: #065f46;
-  }
-  
-  .badge.negative {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-  
-  .balance-visualization {
-    background: white;
-    border-radius: 1rem;
-    padding: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
-  
-  .balance-visualization h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-bottom: 1.5rem;
-    color: #1f2937;
-  }
-  
-  .balance-bar {
-    display: flex;
-    height: 60px;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  .bar-section {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 1rem;
-    transition: all 0.3s;
-  }
-  
-  .bar-section.credit {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  }
-  
-  .bar-section.debit {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  }
-  
-  .bar-label {
-    color: white;
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-  }
-  
-  .balance-formula {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1.5rem;
-    background: #f9fafb;
-    border-radius: 0.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-  
-  .formula-item {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    background: white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  
-  .formula-item.credit {
-    color: #059669;
-  }
-  
-  .formula-item.debit {
-    color: #b91c1c;
-  }
-  
-  .formula-item.total {
-    color: #667eea;
-    font-weight: 700;
-  }
-  
-  .operator {
-    color: #6b7280;
-    font-weight: 700;
-  }
-  
-  .check {
-    font-size: 1.5rem;
-  }
-  
-  .cross {
-    font-size: 1.5rem;
-  }
-  
-  @media (max-width: 1024px) {
-    .summary-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .summary-card.total {
-      grid-column: span 2;
-    }
-    
-    .entity-info {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .summary-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .summary-card.total {
-      grid-column: span 1;
-    }
-    
-    .entity-info {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

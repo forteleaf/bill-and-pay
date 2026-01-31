@@ -26,60 +26,19 @@
   );
 </script>
 
-<footer class="status-bar">
-  <div class="status-left">
-    <span class="version">Bill&Pay v1.0.0</span>
-    <span class="status-indicator">🟢 정상</span>
+<footer class="flex items-center justify-between h-[30px] px-4 bg-slate-100 border-t border-slate-200 text-xs text-slate-500">
+  <div class="flex items-center gap-4">
+    <span class="font-medium text-slate-600">Bill&Pay v1.0.0</span>
+    <span class="flex items-center gap-1">🟢 정상</span>
   </div>
   
-  <div class="status-center">
-    <span class="current-time">{formattedTime}</span>
+  <div class="flex items-center gap-4">
+    <span class="text-slate-600">{formattedTime}</span>
   </div>
   
-  <div class="status-right">
+  <div class="flex items-center gap-4">
     {#if lastLogin}
-      <span class="last-login">마지막 로그인: {lastLogin}</span>
+      <span class="text-slate-500">마지막 로그인: {lastLogin}</span>
     {/if}
   </div>
 </footer>
-
-<style>
-  .status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 30px;
-    padding: 0 1rem;
-    background: #f1f5f9;
-    border-top: 1px solid #e2e8f0;
-    font-size: 0.75rem;
-    color: #64748b;
-  }
-
-  .status-left,
-  .status-center,
-  .status-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .version {
-    font-weight: 500;
-    color: #475569;
-  }
-
-  .status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .current-time {
-    color: #475569;
-  }
-
-  .last-login {
-    color: #64748b;
-  }
-</style>

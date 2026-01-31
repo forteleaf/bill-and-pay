@@ -6,27 +6,62 @@ export { OrgType, OrgStatus };
 // Branch type aliases (영업점 = Organization)
 export type BranchType = OrgType;
 
-// Business entity type
 export enum BusinessType {
-  CORPORATION = 'CORPORATION',     // 법인사업자
-  INDIVIDUAL = 'INDIVIDUAL',       // 개인사업자
-  NON_BUSINESS = 'NON_BUSINESS'    // 비사업자
+  CORPORATION = 'CORPORATION',
+  INDIVIDUAL = 'INDIVIDUAL',
+  NON_BUSINESS = 'NON_BUSINESS'
 }
 
-// Extended business info for UI forms
+export interface BusinessEntity {
+  id: string;
+  businessType: BusinessType;
+  businessNumber?: string;
+  corporateNumber?: string;
+  businessName: string;
+  representativeName: string;
+  openDate?: string;
+  businessAddress?: string;
+  actualAddress?: string;
+  businessCategory?: string;
+  businessSubCategory?: string;
+  mainPhone?: string;
+  managerName?: string;
+  managerPhone?: string;
+  email?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessEntityCreateRequest {
+  businessType: BusinessType;
+  businessNumber?: string;
+  corporateNumber?: string;
+  businessName: string;
+  representativeName: string;
+  openDate?: string;
+  businessAddress?: string;
+  actualAddress?: string;
+  businessCategory?: string;
+  businessSubCategory?: string;
+  mainPhone?: string;
+  managerName?: string;
+  managerPhone?: string;
+  email?: string;
+}
+
 export interface BusinessInfo {
   businessType: BusinessType;
-  businessNumber?: string;          // 사업자등록번호
-  corporateNumber?: string;         // 법인등록번호
-  representative: string;           // 대표자
-  openDate?: string;                // 개업연월일
-  businessAddress: string;          // 사업장 소재지
-  actualAddress?: string;           // 실사업장 소재지
-  businessCategory?: string;        // 업태
-  businessType2?: string;           // 업종
-  mainPhone?: string;               // 대표번호
-  managerName?: string;             // 담당자
-  managerPhone?: string;            // 담당자 연락처
+  businessNumber?: string;
+  corporateNumber?: string;
+  representative: string;
+  openDate?: string;
+  businessAddress: string;
+  actualAddress?: string;
+  businessCategory?: string;
+  businessType2?: string;
+  mainPhone?: string;
+  managerName?: string;
+  managerPhone?: string;
   email?: string;
 }
 

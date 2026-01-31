@@ -3,6 +3,9 @@
   import { OrgType } from '../types/api';
   import OrgTree from '../components/OrgTree.svelte';
   import OrgForm from '../components/OrgForm.svelte';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
   
   let selectedOrg = $state<Organization | null>(null);
   let mode = $state<'view' | 'create' | 'edit'>('view');
@@ -37,20 +40,36 @@
     selectedOrg = data;
     treeKey += 1;
   }
+
+  function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' {
+    if (status === 'ACTIVE') return 'default';
+    if (status === 'SUSPENDED') return 'secondary';
+    return 'destructive';
+  }
 </script>
 
-<div class="organizations-page">
-  <div class="page-header">
-    <h1>🏢 Organization Management</h1>
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-foreground flex items-center gap-2">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+        Organization Management
+      </h1>
+    </div>
     {#if mode === 'view'}
-      <button class="btn btn-primary" onclick={handleCreate}>
-        + Create Organization
-      </button>
+      <Button onclick={handleCreate}>
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Create Organization
+      </Button>
     {/if}
   </div>
   
-  <div class="content">
-    <div class="tree-panel">
+  <div class="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6 min-h-[600px]">
+    <div class="flex flex-col">
       {#key treeKey}
         <OrgTree
           rootOrgId={currentUserOrgId}
@@ -60,7 +79,7 @@
       {/key}
     </div>
     
-    <div class="detail-panel">
+    <div class="flex flex-col">
       {#if mode === 'create' || mode === 'edit'}
         <OrgForm
           mode={mode}
@@ -71,260 +90,61 @@
           onCancel={handleCancel}
         />
       {:else if selectedOrg}
-        <div class="detail-view">
-          <div class="detail-header">
-            <h2>{selectedOrg.name}</h2>
-            <button class="btn btn-secondary" onclick={handleEdit}>
-              ✏️ Edit
-            </button>
-          </div>
-          
-          <div class="detail-grid">
-            <div class="detail-field">
-              <label>Organization Code</label>
-              <div class="detail-value">{selectedOrg.orgCode}</div>
-            </div>
-            
-            <div class="detail-field">
-              <label>Type</label>
-              <div class="detail-value">{selectedOrg.orgType}</div>
-            </div>
-            
-            <div class="detail-field">
-              <label>Status</label>
-              <div class="detail-value">
-                <span class="status-badge status-{selectedOrg.status.toLowerCase()}">
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between border-b">
+            <CardTitle>{selectedOrg.name}</CardTitle>
+            <Button variant="secondary" onclick={handleEdit}>
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+            </Button>
+          </CardHeader>
+          <CardContent class="pt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-muted-foreground">Organization Code</div>
+                <div class="text-foreground">{selectedOrg.orgCode}</div>
+              </div>
+              
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-muted-foreground">Type</div>
+                <div class="text-foreground">{selectedOrg.orgType}</div>
+              </div>
+              
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-muted-foreground">Status</div>
+                <Badge variant={getStatusVariant(selectedOrg.status)}>
                   {selectedOrg.status}
-                </span>
+                </Badge>
+              </div>
+              
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-muted-foreground">Path</div>
+                <div class="font-mono text-sm bg-muted p-2 rounded">{selectedOrg.path}</div>
+              </div>
+              
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-muted-foreground">Level</div>
+                <div class="text-foreground">{selectedOrg.level}</div>
               </div>
             </div>
-            
-            <div class="detail-field">
-              <label>Path</label>
-              <div class="detail-value mono">{selectedOrg.path}</div>
-            </div>
-            
-            <div class="detail-field">
-              <label>Level</label>
-              <div class="detail-value">{selectedOrg.level}</div>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       {:else}
-        <div class="empty-state">
-          <p>Select an organization from the tree to view details</p>
-          <p class="hint">or</p>
-          <button class="btn btn-primary" onclick={handleCreate}>
-            + Create New Organization
-          </button>
-        </div>
+        <Card class="flex-1">
+          <CardContent class="flex flex-col items-center justify-center min-h-[400px] gap-4">
+            <p class="text-muted-foreground">Select an organization from the tree to view details</p>
+            <p class="text-sm text-muted-foreground/70">or</p>
+            <Button onclick={handleCreate}>
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Create New Organization
+            </Button>
+          </CardContent>
+        </Card>
       {/if}
     </div>
   </div>
 </div>
-
-<style>
-  .organizations-page {
-    padding: 2rem;
-    max-width: 1600px;
-    margin: 0 auto;
-  }
-  
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-  }
-  
-  .page-header h1 {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-  }
-  
-  .content {
-    display: grid;
-    grid-template-columns: 30% 70%;
-    gap: 1.5rem;
-    min-height: 600px;
-  }
-  
-  .tree-panel {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .detail-panel {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .detail-view {
-    background: white;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
-    padding: 1.5rem;
-  }
-  
-  .detail-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  
-  .detail-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #111827;
-    margin: 0;
-  }
-  
-  .detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-  }
-  
-  .detail-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .detail-field label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #6b7280;
-  }
-  
-  .detail-value {
-    font-size: 1rem;
-    color: #111827;
-  }
-  
-  .detail-value.mono {
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 0.875rem;
-    background: #f3f4f6;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-  }
-  
-  .status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-  
-  .status-active {
-    background-color: #d1fae5;
-    color: #065f46;
-  }
-  
-  .status-suspended {
-    background-color: #fef3c7;
-    color: #92400e;
-  }
-  
-  .status-terminated {
-    background-color: #fee2e2;
-    color: #991b1b;
-  }
-  
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    gap: 1rem;
-    background: white;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
-    padding: 2rem;
-  }
-  
-  .empty-state p {
-    color: #6b7280;
-    margin: 0;
-  }
-  
-  .empty-state .hint {
-    font-size: 0.875rem;
-    color: #9ca3af;
-  }
-  
-  .btn {
-    padding: 0.5rem 1.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-  }
-  
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .btn-primary {
-    background-color: #3b82f6;
-    color: white;
-  }
-  
-  .btn-primary:hover:not(:disabled) {
-    background-color: #2563eb;
-  }
-  
-  .btn-secondary {
-    background-color: #f3f4f6;
-    color: #374151;
-  }
-  
-  .btn-secondary:hover:not(:disabled) {
-    background-color: #e5e7eb;
-  }
-  
-  @media (max-width: 1024px) {
-    .content {
-      grid-template-columns: 1fr;
-    }
-    
-    .tree-panel {
-      max-height: 400px;
-    }
-    
-    .detail-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  @media (max-width: 640px) {
-    .organizations-page {
-      padding: 1rem;
-    }
-    
-    .page-header {
-      flex-direction: column;
-      gap: 1rem;
-      align-items: stretch;
-    }
-    
-    .page-header h1 {
-      font-size: 1.5rem;
-    }
-    
-    .btn {
-      width: 100%;
-    }
-  }
-</style>

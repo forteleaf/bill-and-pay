@@ -1,5 +1,6 @@
 <script lang="ts">
   import { DropdownMenu } from 'bits-ui';
+  import { cn } from '$lib/utils';
   import { authStore } from '../lib/authStore';
   import { tenantStore } from '../lib/stores';
   import { tabStore } from '../lib/tabStore';
@@ -47,52 +48,59 @@
   }
 </script>
 
-<header class="header">
-  <div class="header-content">
-    <button class="logo-section" onclick={handleLogoClick} type="button">
-      <span class="logo-icon">💳</span>
-      <span class="logo-text">BILL&PAY</span>
+<header class="bg-gradient-to-br from-white to-slate-50 border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sticky top-0 z-[100]">
+  <div class="flex items-center justify-between px-6 h-[60px] max-w-full">
+    <button 
+      class="flex items-center gap-2 bg-transparent border-none cursor-pointer py-2 px-3 -ml-3 rounded-lg transition-all duration-200 hover:bg-blue-500/[0.08] active:scale-[0.98]" 
+      onclick={handleLogoClick} 
+      type="button"
+    >
+      <span class="text-2xl leading-none">💳</span>
+      <span class="font-sans text-xl font-bold -tracking-[0.02em] bg-gradient-to-br from-blue-800 to-blue-500 bg-clip-text text-transparent">BILL&PAY</span>
     </button>
     
-    <div class="search-section">
-      <span class="search-icon">🔍</span>
+    <div class="flex items-center gap-2 bg-slate-100 border border-transparent rounded-[10px] py-2 px-4 w-[280px] transition-all duration-200 focus-within:bg-white focus-within:border-blue-500 focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] max-md:hidden">
+      <span class="text-[0.9rem] opacity-50">🔍</span>
       <input 
         type="text" 
-        class="search-input" 
+        class="flex-1 bg-transparent border-none outline-none text-sm text-slate-700 placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-70" 
         placeholder="검색..." 
         disabled
       />
     </div>
     
-    <div class="actions-section">
-      <button class="action-button notification-button" type="button">
-        <span class="action-icon">🔔</span>
-        <span class="notification-badge">3</span>
+    <div class="flex items-center gap-2">
+      <button class="flex items-center justify-center relative w-10 h-10 bg-transparent border-none rounded-[10px] cursor-pointer transition-all duration-200 hover:bg-slate-100 active:scale-95" type="button">
+        <span class="text-xl">🔔</span>
+        <span class="absolute top-1 right-1 min-w-[18px] h-[18px] px-[5px] text-[0.7rem] font-semibold text-white bg-gradient-to-br from-red-500 to-red-600 rounded-[9px] flex items-center justify-center shadow-[0_1px_3px_rgba(239,68,68,0.4)]">3</span>
       </button>
       
-      <button class="action-button" onclick={handleSettingsClick} type="button">
-        <span class="action-icon">⚙️</span>
+      <button class="flex items-center justify-center relative w-10 h-10 bg-transparent border-none rounded-[10px] cursor-pointer transition-all duration-200 hover:bg-slate-100 active:scale-95" onclick={handleSettingsClick} type="button">
+        <span class="text-xl">⚙️</span>
       </button>
       
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger class="dropdown-trigger tenant-trigger">
-          <span class="trigger-text">{currentTenantName}</span>
-          <span class="trigger-arrow">▼</span>
+        <DropdownMenu.Trigger class="flex items-center gap-2 py-2 px-3.5 bg-slate-50 border border-slate-200 rounded-[10px] cursor-pointer text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] data-[state=open]:bg-slate-100 data-[state=open]:border-blue-500">
+          <span class="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap max-md:hidden">{currentTenantName}</span>
+          <span class="text-[0.625rem] text-slate-500 transition-transform duration-200 [[data-state=open]_&]:rotate-180 max-md:hidden">▼</span>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Content class="dropdown-content" sideOffset={8}>
+        <DropdownMenu.Content class="min-w-[180px] bg-white border border-slate-200 rounded-xl p-1.5 shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] animate-[slideDown_0.15s_ease-out] z-[1000]" sideOffset={8}>
           {#each tenants as tenant (tenant.id)}
             <DropdownMenu.Item 
-              class="dropdown-item {tenant.id === currentTenantId ? 'active' : ''}"
+              class={cn(
+                "flex items-center gap-2.5 py-2.5 px-3 rounded-lg cursor-pointer text-sm text-slate-700 transition-all duration-150 outline-none hover:bg-slate-100 hover:text-slate-800 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-800 active:bg-slate-200",
+                tenant.id === currentTenantId && "bg-blue-500/[0.08] text-blue-700 font-medium hover:bg-blue-500/[0.12] data-[highlighted]:bg-blue-500/[0.12]"
+              )}
             >
               <button 
-                class="dropdown-item-btn"
+                class="flex items-center gap-2.5 w-full p-0 m-0 bg-transparent border-none cursor-pointer text-inherit text-left"
                 onclick={() => handleTenantChange(tenant.id)}
                 type="button"
               >
                 {#if tenant.id === currentTenantId}
-                  <span class="check-icon">✓</span>
+                  <span class="text-xs text-blue-500 font-bold">✓</span>
                 {/if}
-                <span class="item-text">{tenant.name}</span>
+                <span class="flex-1">{tenant.name}</span>
               </button>
             </DropdownMenu.Item>
           {/each}
@@ -100,23 +108,23 @@
       </DropdownMenu.Root>
       
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger class="dropdown-trigger user-trigger">
-          <span class="user-avatar">👤</span>
-          <span class="trigger-text">{username}</span>
-          <span class="trigger-arrow">▼</span>
+        <DropdownMenu.Trigger class="flex items-center gap-2 py-2 pl-2.5 pr-3.5 bg-slate-50 border border-slate-200 rounded-[10px] cursor-pointer text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] data-[state=open]:bg-slate-100 data-[state=open]:border-blue-500 max-md:py-2 max-md:px-2">
+          <span class="text-xl">👤</span>
+          <span class="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap max-md:hidden">{username}</span>
+          <span class="text-[0.625rem] text-slate-500 transition-transform duration-200 [[data-state=open]_&]:rotate-180 max-md:hidden">▼</span>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Content class="dropdown-content" sideOffset={8} align="end">
-          <DropdownMenu.Item class="dropdown-item">
-            <button class="dropdown-item-btn" onclick={handleProfileClick} type="button">
-              <span class="item-icon">👤</span>
-              <span class="item-text">내 정보</span>
+        <DropdownMenu.Content class="min-w-[180px] bg-white border border-slate-200 rounded-xl p-1.5 shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] animate-[slideDown_0.15s_ease-out] z-[1000]" sideOffset={8} align="end">
+          <DropdownMenu.Item class="flex items-center gap-2.5 py-2.5 px-3 rounded-lg cursor-pointer text-sm text-slate-700 transition-all duration-150 outline-none hover:bg-slate-100 hover:text-slate-800 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-800 active:bg-slate-200">
+            <button class="flex items-center gap-2.5 w-full p-0 m-0 bg-transparent border-none cursor-pointer text-inherit text-left" onclick={handleProfileClick} type="button">
+              <span class="text-base">👤</span>
+              <span class="flex-1">내 정보</span>
             </button>
           </DropdownMenu.Item>
-          <DropdownMenu.Separator class="dropdown-separator" />
-          <DropdownMenu.Item class="dropdown-item logout-item">
-            <button class="dropdown-item-btn" onclick={handleLogout} type="button">
-              <span class="item-icon">🚪</span>
-              <span class="item-text">로그아웃</span>
+          <DropdownMenu.Separator class="h-px bg-slate-200 my-1.5 mx-2" />
+          <DropdownMenu.Item class="flex items-center gap-2.5 py-2.5 px-3 rounded-lg cursor-pointer text-sm text-red-600 transition-all duration-150 outline-none hover:bg-red-600/[0.08] hover:text-red-700 data-[highlighted]:bg-red-600/[0.08] data-[highlighted]:text-red-700">
+            <button class="flex items-center gap-2.5 w-full p-0 m-0 bg-transparent border-none cursor-pointer text-inherit text-left" onclick={handleLogout} type="button">
+              <span class="text-base">🚪</span>
+              <span class="flex-1">로그아웃</span>
             </button>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
@@ -124,333 +132,3 @@
     </div>
   </div>
 </header>
-
-<style>
-  .header {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border-bottom: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  
-  .header-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1.5rem;
-    height: 60px;
-    max-width: 100%;
-  }
-  
-  .logo-section {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem 0.75rem;
-    margin-left: -0.75rem;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-  }
-  
-  .logo-section:hover {
-    background: rgba(59, 130, 246, 0.08);
-  }
-  
-  .logo-section:active {
-    transform: scale(0.98);
-  }
-  
-  .logo-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-  }
-  
-  .logo-text {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  .search-section {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #f1f5f9;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    padding: 0.5rem 1rem;
-    width: 280px;
-    transition: all 0.2s ease;
-  }
-  
-  .search-section:focus-within {
-    background: #ffffff;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-  
-  .search-icon {
-    font-size: 0.9rem;
-    opacity: 0.5;
-  }
-  
-  .search-input {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    font-size: 0.875rem;
-    color: #334155;
-  }
-  
-  .search-input::placeholder {
-    color: #94a3b8;
-  }
-  
-  .search-input:disabled {
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-  
-  .actions-section {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .action-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    width: 40px;
-    height: 40px;
-    background: none;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  
-  .action-button:hover {
-    background: #f1f5f9;
-  }
-  
-  .action-button:active {
-    transform: scale(0.95);
-  }
-  
-  .action-icon {
-    font-size: 1.25rem;
-  }
-  
-  .notification-badge {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: white;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4);
-  }
-  
-  :global(.dropdown-trigger) {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.875rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #334155;
-    transition: all 0.2s ease;
-  }
-  
-  :global(.dropdown-trigger:hover) {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-  }
-  
-  :global(.dropdown-trigger:focus) {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-  
-  :global(.dropdown-trigger[data-state="open"]) {
-    background: #f1f5f9;
-    border-color: #3b82f6;
-  }
-  
-  .trigger-text {
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .trigger-arrow {
-    font-size: 0.625rem;
-    color: #64748b;
-    transition: transform 0.2s ease;
-  }
-  
-  :global(.dropdown-trigger[data-state="open"]) .trigger-arrow {
-    transform: rotate(180deg);
-  }
-  
-  .user-avatar {
-    font-size: 1.25rem;
-  }
-  
-  :global(.user-trigger) {
-    padding-left: 0.625rem;
-  }
-  
-  :global(.dropdown-content) {
-    min-width: 180px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 0.375rem;
-    box-shadow: 
-      0 10px 38px -10px rgba(22, 23, 24, 0.35),
-      0 10px 20px -15px rgba(22, 23, 24, 0.2);
-    animation: slideDown 0.15s ease-out;
-    z-index: 1000;
-  }
-  
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  :global(.dropdown-item) {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    padding: 0.625rem 0.75rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    color: #334155;
-    transition: all 0.15s ease;
-    outline: none;
-  }
-  
-  :global(.dropdown-item:hover),
-  :global(.dropdown-item[data-highlighted]) {
-    background: #f1f5f9;
-    color: #1e293b;
-  }
-  
-  :global(.dropdown-item:active) {
-    background: #e2e8f0;
-  }
-  
-  :global(.dropdown-item.active) {
-    background: rgba(59, 130, 246, 0.08);
-    color: #1d4ed8;
-    font-weight: 500;
-  }
-  
-  :global(.dropdown-item.active:hover),
-  :global(.dropdown-item.active[data-highlighted]) {
-    background: rgba(59, 130, 246, 0.12);
-  }
-  
-  .check-icon {
-    font-size: 0.75rem;
-    color: #3b82f6;
-    font-weight: 700;
-  }
-  
-  .item-icon {
-    font-size: 1rem;
-  }
-  
-  .item-text {
-    flex: 1;
-  }
-  
-  .dropdown-item-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    width: 100%;
-    padding: 0;
-    margin: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: inherit;
-    font-family: inherit;
-    color: inherit;
-    text-align: left;
-  }
-  
-  :global(.dropdown-separator) {
-    height: 1px;
-    background: #e2e8f0;
-    margin: 0.375rem 0.5rem;
-  }
-  
-  :global(.logout-item) {
-    color: #dc2626;
-  }
-  
-  :global(.logout-item:hover),
-  :global(.logout-item[data-highlighted]) {
-    background: rgba(220, 38, 38, 0.08);
-    color: #b91c1c;
-  }
-  
-  @media (max-width: 768px) {
-    .search-section {
-      display: none;
-    }
-    
-    .trigger-text {
-      display: none;
-    }
-    
-    :global(.tenant-trigger) {
-      padding: 0.5rem;
-    }
-    
-    :global(.user-trigger) {
-      padding: 0.5rem;
-    }
-    
-    .trigger-arrow {
-      display: none;
-    }
-  }
-</style>

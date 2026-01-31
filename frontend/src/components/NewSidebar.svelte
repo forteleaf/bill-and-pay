@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Collapsible } from 'bits-ui';
+  import { cn } from '$lib/utils';
   import { tabStore, type Tab } from '../lib/tabStore';
 
   // Menu item types
@@ -136,225 +137,51 @@
   }
 </script>
 
-<aside class="sidebar">
-  <div class="logo">
-    <span class="logo-icon">💎</span>
-    <h1>Bill&Pay</h1>
+<aside class="w-[250px] min-w-[250px] h-screen bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-neutral-200 flex flex-col border-r border-[#2a2a2a] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#333] hover:scrollbar-thumb-[#444]">
+  <div class="flex items-center gap-3 py-6 px-5 border-b border-[#2a2a2a] bg-gradient-to-br from-indigo-500/10 to-transparent">
+    <span class="text-2xl">💎</span>
+    <h1 class="text-xl font-bold bg-gradient-to-br from-indigo-300 to-indigo-500 bg-clip-text text-transparent -tracking-[0.02em]">Bill&Pay</h1>
   </div>
 
-  <nav class="nav">
+  <nav class="flex-1 py-3 flex flex-col gap-0.5">
     {#each menuItems as item}
       {#if isGroup(item)}
         <Collapsible.Root
           open={expandedGroups.has(item.id)}
           onOpenChange={() => toggleGroup(item.id)}
         >
-          <Collapsible.Trigger class="menu-group-trigger">
-            <span class="menu-icon">{item.icon}</span>
-            <span class="menu-title">{item.title}</span>
-            <span class="expand-arrow" class:expanded={expandedGroups.has(item.id)}>▶</span>
+          <Collapsible.Trigger class="flex items-center gap-3 w-full py-3 px-5 text-left bg-transparent border-none text-neutral-400 cursor-pointer text-sm transition-all duration-150 relative before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-0 before:bg-gradient-to-b before:from-indigo-500 before:to-indigo-300 before:rounded-r-sm before:transition-all before:duration-200 hover:bg-white/5 hover:text-white hover:before:h-[60%] active:bg-white/[0.08]">
+            <span class="text-base min-w-[1.25rem] text-center">{item.icon}</span>
+            <span class="flex-1 font-medium">{item.title}</span>
+            <span class={cn(
+              "text-[0.625rem] text-neutral-500 transition-transform duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+              expandedGroups.has(item.id) && "rotate-90"
+            )}>▶</span>
           </Collapsible.Trigger>
-          <Collapsible.Content class="menu-group-content">
+          <Collapsible.Content class="overflow-hidden animate-[slideDown_0.25s_cubic-bezier(0.4,0,0.2,1)]">
             {#each item.children as child}
-              <button class="menu-item child-item" onclick={() => openTab(child)}>
-                <span class="menu-title">{child.title}</span>
+              <button 
+                class="flex items-center gap-3 w-full py-2.5 pl-12 pr-5 text-left bg-transparent border-none text-[#8a8a8a] cursor-pointer text-[0.8125rem] transition-all duration-150 relative before:content-[''] before:absolute before:left-6 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-0 before:bg-gradient-to-b before:from-indigo-500 before:to-indigo-300 before:rounded-r-sm before:transition-all before:duration-200 hover:bg-white/5 hover:text-neutral-300 hover:before:h-[60%]" 
+                onclick={() => openTab(child)}
+              >
+                <span class="flex-1 font-medium">{child.title}</span>
               </button>
             {/each}
           </Collapsible.Content>
         </Collapsible.Root>
       {:else}
-        <button class="menu-item top-item" onclick={() => openTab(item)}>
-          <span class="menu-icon">{item.icon}</span>
-          <span class="menu-title">{item.title}</span>
+        <button 
+          class="flex items-center gap-3 w-full py-3.5 px-5 text-left bg-transparent border-none text-neutral-400 cursor-pointer text-sm transition-all duration-150 relative before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-0 before:bg-gradient-to-b before:from-indigo-500 before:to-indigo-300 before:rounded-r-sm before:transition-all before:duration-200 hover:bg-white/5 hover:text-white hover:before:h-[60%] active:bg-white/[0.08]" 
+          onclick={() => openTab(item)}
+        >
+          <span class="text-base min-w-[1.25rem] text-center">{item.icon}</span>
+          <span class="flex-1 font-medium">{item.title}</span>
         </button>
       {/if}
     {/each}
   </nav>
 
-  <div class="sidebar-footer">
-    <span class="version">v1.0.0</span>
+  <div class="py-4 px-5 border-t border-[#2a2a2a] flex justify-center">
+    <span class="text-[0.6875rem] text-neutral-600 font-mono tracking-[0.05em]">v1.0.0</span>
   </div>
 </aside>
-
-<style>
-  .sidebar {
-    width: 250px;
-    min-width: 250px;
-    height: 100vh;
-    background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-    color: #e5e5e5;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid #2a2a2a;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.5rem 1.25rem;
-    border-bottom: 1px solid #2a2a2a;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
-  }
-
-  .logo-icon {
-    font-size: 1.5rem;
-  }
-
-  .logo h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.02em;
-  }
-
-  .nav {
-    flex: 1;
-    padding: 0.75rem 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  /* Shared menu item styles */
-  .menu-item,
-  :global(.menu-group-trigger) {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    padding: 0.75rem 1.25rem;
-    text-align: left;
-    background: transparent;
-    border: none;
-    color: #a3a3a3;
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: all 0.15s ease;
-    position: relative;
-  }
-
-  .menu-item:hover,
-  :global(.menu-group-trigger:hover) {
-    background: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
-  }
-
-  .menu-item:active,
-  :global(.menu-group-trigger:active) {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  /* Active state indicator */
-  .menu-item::before,
-  :global(.menu-group-trigger::before) {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 0;
-    background: linear-gradient(180deg, #6366f1 0%, #a5b4fc 100%);
-    border-radius: 0 2px 2px 0;
-    transition: height 0.2s ease;
-  }
-
-  .menu-item:hover::before,
-  :global(.menu-group-trigger:hover::before) {
-    height: 60%;
-  }
-
-  .top-item {
-    padding: 0.875rem 1.25rem;
-  }
-
-  .menu-icon {
-    font-size: 1rem;
-    min-width: 1.25rem;
-    text-align: center;
-  }
-
-  .menu-title {
-    flex: 1;
-    font-weight: 500;
-  }
-
-  .expand-arrow {
-    font-size: 0.625rem;
-    color: #666;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .expand-arrow.expanded {
-    transform: rotate(90deg);
-  }
-
-  /* Collapsible content */
-  :global(.menu-group-content) {
-    overflow: hidden;
-    animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .child-item {
-    padding: 0.625rem 1.25rem 0.625rem 3rem;
-    font-size: 0.8125rem;
-    color: #8a8a8a;
-  }
-
-  .child-item:hover {
-    color: #d4d4d4;
-  }
-
-  .child-item::before {
-    left: 1.5rem;
-  }
-
-  .sidebar-footer {
-    padding: 1rem 1.25rem;
-    border-top: 1px solid #2a2a2a;
-    display: flex;
-    justify-content: center;
-  }
-
-  .version {
-    font-size: 0.6875rem;
-    color: #525252;
-    font-family: 'Monaco', 'Menlo', monospace;
-    letter-spacing: 0.05em;
-  }
-
-  /* Scrollbar styling */
-  .sidebar::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .sidebar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .sidebar::-webkit-scrollbar-thumb {
-    background: #333;
-    border-radius: 3px;
-  }
-
-  .sidebar::-webkit-scrollbar-thumb:hover {
-    background: #444;
-  }
-</style>

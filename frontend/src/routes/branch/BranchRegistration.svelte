@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { branchApi } from '../../lib/branchApi';
+  import { branchApi, businessEntityApi } from '../../lib/branchApi';
   import {
     OrgType,
     BusinessType,
@@ -8,14 +8,16 @@
     type BusinessInfo,
     type BankAccountInfo,
     type FeeConfig,
-    type LimitConfig
+    type LimitConfig,
+    type BusinessEntity
   } from '../../types/branch';
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent } from '$lib/components/ui/card';
+  import { Label } from '$lib/components/ui/label';
 
-  // Step management
   let currentStep = $state(1);
   const totalSteps = 3;
 
-  // Step 1: Basic Info
   let orgType = $state<OrgType>(OrgType.DISTRIBUTOR);
   let orgName = $state('');
   let businessInfo = $state<BusinessInfo>({
@@ -40,7 +42,6 @@
     accountHolder: ''
   });
 
-  // Step 2: Fee Config
   const createDefaultFeeConfig = (): FeeConfig => ({
     general: 0,
     small: 0,
@@ -69,12 +70,21 @@
     perDay: 0
   });
 
-  // Form state
   let loading = $state(false);
   let errors = $state<Record<string, string>>({});
   let submitResult = $state<{ success: boolean; message: string } | null>(null);
 
-  // Bank list for dropdown
+  // Business entity search state
+  let selectedBusinessEntity = $state<BusinessEntity | null>(null);
+  let businessSearching = $state(false);
+  let businessSearched = $state(false);
+  let businessSearchError = $state<string | null>(null);
+
+  // Derived state for search button visibility
+  let canSearchBusiness = $derived(
+    businessInfo.businessNumber?.replace(/-/g, '').length === 10 && !selectedBusinessEntity
+  );
+
   const banks = [
     { code: '004', name: 'KB국민은행' },
     { code: '011', name: 'NH농협은행' },
@@ -95,7 +105,6 @@
     { code: '089', name: '케이뱅크' }
   ];
 
-  // Fee type labels
   const feeTypeLabels: Record<string, string> = {
     terminal: '단말기',
     oldAuth: '구인증',
@@ -104,7 +113,6 @@
     recurring: '정기과금'
   };
 
-  // Fee category labels
   const feeCategoryLabels: Record<keyof FeeConfig, string> = {
     general: '일반',
     small: '영세',
@@ -114,14 +122,103 @@
     foreign: '해외'
   };
 
-  // Business type labels
   const businessTypeLabels: Record<BusinessType, string> = {
     [BusinessType.CORPORATION]: '법인사업자',
     [BusinessType.INDIVIDUAL]: '개인사업자',
     [BusinessType.NON_BUSINESS]: '비사업자'
   };
 
-  // Validation
+  function formatBusinessNumber(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+  }
+
+  function formatCorporateNumber(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 13);
+    if (digits.length <= 6) return digits;
+    return `${digits.slice(0, 6)}-${digits.slice(6)}`;
+  }
+
+  function handleBusinessNumberInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const formatted = formatBusinessNumber(input.value);
+    businessInfo.businessNumber = formatted;
+    input.value = formatted;
+  }
+
+  function handleCorporateNumberInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const formatted = formatCorporateNumber(input.value);
+    businessInfo.corporateNumber = formatted;
+    input.value = formatted;
+  }
+
+  async function searchBusinessEntity() {
+    if (!businessInfo.businessNumber || businessInfo.businessNumber.replace(/-/g, '').length !== 10) {
+      return;
+    }
+
+    businessSearching = true;
+    businessSearchError = null;
+    businessSearched = false;
+
+    try {
+      const response = await businessEntityApi.searchByBusinessNumber(businessInfo.businessNumber);
+      businessSearched = true;
+      
+      if (response.success && response.data) {
+        selectedBusinessEntity = response.data;
+        // Auto-fill form fields from the entity
+        selectBusinessEntity(response.data);
+      } else {
+        selectedBusinessEntity = null;
+      }
+    } catch (err) {
+      businessSearchError = err instanceof Error ? err.message : '검색 중 오류가 발생했습니다.';
+      selectedBusinessEntity = null;
+    } finally {
+      businessSearching = false;
+    }
+  }
+
+  function selectBusinessEntity(entity: BusinessEntity) {
+    selectedBusinessEntity = entity;
+    // Map BusinessEntity fields to BusinessInfo fields
+    businessInfo.businessType = entity.businessType;
+    businessInfo.businessNumber = entity.businessNumber || '';
+    businessInfo.corporateNumber = entity.corporateNumber || '';
+    businessInfo.representative = entity.representativeName;
+    businessInfo.openDate = entity.openDate || '';
+    businessInfo.businessAddress = entity.businessAddress || '';
+    businessInfo.actualAddress = entity.actualAddress || '';
+    businessInfo.businessCategory = entity.businessCategory || '';
+    businessInfo.businessType2 = entity.businessSubCategory || '';
+    businessInfo.mainPhone = entity.mainPhone || '';
+    businessInfo.managerName = entity.managerName || '';
+    businessInfo.managerPhone = entity.managerPhone || '';
+    businessInfo.email = entity.email || '';
+  }
+
+  function clearSelectedBusinessEntity() {
+    selectedBusinessEntity = null;
+    businessSearched = false;
+    businessSearchError = null;
+    // Clear business info fields for fresh entry
+    businessInfo.corporateNumber = '';
+    businessInfo.representative = '';
+    businessInfo.openDate = '';
+    businessInfo.businessAddress = '';
+    businessInfo.actualAddress = '';
+    businessInfo.businessCategory = '';
+    businessInfo.businessType2 = '';
+    businessInfo.mainPhone = '';
+    businessInfo.managerName = '';
+    businessInfo.managerPhone = '';
+    businessInfo.email = '';
+  }
+
   function validateStep1(): boolean {
     const newErrors: Record<string, string> = {};
 
@@ -264,27 +361,28 @@
     limitConfig = { perTransaction: 0, perDay: 0 };
     errors = {};
     submitResult = null;
+    // Reset business entity search state
+    selectedBusinessEntity = null;
+    businessSearching = false;
+    businessSearched = false;
+    businessSearchError = null;
   }
-
 </script>
 
-<div class="registration-page">
-  <div class="page-header">
-    <div class="header-content">
-      <h1>영업점 등록</h1>
-      <p class="subtitle">새로운 영업점을 등록합니다</p>
-    </div>
+<div class="max-w-[960px] mx-auto px-6 pb-12">
+  <div class="mb-8 pb-6 border-b-2 border-foreground">
+    <h1 class="text-3xl font-extrabold text-foreground tracking-tight">영업점 등록</h1>
+    <p class="text-muted-foreground text-sm mt-2">새로운 영업점을 등록합니다</p>
   </div>
 
-  <!-- Step Indicator -->
-  <div class="step-indicator">
-    <div class="step-line">
-      <div class="step-progress" style="width: {((currentStep - 1) / (totalSteps - 1)) * 100}%"></div>
+  <div class="relative mb-10 px-8">
+    <div class="absolute top-5 left-[15%] right-[15%] h-1 bg-muted rounded-full z-0">
+      <div class="h-full bg-gradient-to-r from-primary to-violet-500 rounded-full transition-all duration-400" style="width: {((currentStep - 1) / (totalSteps - 1)) * 100}%"></div>
     </div>
-    <div class="steps">
+    <div class="flex justify-between relative z-10">
       {#each [1, 2, 3] as step}
-        <div class="step" class:active={currentStep === step} class:completed={currentStep > step}>
-          <div class="step-circle">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-background border-3 flex items-center justify-center font-bold text-base transition-all {currentStep === step ? 'border-primary text-primary shadow-[0_0_0_4px_rgba(99,102,241,0.15)]' : currentStep > step ? 'bg-gradient-to-br from-primary to-violet-500 border-transparent text-white' : 'border-muted text-muted-foreground'}">
             {#if currentStep > step}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                 <polyline points="20 6 9 17 4 12"/>
@@ -293,7 +391,7 @@
               {step}
             {/if}
           </div>
-          <span class="step-label">
+          <span class="text-sm font-semibold transition-colors {currentStep >= step ? 'text-foreground' : 'text-muted-foreground'}">
             {#if step === 1}기본정보{:else if step === 2}수수료설정{:else}확인/등록{/if}
           </span>
         </div>
@@ -301,391 +399,477 @@
     </div>
   </div>
 
-  <!-- Form Container -->
-  <div class="form-container">
+  <Card class="shadow-lg">
     {#if submitResult}
-      <!-- Result Screen -->
-      <div class="result-screen">
-        <div class="result-icon" class:success={submitResult.success} class:error={!submitResult.success}>
-          {#if submitResult.success}
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="16 10 10 16 8 14"/>
-            </svg>
-          {:else}
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="15" y1="9" x2="9" y2="15"/>
-              <line x1="9" y1="9" x2="15" y2="15"/>
-            </svg>
-          {/if}
+      <CardContent class="py-16 px-8">
+        <div class="flex flex-col items-center justify-center text-center">
+          <div class="mb-6 {submitResult.success ? 'text-emerald-500' : 'text-destructive'}">
+            {#if submitResult.success}
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="16 10 10 16 8 14"/>
+              </svg>
+            {:else}
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            {/if}
+          </div>
+          <h2 class="text-2xl font-bold text-foreground mb-3">{submitResult.success ? '등록 완료' : '등록 실패'}</h2>
+          <p class="text-muted-foreground mb-8 max-w-[400px]">{submitResult.message}</p>
+          <div class="flex gap-4">
+            {#if submitResult.success}
+              <Button variant="outline" onclick={resetForm}>새 영업점 등록</Button>
+              <a href="/branch" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">영업점 목록으로</a>
+            {:else}
+              <Button onclick={() => submitResult = null}>다시 시도</Button>
+            {/if}
+          </div>
         </div>
-        <h2>{submitResult.success ? '등록 완료' : '등록 실패'}</h2>
-        <p>{submitResult.message}</p>
-        <div class="result-actions">
-          {#if submitResult.success}
-            <button class="btn btn-secondary" onclick={resetForm}>새 영업점 등록</button>
-            <a href="/branch" class="btn btn-primary">영업점 목록으로</a>
-          {:else}
-            <button class="btn btn-primary" onclick={() => submitResult = null}>다시 시도</button>
-          {/if}
-        </div>
-      </div>
+      </CardContent>
     {:else}
-      <!-- Step 1: Basic Info -->
-      {#if currentStep === 1}
-        <div class="form-step">
-          <div class="form-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              </span>
-              기본 정보
-            </h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="orgType">영업점 유형 <span class="required">*</span></label>
-                <select id="orgType" bind:value={orgType} class="form-select">
-                  {#each Object.values(OrgType) as type}
-                    <option value={type}>{BRANCH_TYPE_LABELS[type]}</option>
-                  {/each}
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="orgName">영업점명 <span class="required">*</span></label>
-                <input
-                  id="orgName"
-                  type="text"
-                  bind:value={orgName}
-                  placeholder="영업점명을 입력하세요"
-                  class="form-input"
-                  class:error={errors.orgName}
-                />
-                {#if errors.orgName}<span class="error-msg">{errors.orgName}</span>{/if}
+      <CardContent class="p-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {#if currentStep === 1}
+          <div class="space-y-8">
+            <div class="pb-8 border-b border-border">
+              <h3 class="flex items-center gap-3 text-lg font-bold text-foreground mb-5">
+                <span class="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary to-violet-500 rounded-lg text-white">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </span>
+                기본 정보
+              </h3>
+              <div class="grid grid-cols-2 gap-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="orgType">영업점 유형 <span class="text-destructive">*</span></Label>
+                  <select id="orgType" bind:value={orgType} class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all">
+                    {#each Object.values(OrgType) as type}
+                      <option value={type}>{BRANCH_TYPE_LABELS[type]}</option>
+                    {/each}
+                  </select>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="orgName">영업점명 <span class="text-destructive">*</span></Label>
+                  <input
+                    id="orgName"
+                    type="text"
+                    bind:value={orgName}
+                    placeholder="영업점명을 입력하세요"
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.orgName ? 'border-destructive focus:ring-destructive/20' : ''}"
+                  />
+                  {#if errors.orgName}<span class="text-xs text-destructive -mt-1">{errors.orgName}</span>{/if}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="form-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                </svg>
-              </span>
-              사업자 정보
-            </h3>
-            <div class="form-grid cols-3">
-              <div class="form-group">
-                <label for="businessType">사업자 구분 <span class="required">*</span></label>
-                <select id="businessType" bind:value={businessInfo.businessType} class="form-select">
-                  {#each Object.values(BusinessType) as type}
-                    <option value={type}>{businessTypeLabels[type]}</option>
-                  {/each}
-                </select>
+            <div class="pb-8 border-b border-border">
+              <h3 class="flex items-center gap-3 text-lg font-bold text-foreground mb-5">
+                <span class="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary to-violet-500 rounded-lg text-white">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                </span>
+                사업자 정보
+              </h3>
+              <div class="grid grid-cols-3 gap-5 mb-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="businessType">사업자 구분 <span class="text-destructive">*</span></Label>
+                  <select id="businessType" bind:value={businessInfo.businessType} disabled={!!selectedBusinessEntity} class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}">
+                    {#each Object.values(BusinessType) as type}
+                      <option value={type}>{businessTypeLabels[type]}</option>
+                    {/each}
+                  </select>
+                </div>
+                {#if businessInfo.businessType !== BusinessType.NON_BUSINESS}
+                  <div class="flex flex-col gap-2 col-span-2">
+                    <Label for="businessNumber">사업자등록번호 <span class="text-destructive">*</span></Label>
+                    <div class="flex gap-2">
+                      <input
+                        id="businessNumber"
+                        type="text"
+                        value={businessInfo.businessNumber}
+                        oninput={handleBusinessNumberInput}
+                        placeholder="000-00-00000"
+                        maxlength="12"
+                        disabled={!!selectedBusinessEntity}
+                        class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all flex-1 {errors.businessNumber ? 'border-destructive focus:ring-destructive/20' : ''} {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                      />
+                      {#if canSearchBusiness}
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onclick={searchBusinessEntity}
+                          disabled={businessSearching}
+                          class="h-11 px-4 shrink-0"
+                        >
+                          {#if businessSearching}
+                            <span class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+                          {:else}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <circle cx="11" cy="11" r="8"/>
+                              <path d="m21 21-4.35-4.35"/>
+                            </svg>
+                          {/if}
+                          검색
+                        </Button>
+                      {/if}
+                      {#if selectedBusinessEntity}
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onclick={clearSelectedBusinessEntity}
+                          class="h-11 px-4 shrink-0"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12h14"/>
+                          </svg>
+                          새 사업자 등록
+                        </Button>
+                      {/if}
+                    </div>
+                    {#if errors.businessNumber}<span class="text-xs text-destructive">{errors.businessNumber}</span>{/if}
+                    {#if businessSearchError}<span class="text-xs text-destructive">{businessSearchError}</span>{/if}
+                  </div>
+                {/if}
               </div>
-              {#if businessInfo.businessType !== BusinessType.NON_BUSINESS}
-                <div class="form-group">
-                  <label for="businessNumber">사업자등록번호 <span class="required">*</span></label>
-                  <input
-                    id="businessNumber"
-                    type="text"
-                    bind:value={businessInfo.businessNumber}
-                    placeholder="000-00-00000"
-                    class="form-input"
-                    class:error={errors.businessNumber}
-                  />
-                  {#if errors.businessNumber}<span class="error-msg">{errors.businessNumber}</span>{/if}
+
+              <!-- Business Entity Search Results -->
+              {#if businessSearched && !selectedBusinessEntity && !businessSearching}
+                <div class="mb-5 p-4 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50">
+                  <div class="flex items-center gap-2 text-amber-700">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span class="text-sm font-medium">등록된 사업자가 없습니다. 새로 등록합니다.</span>
+                  </div>
                 </div>
               {/if}
-              {#if businessInfo.businessType === BusinessType.CORPORATION}
-                <div class="form-group">
-                  <label for="corporateNumber">법인등록번호</label>
-                  <input
-                    id="corporateNumber"
-                    type="text"
-                    bind:value={businessInfo.corporateNumber}
-                    placeholder="000000-0000000"
-                    class="form-input"
-                  />
-                </div>
-              {/if}
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="representative">대표자 <span class="required">*</span></label>
-                <input
-                  id="representative"
-                  type="text"
-                  bind:value={businessInfo.representative}
-                  placeholder="대표자명"
-                  class="form-input"
-                  class:error={errors.representative}
-                />
-                {#if errors.representative}<span class="error-msg">{errors.representative}</span>{/if}
-              </div>
-              <div class="form-group">
-                <label for="openDate">개업연월일</label>
-                <input
-                  id="openDate"
-                  type="date"
-                  bind:value={businessInfo.openDate}
-                  class="form-input"
-                />
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="form-group full-width">
-                <label for="businessAddress">사업장 소재지 <span class="required">*</span></label>
-                <input
-                  id="businessAddress"
-                  type="text"
-                  bind:value={businessInfo.businessAddress}
-                  placeholder="사업장 주소를 입력하세요"
-                  class="form-input"
-                  class:error={errors.businessAddress}
-                />
-                {#if errors.businessAddress}<span class="error-msg">{errors.businessAddress}</span>{/if}
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="form-group full-width">
-                <label for="actualAddress">실사업장 소재지</label>
-                <input
-                  id="actualAddress"
-                  type="text"
-                  bind:value={businessInfo.actualAddress}
-                  placeholder="실사업장 주소 (다를 경우)"
-                  class="form-input"
-                />
-              </div>
-            </div>
-            <div class="form-grid cols-3">
-              <div class="form-group">
-                <label for="businessCategory">업태</label>
-                <input
-                  id="businessCategory"
-                  type="text"
-                  bind:value={businessInfo.businessCategory}
-                  placeholder="예: 서비스업"
-                  class="form-input"
-                />
-              </div>
-              <div class="form-group">
-                <label for="businessType2">업종</label>
-                <input
-                  id="businessType2"
-                  type="text"
-                  bind:value={businessInfo.businessType2}
-                  placeholder="예: 소프트웨어 개발"
-                  class="form-input"
-                />
-              </div>
-              <div class="form-group">
-                <label for="mainPhone">대표번호</label>
-                <input
-                  id="mainPhone"
-                  type="tel"
-                  bind:value={businessInfo.mainPhone}
-                  placeholder="02-0000-0000"
-                  class="form-input"
-                />
-              </div>
-            </div>
-            <div class="form-grid cols-3">
-              <div class="form-group">
-                <label for="managerName">담당자</label>
-                <input
-                  id="managerName"
-                  type="text"
-                  bind:value={businessInfo.managerName}
-                  placeholder="담당자명"
-                  class="form-input"
-                />
-              </div>
-              <div class="form-group">
-                <label for="managerPhone">담당자 연락처</label>
-                <input
-                  id="managerPhone"
-                  type="tel"
-                  bind:value={businessInfo.managerPhone}
-                  placeholder="010-0000-0000"
-                  class="form-input"
-                />
-              </div>
-              <div class="form-group">
-                <label for="email">이메일</label>
-                <input
-                  id="email"
-                  type="email"
-                  bind:value={businessInfo.email}
-                  placeholder="example@email.com"
-                  class="form-input"
-                />
-              </div>
-            </div>
-          </div>
 
-          <div class="form-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                  <line x1="1" y1="10" x2="23" y2="10"/>
-                </svg>
-              </span>
-              정산 계좌 정보
-            </h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="bankCode">은행 <span class="required">*</span></label>
-                <select
-                  id="bankCode"
-                  value={bankAccount.bankCode}
-                  onchange={(e) => handleBankSelect((e.target as HTMLSelectElement).value)}
-                  class="form-select"
-                  class:error={errors.bankCode}
-                >
-                  <option value="">은행을 선택하세요</option>
-                  {#each banks as bank}
-                    <option value={bank.code}>{bank.name}</option>
-                  {/each}
-                </select>
-                {#if errors.bankCode}<span class="error-msg">{errors.bankCode}</span>{/if}
-              </div>
-              <div class="form-group">
-                <label for="accountNumber">계좌번호 <span class="required">*</span></label>
-                <input
-                  id="accountNumber"
-                  type="text"
-                  bind:value={bankAccount.accountNumber}
-                  placeholder="'-' 없이 입력"
-                  class="form-input"
-                  class:error={errors.accountNumber}
-                />
-                {#if errors.accountNumber}<span class="error-msg">{errors.accountNumber}</span>{/if}
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="accountHolder">예금주 <span class="required">*</span></label>
-                <input
-                  id="accountHolder"
-                  type="text"
-                  bind:value={bankAccount.accountHolder}
-                  placeholder="예금주명"
-                  class="form-input"
-                  class:error={errors.accountHolder}
-                />
-                {#if errors.accountHolder}<span class="error-msg">{errors.accountHolder}</span>{/if}
-              </div>
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Step 2: Fee Config -->
-      {#if currentStep === 2}
-        <div class="form-step">
-          <div class="form-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="1" x2="12" y2="23"/>
-                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                </svg>
-              </span>
-              수수료 설정
-            </h3>
-            <p class="section-desc">결제 유형별 수수료율을 설정합니다. (단위: %)</p>
-
-            {#each Object.entries(feeConfig) as [feeType, config]}
-              <div class="fee-card">
-                <div class="fee-card-header">
-                  <h4>{feeTypeLabels[feeType]}</h4>
-                </div>
-                <div class="fee-grid">
-                  {#each Object.keys(config) as category}
-                    <div class="fee-input-group">
-                      <label>{feeCategoryLabels[category as keyof FeeConfig]}</label>
-                      <div class="input-with-suffix">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          bind:value={feeConfig[feeType as keyof typeof feeConfig][category as keyof FeeConfig]}
-                          class="form-input fee-input"
-                        />
-                        <span class="suffix">%</span>
+              {#if selectedBusinessEntity}
+                <div class="mb-5 p-4 rounded-lg border border-emerald-200 bg-emerald-50/50">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2 mb-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald-600">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                          <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <span class="text-sm font-semibold text-emerald-700">기존 사업자 정보 사용</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                        <div class="flex gap-2">
+                          <span class="text-muted-foreground">상호:</span>
+                          <span class="font-medium text-foreground">{selectedBusinessEntity.businessName}</span>
+                        </div>
+                        <div class="flex gap-2">
+                          <span class="text-muted-foreground">대표자:</span>
+                          <span class="font-medium text-foreground">{selectedBusinessEntity.representativeName}</span>
+                        </div>
+                        {#if selectedBusinessEntity.businessAddress}
+                          <div class="flex gap-2 col-span-2">
+                            <span class="text-muted-foreground">주소:</span>
+                            <span class="font-medium text-foreground">{selectedBusinessEntity.businessAddress}</span>
+                          </div>
+                        {/if}
                       </div>
                     </div>
-                  {/each}
+                  </div>
+                </div>
+              {/if}
+
+              <div class="grid grid-cols-3 gap-5 mb-5">
+                {#if businessInfo.businessType === BusinessType.CORPORATION}
+                  <div class="flex flex-col gap-2">
+                    <Label for="corporateNumber">법인등록번호</Label>
+                    <input
+                      id="corporateNumber"
+                      type="text"
+                      value={businessInfo.corporateNumber}
+                      oninput={handleCorporateNumberInput}
+                      placeholder="000000-0000000"
+                      maxlength="14"
+                      disabled={!!selectedBusinessEntity}
+                      class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                    />
+                  </div>
+                {/if}
+              </div>
+              <div class="grid grid-cols-2 gap-5 mb-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="representative">대표자 <span class="text-destructive">*</span></Label>
+                  <input
+                    id="representative"
+                    type="text"
+                    bind:value={businessInfo.representative}
+                    placeholder="대표자명"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.representative ? 'border-destructive focus:ring-destructive/20' : ''} {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                  {#if errors.representative}<span class="text-xs text-destructive -mt-1">{errors.representative}</span>{/if}
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="openDate">개업연월일</Label>
+                  <input
+                    id="openDate"
+                    type="date"
+                    bind:value={businessInfo.openDate}
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
                 </div>
               </div>
-            {/each}
-          </div>
-
-          <div class="form-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-                  <path d="M12 6v6l4 2"/>
-                </svg>
-              </span>
-              한도 설정
-            </h3>
-            <p class="section-desc">거래 한도를 설정합니다. (단위: 백만원)</p>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="perTransaction">1회 한도 <span class="required">*</span></label>
-                <div class="input-with-suffix">
+              <div class="grid grid-cols-1 gap-5 mb-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="businessAddress">사업장 소재지 <span class="text-destructive">*</span></Label>
                   <input
-                    id="perTransaction"
-                    type="number"
-                    min="0"
-                    bind:value={limitConfig.perTransaction}
-                    placeholder="0"
-                    class="form-input"
-                    class:error={errors.perTransaction}
+                    id="businessAddress"
+                    type="text"
+                    bind:value={businessInfo.businessAddress}
+                    placeholder="사업장 주소를 입력하세요"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.businessAddress ? 'border-destructive focus:ring-destructive/20' : ''} {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
                   />
-                  <span class="suffix">백만원</span>
+                  {#if errors.businessAddress}<span class="text-xs text-destructive -mt-1">{errors.businessAddress}</span>{/if}
                 </div>
-                {#if errors.perTransaction}<span class="error-msg">{errors.perTransaction}</span>{/if}
               </div>
-              <div class="form-group">
-                <label for="perDay">1일 한도 <span class="required">*</span></label>
-                <div class="input-with-suffix">
+              <div class="grid grid-cols-1 gap-5 mb-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="actualAddress">실사업장 소재지</Label>
                   <input
-                    id="perDay"
-                    type="number"
-                    min="0"
-                    bind:value={limitConfig.perDay}
-                    placeholder="0"
-                    class="form-input"
-                    class:error={errors.perDay}
+                    id="actualAddress"
+                    type="text"
+                    bind:value={businessInfo.actualAddress}
+                    placeholder="실사업장 주소 (다를 경우)"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
                   />
-                  <span class="suffix">백만원</span>
                 </div>
-                {#if errors.perDay}<span class="error-msg">{errors.perDay}</span>{/if}
+              </div>
+              <div class="grid grid-cols-3 gap-5 mb-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="businessCategory">업태</Label>
+                  <input
+                    id="businessCategory"
+                    type="text"
+                    bind:value={businessInfo.businessCategory}
+                    placeholder="예: 서비스업"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="businessType2">업종</Label>
+                  <input
+                    id="businessType2"
+                    type="text"
+                    bind:value={businessInfo.businessType2}
+                    placeholder="예: 소프트웨어 개발"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="mainPhone">대표번호</Label>
+                  <input
+                    id="mainPhone"
+                    type="tel"
+                    bind:value={businessInfo.mainPhone}
+                    placeholder="02-0000-0000"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="managerName">담당자</Label>
+                  <input
+                    id="managerName"
+                    type="text"
+                    bind:value={businessInfo.managerName}
+                    placeholder="담당자명"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="managerPhone">담당자 연락처</Label>
+                  <input
+                    id="managerPhone"
+                    type="tel"
+                    bind:value={businessInfo.managerPhone}
+                    placeholder="010-0000-0000"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="email">이메일</Label>
+                  <input
+                    id="email"
+                    type="email"
+                    bind:value={businessInfo.email}
+                    placeholder="example@email.com"
+                    disabled={!!selectedBusinessEntity}
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="flex items-center gap-3 text-lg font-bold text-foreground mb-5">
+                <span class="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary to-violet-500 rounded-lg text-white">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                    <line x1="1" y1="10" x2="23" y2="10"/>
+                  </svg>
+                </span>
+                정산 계좌 정보
+              </h3>
+              <div class="grid grid-cols-2 gap-5 mb-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="bankCode">은행 <span class="text-destructive">*</span></Label>
+                  <select
+                    id="bankCode"
+                    value={bankAccount.bankCode}
+                    onchange={(e) => handleBankSelect((e.target as HTMLSelectElement).value)}
+                    class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.bankCode ? 'border-destructive focus:ring-destructive/20' : ''}"
+                  >
+                    <option value="">은행을 선택하세요</option>
+                    {#each banks as bank}
+                      <option value={bank.code}>{bank.name}</option>
+                    {/each}
+                  </select>
+                  {#if errors.bankCode}<span class="text-xs text-destructive -mt-1">{errors.bankCode}</span>{/if}
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="accountNumber">계좌번호 <span class="text-destructive">*</span></Label>
+                  <input
+                    id="accountNumber"
+                    type="text"
+                    bind:value={bankAccount.accountNumber}
+                    placeholder="'-' 없이 입력"
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.accountNumber ? 'border-destructive focus:ring-destructive/20' : ''}"
+                  />
+                  {#if errors.accountNumber}<span class="text-xs text-destructive -mt-1">{errors.accountNumber}</span>{/if}
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="accountHolder">예금주 <span class="text-destructive">*</span></Label>
+                  <input
+                    id="accountHolder"
+                    type="text"
+                    bind:value={bankAccount.accountHolder}
+                    placeholder="예금주명"
+                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.accountHolder ? 'border-destructive focus:ring-destructive/20' : ''}"
+                  />
+                  {#if errors.accountHolder}<span class="text-xs text-destructive -mt-1">{errors.accountHolder}</span>{/if}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      {/if}
+        {/if}
 
-      <!-- Step 3: Confirmation -->
-      {#if currentStep === 3}
-        <div class="form-step">
-          <div class="confirmation-section">
-            <h3 class="section-title">
-              <span class="section-icon">
+        {#if currentStep === 2}
+          <div class="space-y-8">
+            <div class="pb-8 border-b border-border">
+              <h3 class="flex items-center gap-3 text-lg font-bold text-foreground mb-2">
+                <span class="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary to-violet-500 rounded-lg text-white">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                </span>
+                수수료 설정
+              </h3>
+              <p class="text-muted-foreground text-sm mb-5 pl-12">결제 유형별 수수료율을 설정합니다. (단위: %)</p>
+
+              {#each Object.entries(feeConfig) as [feeType, config]}
+                <div class="bg-muted/50 border border-border rounded-xl p-5 mb-4 last:mb-0">
+                  <h4 class="text-sm font-bold text-foreground mb-4">{feeTypeLabels[feeType]}</h4>
+                  <div class="grid grid-cols-6 gap-3">
+                    {#each Object.keys(config) as category}
+                      <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-muted-foreground text-center">{feeCategoryLabels[category as keyof FeeConfig]}</label>
+                        <div class="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            bind:value={feeConfig[feeType as keyof typeof feeConfig][category as keyof FeeConfig]}
+                            class="h-10 w-full px-2 pr-6 rounded-md border-[1.5px] border-input bg-background text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all"
+                          />
+                          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+            <div>
+              <h3 class="flex items-center gap-3 text-lg font-bold text-foreground mb-2">
+                <span class="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary to-violet-500 rounded-lg text-white">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                </span>
+                한도 설정
+              </h3>
+              <p class="text-muted-foreground text-sm mb-5 pl-12">거래 한도를 설정합니다. (단위: 백만원)</p>
+
+              <div class="grid grid-cols-2 gap-5">
+                <div class="flex flex-col gap-2">
+                  <Label for="perTransaction">1회 한도 <span class="text-destructive">*</span></Label>
+                  <div class="relative">
+                    <input
+                      id="perTransaction"
+                      type="number"
+                      min="0"
+                      bind:value={limitConfig.perTransaction}
+                      placeholder="0"
+                      class="h-11 w-full px-4 pr-16 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.perTransaction ? 'border-destructive focus:ring-destructive/20' : ''}"
+                    />
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">백만원</span>
+                  </div>
+                  {#if errors.perTransaction}<span class="text-xs text-destructive -mt-1">{errors.perTransaction}</span>{/if}
+                </div>
+                <div class="flex flex-col gap-2">
+                  <Label for="perDay">1일 한도 <span class="text-destructive">*</span></Label>
+                  <div class="relative">
+                    <input
+                      id="perDay"
+                      type="number"
+                      min="0"
+                      bind:value={limitConfig.perDay}
+                      placeholder="0"
+                      class="h-11 w-full px-4 pr-16 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.perDay ? 'border-destructive focus:ring-destructive/20' : ''}"
+                    />
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">백만원</span>
+                  </div>
+                  {#if errors.perDay}<span class="text-xs text-destructive -mt-1">{errors.perDay}</span>{/if}
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
+
+        {#if currentStep === 3}
+          <div>
+            <h3 class="flex items-center gap-3 text-lg font-bold text-foreground mb-2">
+              <span class="flex items-center justify-center w-9 h-9 bg-gradient-to-br from-primary to-violet-500 rounded-lg text-white">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -696,81 +880,99 @@
               </span>
               입력 정보 확인
             </h3>
-            <p class="section-desc">입력하신 정보를 확인해주세요.</p>
+            <p class="text-muted-foreground text-sm mb-5 pl-12">입력하신 정보를 확인해주세요.</p>
 
-            <div class="summary-card">
-              <div class="summary-header">기본 정보</div>
-              <div class="summary-grid">
-                <div class="summary-item">
-                  <span class="label">영업점 유형</span>
-                  <span class="value">{BRANCH_TYPE_LABELS[orgType]}</span>
+            <div class="bg-muted/50 border border-border rounded-xl overflow-hidden mb-4">
+              <div class="bg-gradient-to-b from-muted/80 to-muted px-5 py-3.5 font-bold text-xs text-muted-foreground uppercase tracking-wide border-b border-border flex items-center justify-between">
+                <span>기본 정보</span>
+                {#if selectedBusinessEntity}
+                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium normal-case tracking-normal">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    기존 사업자
+                  </span>
+                {:else}
+                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium normal-case tracking-normal">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    신규 사업자
+                  </span>
+                {/if}
+              </div>
+              <div class="grid grid-cols-2">
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50 border-r border-border/50">
+                  <span class="text-xs text-muted-foreground">영업점 유형</span>
+                  <span class="text-sm font-semibold text-foreground">{BRANCH_TYPE_LABELS[orgType]}</span>
                 </div>
-                <div class="summary-item">
-                  <span class="label">영업점명</span>
-                  <span class="value">{orgName}</span>
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50">
+                  <span class="text-xs text-muted-foreground">영업점명</span>
+                  <span class="text-sm font-semibold text-foreground">{orgName}</span>
                 </div>
-                <div class="summary-item">
-                  <span class="label">사업자 구분</span>
-                  <span class="value">{businessTypeLabels[businessInfo.businessType]}</span>
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50 border-r border-border/50">
+                  <span class="text-xs text-muted-foreground">사업자 구분</span>
+                  <span class="text-sm font-semibold text-foreground">{businessTypeLabels[businessInfo.businessType]}</span>
                 </div>
                 {#if businessInfo.businessNumber}
-                  <div class="summary-item">
-                    <span class="label">사업자등록번호</span>
-                    <span class="value mono">{businessInfo.businessNumber}</span>
+                  <div class="flex justify-between px-5 py-3.5 border-b border-border/50">
+                    <span class="text-xs text-muted-foreground">사업자등록번호</span>
+                    <span class="text-sm font-semibold font-mono text-primary">{businessInfo.businessNumber}</span>
                   </div>
                 {/if}
-                <div class="summary-item">
-                  <span class="label">대표자</span>
-                  <span class="value">{businessInfo.representative}</span>
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50 border-r border-border/50">
+                  <span class="text-xs text-muted-foreground">대표자</span>
+                  <span class="text-sm font-semibold text-foreground">{businessInfo.representative}</span>
                 </div>
-                <div class="summary-item">
-                  <span class="label">사업장 소재지</span>
-                  <span class="value">{businessInfo.businessAddress}</span>
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50">
+                  <span class="text-xs text-muted-foreground">사업장 소재지</span>
+                  <span class="text-sm font-semibold text-foreground">{businessInfo.businessAddress}</span>
                 </div>
                 {#if businessInfo.mainPhone}
-                  <div class="summary-item">
-                    <span class="label">대표번호</span>
-                    <span class="value">{businessInfo.mainPhone}</span>
+                  <div class="flex justify-between px-5 py-3.5 border-b border-border/50 border-r border-border/50">
+                    <span class="text-xs text-muted-foreground">대표번호</span>
+                    <span class="text-sm font-semibold text-foreground">{businessInfo.mainPhone}</span>
                   </div>
                 {/if}
                 {#if businessInfo.email}
-                  <div class="summary-item">
-                    <span class="label">이메일</span>
-                    <span class="value">{businessInfo.email}</span>
+                  <div class="flex justify-between px-5 py-3.5">
+                    <span class="text-xs text-muted-foreground">이메일</span>
+                    <span class="text-sm font-semibold text-foreground">{businessInfo.email}</span>
                   </div>
                 {/if}
               </div>
             </div>
 
-            <div class="summary-card">
-              <div class="summary-header">정산 계좌</div>
-              <div class="summary-grid">
-                <div class="summary-item">
-                  <span class="label">은행</span>
-                  <span class="value">{bankAccount.bankName}</span>
+            <div class="bg-muted/50 border border-border rounded-xl overflow-hidden mb-4">
+              <div class="bg-gradient-to-b from-muted/80 to-muted px-5 py-3.5 font-bold text-xs text-muted-foreground uppercase tracking-wide border-b border-border">정산 계좌</div>
+              <div class="grid grid-cols-2">
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50 border-r border-border/50">
+                  <span class="text-xs text-muted-foreground">은행</span>
+                  <span class="text-sm font-semibold text-foreground">{bankAccount.bankName}</span>
                 </div>
-                <div class="summary-item">
-                  <span class="label">계좌번호</span>
-                  <span class="value mono">{bankAccount.accountNumber}</span>
+                <div class="flex justify-between px-5 py-3.5 border-b border-border/50">
+                  <span class="text-xs text-muted-foreground">계좌번호</span>
+                  <span class="text-sm font-semibold font-mono text-primary">{bankAccount.accountNumber}</span>
                 </div>
-                <div class="summary-item">
-                  <span class="label">예금주</span>
-                  <span class="value">{bankAccount.accountHolder}</span>
+                <div class="flex justify-between px-5 py-3.5 border-r border-border/50">
+                  <span class="text-xs text-muted-foreground">예금주</span>
+                  <span class="text-sm font-semibold text-foreground">{bankAccount.accountHolder}</span>
                 </div>
               </div>
             </div>
 
-            <div class="summary-card">
-              <div class="summary-header">수수료 설정</div>
-              <div class="fee-summary">
+            <div class="bg-muted/50 border border-border rounded-xl overflow-hidden mb-4">
+              <div class="bg-gradient-to-b from-muted/80 to-muted px-5 py-3.5 font-bold text-xs text-muted-foreground uppercase tracking-wide border-b border-border">수수료 설정</div>
+              <div class="p-5">
                 {#each Object.entries(feeConfig) as [feeType, config]}
-                  <div class="fee-summary-row">
-                    <span class="fee-type">{feeTypeLabels[feeType]}</span>
-                    <div class="fee-values">
+                  <div class="flex items-start gap-4 py-3 border-b border-border/50 last:border-b-0 first:pt-0 last:pb-0">
+                    <span class="text-sm font-semibold text-foreground min-w-20">{feeTypeLabels[feeType]}</span>
+                    <div class="flex flex-wrap gap-2 flex-1">
                       {#each Object.entries(config) as [category, value]}
-                        <span class="fee-value">
-                          <span class="category">{feeCategoryLabels[category as keyof FeeConfig]}</span>
-                          <span class="rate">{value}%</span>
+                        <span class="inline-flex items-center gap-1.5 bg-background border border-border rounded-md px-2.5 py-1 text-xs">
+                          <span class="text-muted-foreground">{feeCategoryLabels[category as keyof FeeConfig]}</span>
+                          <span class="font-semibold font-mono text-primary">{value}%</span>
                         </span>
                       {/each}
                     </div>
@@ -779,49 +981,48 @@
               </div>
             </div>
 
-            <div class="summary-card">
-              <div class="summary-header">한도 설정</div>
-              <div class="summary-grid">
-                <div class="summary-item">
-                  <span class="label">1회 한도</span>
-                  <span class="value">{limitConfig.perTransaction.toLocaleString()}백만원</span>
+            <div class="bg-muted/50 border border-border rounded-xl overflow-hidden">
+              <div class="bg-gradient-to-b from-muted/80 to-muted px-5 py-3.5 font-bold text-xs text-muted-foreground uppercase tracking-wide border-b border-border">한도 설정</div>
+              <div class="grid grid-cols-2">
+                <div class="flex justify-between px-5 py-3.5 border-r border-border/50">
+                  <span class="text-xs text-muted-foreground">1회 한도</span>
+                  <span class="text-sm font-semibold text-foreground">{limitConfig.perTransaction.toLocaleString()}백만원</span>
                 </div>
-                <div class="summary-item">
-                  <span class="label">1일 한도</span>
-                  <span class="value">{limitConfig.perDay.toLocaleString()}백만원</span>
+                <div class="flex justify-between px-5 py-3.5">
+                  <span class="text-xs text-muted-foreground">1일 한도</span>
+                  <span class="text-sm font-semibold text-foreground">{limitConfig.perDay.toLocaleString()}백만원</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      {/if}
+        {/if}
+      </CardContent>
 
-      <!-- Navigation Buttons -->
-      <div class="form-actions">
+      <div class="flex justify-between items-center px-8 py-6 bg-gradient-to-b from-muted/50 to-muted border-t border-border">
         {#if currentStep > 1}
-          <button class="btn btn-secondary" onclick={handlePrev} disabled={loading}>
+          <Button variant="outline" onclick={handlePrev} disabled={loading}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="19" y1="12" x2="5" y2="12"/>
               <polyline points="12 19 5 12 12 5"/>
             </svg>
             이전
-          </button>
+          </Button>
         {:else}
           <div></div>
         {/if}
 
         {#if currentStep < totalSteps}
-          <button class="btn btn-primary" onclick={handleNext}>
+          <Button onclick={handleNext}>
             다음
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="5" y1="12" x2="19" y2="12"/>
               <polyline points="12 5 19 12 12 19"/>
             </svg>
-          </button>
+          </Button>
         {:else}
-          <button class="btn btn-success" onclick={handleSubmit} disabled={loading}>
+          <Button onclick={handleSubmit} disabled={loading} class="bg-emerald-500 hover:bg-emerald-600">
             {#if loading}
-              <span class="btn-spinner"></span>
+              <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
               등록 중...
             {:else}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -829,647 +1030,9 @@
               </svg>
               등록하기
             {/if}
-          </button>
+          </Button>
         {/if}
       </div>
     {/if}
-  </div>
+  </Card>
 </div>
-
-<style>
-  .registration-page {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 0 1.5rem 3rem;
-  }
-
-  /* Page Header */
-  .page-header {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid #1a1a2e;
-  }
-
-  .header-content h1 {
-    font-size: 1.875rem;
-    font-weight: 800;
-    color: #1a1a2e;
-    letter-spacing: -0.025em;
-    margin: 0;
-  }
-
-  .subtitle {
-    color: #64748b;
-    font-size: 0.9375rem;
-    margin: 0.5rem 0 0;
-  }
-
-  /* Step Indicator */
-  .step-indicator {
-    position: relative;
-    margin-bottom: 2.5rem;
-    padding: 0 2rem;
-  }
-
-  .step-line {
-    position: absolute;
-    top: 20px;
-    left: 15%;
-    right: 15%;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    z-index: 0;
-  }
-
-  .step-progress {
-    height: 100%;
-    background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
-    border-radius: 2px;
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .steps {
-    display: flex;
-    justify-content: space-between;
-    position: relative;
-    z-index: 1;
-  }
-
-  .step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .step-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #fff;
-    border: 3px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1rem;
-    color: #94a3b8;
-    transition: all 0.3s ease;
-  }
-
-  .step.active .step-circle {
-    border-color: #6366f1;
-    color: #6366f1;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
-  }
-
-  .step.completed .step-circle {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    border-color: transparent;
-    color: #fff;
-  }
-
-  .step-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #94a3b8;
-    transition: color 0.3s;
-  }
-
-  .step.active .step-label,
-  .step.completed .step-label {
-    color: #1a1a2e;
-  }
-
-  /* Form Container */
-  .form-container {
-    background: #fff;
-    border-radius: 1rem;
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.04),
-      0 8px 32px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-  }
-
-  .form-step {
-    padding: 2rem;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Form Section */
-  .form-section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .form-section:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-  }
-
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin: 0 0 1.25rem;
-  }
-
-  .section-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    border-radius: 0.5rem;
-    color: #fff;
-  }
-
-  .section-desc {
-    color: #64748b;
-    font-size: 0.875rem;
-    margin: -0.5rem 0 1.25rem;
-    padding-left: 3rem;
-  }
-
-  /* Form Grid */
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
-  }
-
-  .form-grid.cols-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .form-group.full-width {
-    grid-column: 1 / -1;
-  }
-
-  .form-group label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #475569;
-  }
-
-  .required {
-    color: #ef4444;
-  }
-
-  /* Form Inputs */
-  .form-input,
-  .form-select {
-    padding: 0.75rem 1rem;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 0.5rem;
-    font-size: 0.9375rem;
-    color: #1a1a2e;
-    background: #fff;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-
-  .form-input::placeholder {
-    color: #94a3b8;
-  }
-
-  .form-input:hover,
-  .form-select:hover {
-    border-color: #cbd5e1;
-  }
-
-  .form-input:focus,
-  .form-select:focus {
-    outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-  }
-
-  .form-input.error,
-  .form-select.error {
-    border-color: #ef4444;
-  }
-
-  .form-input.error:focus,
-  .form-select.error:focus {
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
-  }
-
-  .error-msg {
-    font-size: 0.8125rem;
-    color: #ef4444;
-    margin-top: -0.25rem;
-  }
-
-  /* Input with suffix */
-  .input-with-suffix {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .input-with-suffix .form-input {
-    padding-right: 4rem;
-    width: 100%;
-  }
-
-  .input-with-suffix .suffix {
-    position: absolute;
-    right: 1rem;
-    color: #64748b;
-    font-size: 0.875rem;
-    font-weight: 500;
-    pointer-events: none;
-  }
-
-  /* Fee Card */
-  .fee-card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-
-  .fee-card:last-child {
-    margin-bottom: 0;
-  }
-
-  .fee-card-header {
-    margin-bottom: 1rem;
-  }
-
-  .fee-card-header h4 {
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin: 0;
-  }
-
-  .fee-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 0.75rem;
-  }
-
-  .fee-input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-  }
-
-  .fee-input-group label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-    text-align: center;
-  }
-
-  .fee-input {
-    text-align: center;
-    padding: 0.625rem 0.5rem !important;
-    padding-right: 1.75rem !important;
-  }
-
-  .fee-input-group .input-with-suffix .suffix {
-    right: 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  /* Confirmation Section */
-  .confirmation-section {
-    padding: 0;
-  }
-
-  .summary-card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    margin-bottom: 1rem;
-  }
-
-  .summary-card:last-child {
-    margin-bottom: 0;
-  }
-
-  .summary-header {
-    background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
-    padding: 0.875rem 1.25rem;
-    font-weight: 700;
-    font-size: 0.875rem;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0;
-  }
-
-  .summary-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.875rem 1.25rem;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .summary-item:nth-child(odd) {
-    border-right: 1px solid #f1f5f9;
-  }
-
-  .summary-item .label {
-    font-size: 0.8125rem;
-    color: #64748b;
-  }
-
-  .summary-item .value {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1a1a2e;
-  }
-
-  .summary-item .value.mono {
-    font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
-    color: #6366f1;
-  }
-
-  /* Fee Summary */
-  .fee-summary {
-    padding: 1rem 1.25rem;
-  }
-
-  .fee-summary-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .fee-summary-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-
-  .fee-summary-row:first-child {
-    padding-top: 0;
-  }
-
-  .fee-type {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1a1a2e;
-    min-width: 80px;
-  }
-
-  .fee-values {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    flex: 1;
-  }
-
-  .fee-value {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.375rem;
-    padding: 0.25rem 0.625rem;
-    font-size: 0.75rem;
-  }
-
-  .fee-value .category {
-    color: #64748b;
-  }
-
-  .fee-value .rate {
-    font-weight: 600;
-    color: #6366f1;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* Form Actions */
-  .form-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 2rem;
-    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-    border-top: 1px solid #e2e8f0;
-  }
-
-  /* Buttons */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.5rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-  }
-
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    color: #fff;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
-  }
-
-  .btn-secondary {
-    background: #fff;
-    color: #475569;
-    border: 1.5px solid #e2e8f0;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-  }
-
-  .btn-success {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #fff;
-  }
-
-  .btn-success:hover:not(:disabled) {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
-  }
-
-  .btn-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Result Screen */
-  .result-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-  }
-
-  .result-icon {
-    margin-bottom: 1.5rem;
-  }
-
-  .result-icon.success {
-    color: #10b981;
-  }
-
-  .result-icon.error {
-    color: #ef4444;
-  }
-
-  .result-screen h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin: 0 0 0.75rem;
-  }
-
-  .result-screen p {
-    font-size: 1rem;
-    color: #64748b;
-    margin: 0 0 2rem;
-    max-width: 400px;
-  }
-
-  .result-actions {
-    display: flex;
-    gap: 1rem;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .registration-page {
-      padding: 0 1rem 2rem;
-    }
-
-    .step-indicator {
-      padding: 0;
-    }
-
-    .step-line {
-      left: 10%;
-      right: 10%;
-    }
-
-    .step-circle {
-      width: 36px;
-      height: 36px;
-      font-size: 0.875rem;
-    }
-
-    .step-label {
-      font-size: 0.75rem;
-    }
-
-    .form-step {
-      padding: 1.5rem;
-    }
-
-    .form-grid,
-    .form-grid.cols-3 {
-      grid-template-columns: 1fr;
-    }
-
-    .fee-grid {
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-    .summary-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .summary-item:nth-child(odd) {
-      border-right: none;
-    }
-
-    .form-actions {
-      padding: 1.25rem 1.5rem;
-    }
-
-    .result-actions {
-      flex-direction: column;
-      width: 100%;
-    }
-
-    .result-actions .btn {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .fee-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .fee-values {
-      gap: 0.375rem;
-    }
-
-    .fee-summary-row {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-  }
-</style>
