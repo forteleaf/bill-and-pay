@@ -170,6 +170,11 @@ public class OrganizationService {
     public Organization update(UUID id, OrganizationUpdateRequest request, User user) {
         Organization organization = findById(id, user);
         
+        if (request.getParentId() != null && !request.getParentId().equals(
+                organization.getParent() != null ? organization.getParent().getId() : null)) {
+            moveOrganization(organization, request.getParentId(), user);
+        }
+        
         if (request.getName() != null) {
             organization.setName(request.getName());
         }
@@ -199,6 +204,67 @@ public class OrganizationService {
         }
         
         return organizationRepository.save(organization);
+    }
+    
+    private void moveOrganization(Organization organization, UUID newParentId, User user) {
+        if (organization.getOrgType() == OrganizationType.DISTRIBUTOR) {
+            throw new ValidationException("Cannot move DISTRIBUTOR (root) organization");
+        }
+        
+        Organization newParent = organizationRepository.findById(newParentId)
+                .orElseThrow(() -> new EntityNotFoundException("New parent organization not found: " + newParentId));
+        
+        accessControlService.validateOrganizationAccess(user, newParent);
+        
+        int newParentTypeIndex = getTypeIndex(newParent.getOrgType());
+        int orgTypeIndex = getTypeIndex(organization.getOrgType());
+        if (newParentTypeIndex >= orgTypeIndex) {
+            throw new ValidationException("Can only move to a higher-level organization type");
+        }
+        
+        String oldPath = organization.getPath();
+        if (newParent.getPath().startsWith(oldPath + ".") || newParent.getPath().equals(oldPath)) {
+            throw new ValidationException("Cannot move organization under its own descendant");
+        }
+        
+        String newPath = generatePath(newParent, organization.getOrgType());
+        String newOrgCode = newPath.replace('.', '_');
+        
+        List<Organization> descendants = organizationRepository.findDescendants(oldPath);
+        
+        organization.setPath(newPath);
+        organization.setOrgCode(newOrgCode);
+        organization.setParent(newParent);
+        organization.setLevel(newParent.getLevel() + 1);
+        
+        for (Organization descendant : descendants) {
+            if (descendant.getId().equals(organization.getId())) continue;
+            
+            String descendantNewPath = descendant.getPath().replace(oldPath, newPath);
+            String descendantNewOrgCode = descendantNewPath.replace('.', '_');
+            
+            descendant.setPath(descendantNewPath);
+            descendant.setOrgCode(descendantNewOrgCode);
+            descendant.setLevel(countPathSegments(descendantNewPath));
+            
+            organizationRepository.save(descendant);
+        }
+        
+        log.info("Moved organization {} from {} to {}", organization.getId(), oldPath, newPath);
+    }
+    
+    private int getTypeIndex(OrganizationType type) {
+        return switch (type) {
+            case DISTRIBUTOR -> 0;
+            case AGENCY -> 1;
+            case DEALER -> 2;
+            case SELLER -> 3;
+            case VENDOR -> 4;
+        };
+    }
+    
+    private int countPathSegments(String path) {
+        return (int) path.chars().filter(c -> c == '.').count() + 1;
     }
 
     private String generatePath(Organization parent, com.korpay.billpay.domain.enums.OrganizationType orgType) {

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -15,6 +16,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class OrganizationUpdateRequest {
     
+    private UUID parentId;
     private String name;
     private String businessNumber;
     private String businessName;
