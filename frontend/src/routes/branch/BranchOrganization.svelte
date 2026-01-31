@@ -11,7 +11,7 @@
     type NodeTypes,
   } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
-  import dagre from '@dagrejs/dagre';
+  import ELK from 'elkjs/lib/elk.bundled.js';
   import type { Organization, OrgTree as OrgTreeType, CreateOrgRequest, OrgType } from '../../types/api';
   import { apiClient } from '../../lib/api';
   import { tabStore } from '../../lib/tabStore';
@@ -210,33 +210,56 @@
     return { nodes: flowNodes, edges: flowEdges };
   }
 
-  function layoutNodes(inputNodes: Node<OrgNodeData>[], inputEdges: Edge[]): Node<OrgNodeData>[] {
-    const dagreGraph = new dagre.graphlib.Graph();
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 60 });
-
-    inputNodes.forEach(node => {
-      dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
-    });
-
-    inputEdges.forEach(edge => {
-      dagreGraph.setEdge(edge.source, edge.target);
-    });
-
-    dagre.layout(dagreGraph);
-
-    return inputNodes.map(node => {
-      const nodeWithPosition = dagreGraph.node(node.id);
-      return {
-        ...node,
-        position: {
-          x: nodeWithPosition.x - NODE_WIDTH / 2,
-          y: nodeWithPosition.y - NODE_HEIGHT / 2
+  async function layoutNodes(inputNodes: Node<OrgNodeData>[], inputEdges: Edge[]): Promise<Node<OrgNodeData>[]> {
+    try {
+      const elk = new ELK();
+      
+      const graph = {
+        id: 'root',
+        layoutOptions: {
+          'elk.algorithm': 'mrtree',
+          'elk.direction': 'DOWN',
+          'spacing.nodeNode': '60',
+          'spacing.edgeNode': '100'
         },
+        children: inputNodes.map(node => ({
+          id: node.id,
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT
+        })),
+        edges: inputEdges.map(edge => ({
+          id: `${edge.source}-${edge.target}`,
+          sources: [edge.source],
+          targets: [edge.target]
+        }))
+      };
+
+      const layoutedGraph = await elk.layout(graph);
+
+      const nodeMap = new Map(layoutedGraph.children?.map(node => [node.id, node]) || []);
+
+      return inputNodes.map(node => {
+        const layoutedNode = nodeMap.get(node.id);
+        return {
+          ...node,
+          position: {
+            x: (layoutedNode?.x || 0) - NODE_WIDTH / 2,
+            y: (layoutedNode?.y || 0) - NODE_HEIGHT / 2
+          },
+          targetPosition: Position.Top,
+          sourcePosition: Position.Bottom
+        };
+      });
+    } catch (e) {
+      console.warn('ELK layout failed, using fallback:', e);
+      // Fallback: return nodes with default positions
+      return inputNodes.map((node, index) => ({
+        ...node,
+        position: { x: index * 250, y: 0 },
         targetPosition: Position.Top,
         sourcePosition: Position.Bottom
-      };
-    });
+      }));
+    }
   }
 
   function showToast(message: string, type: 'success' | 'error') {
@@ -264,7 +287,7 @@
         flatOrganizations = response.data;
         organizations = buildTree(response.data);
         const { nodes: flowNodes, edges: flowEdges } = organizationsToFlow(organizations);
-        nodes = layoutNodes(flowNodes, flowEdges);
+        nodes = await layoutNodes(flowNodes, flowEdges);
         edges = flowEdges;
       } else {
         error = response.error?.message || 'Failed to load organizations';

@@ -20,6 +20,23 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['@dagrejs/dagre', '@dagrejs/graphlib']
+    include: ['@dagrejs/dagre', '@dagrejs/graphlib'],
+    esbuildOptions: {
+      plugins: []
+    }
+  },
+  build: {
+    commonjsOptions: {
+      include: [/@dagrejs/, /node_modules/],
+      transformMixedEsModules: true,
+      esmExternals: true
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          dagre: ['@dagrejs/dagre', '@dagrejs/graphlib']
+        }
+      }
+    }
   }
 });
