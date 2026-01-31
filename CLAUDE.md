@@ -51,6 +51,7 @@
 - [PRD-04: PG 연동](docs/PRD-04_pg_integration.md)
 - [PRD-05: DB 스키마](docs/PRD-05_database_schema.md)
 - [PRD-06: KORPAY](docs/PRD-06_korpay.md)
+- [PRD-07: UI 화면 설계](docs/PRD-07_ui_screens.md)
 
 ## 코딩 규칙
 
@@ -73,6 +74,18 @@
 - API 인증: JWT + Refresh Token
 - Webhook 검증: HMAC-SHA256
 - 총판 계정: 2FA 필수
+
+### Frontend (Svelte 5 + shadcn-svelte)
+- Tailwind 유틸리티 클래스만 사용 (scoped `<style>` 금지)
+- shadcn 컴포넌트 import: `$lib/components/ui`
+  ```typescript
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
+  ```
+- cn() 함수로 조건부 클래스 병합: `cn("base-class", condition && "conditional-class")`
+- CSS 변수 활용: `text-foreground`, `bg-muted`, `border-border`
+- 반응형: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
 
 ## 커스텀 에이전트
 프로젝트 개발을 위한 전문 에이전트가 `.claude/agents.md`에 정의되어 있습니다:
@@ -100,9 +113,9 @@
 - ✅ PostgreSQL ltree 기반 5단계 조직 계층
 - ✅ 복식부기 정산 엔진 (Zero-Sum 검증, 부분취소 비례 계산)
 - ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
-- ✅ REST API 18개 엔드포인트 (조직/가맹점/거래/정산/대시보드)
-- ✅ Flyway 마이그레이션 (public 2개, tenant 9개)
-- ✅ JPA 엔티티 10개, Repository 10개
+- ✅ REST API 24개 엔드포인트 (조직/가맹점/거래/정산/대시보드/사업자)
+- ✅ Flyway 마이그레이션 (public 2개, tenant 13개)
+- ✅ JPA 엔티티 11개, Repository 11개
 - ✅ CORS 설정
 - ✅ JWT 인증 (Spring Security + JWT)
   - JwtTokenProvider (토큰 생성/검증)
@@ -110,6 +123,10 @@
   - CustomUserDetailsService (사용자 조회)
   - AuthService (로그인/리프레시)
   - AuthController (인증 API 3개)
+- ✅ **사업자 정보 분리** (BusinessEntity)
+  - BusinessEntity 엔티티 (법인/개인/비사업자 구분)
+  - BusinessEntityController (CRUD + 검색 API 6개)
+  - 영업점(Organization)과 1:N 관계
 
 ### 프론트엔드 (Svelte 5)
 - ✅ Runes API ($state, $derived, $effect)
@@ -124,6 +141,26 @@
   - 로그인 화면 (Login.svelte)
   - 로그아웃 기능 (Header.svelte)
   - 인증 가드 (App.svelte)
+- ✅ **shadcn-svelte UI 시스템** (전면 적용 완료)
+  - Tailwind CSS v4 기반 유틸리티 클래스
+  - 모든 컴포넌트에서 scoped `<style>` 제거, Tailwind 유틸리티만 사용
+  - UI 컴포넌트 (`$lib/components/ui`):
+    - Button (default, destructive, outline, secondary, ghost, link 변형)
+    - Card, CardHeader, CardTitle, CardContent, CardFooter
+    - Badge (default, secondary, destructive, outline, success, warning 변형)
+    - Input, Label
+    - Table, TableHeader, TableBody, TableRow, TableHead, TableCell
+    - Separator
+  - CSS 변수 기반 테마 (`app.css`):
+    - 라이트 모드: background, foreground, primary, secondary, muted, accent, destructive
+    - 사이드바 전용: sidebar-background, sidebar-foreground, sidebar-primary, sidebar-accent, sidebar-border
+  - cn() 유틸리티 (clsx + tailwind-merge)
+  - bits-ui: Collapsible, DropdownMenu
+- ✅ **영업점 관리** (Branch Management)
+  - 영업점 목록 조회 (BranchList.svelte)
+  - 영업점 등록 위자드 (BranchRegistration.svelte)
+  - 영업점 상세/수정 (BranchDetail.svelte)
+  - 사업자 정보 검색/선택 기능 연동
 
 ### 인프라 (Finch/Docker)
 - ✅ PostgreSQL 18 + ltree 확장

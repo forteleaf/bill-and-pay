@@ -3,6 +3,11 @@
   import { tenantStore } from '../lib/stores';
   import { format } from 'date-fns';
   import type { Settlement, PagedResponse } from '../types/api';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Label } from '$lib/components/ui/label';
+  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
   
   let settlements = $state<Settlement[]>([]);
   let loading = $state(true);
@@ -30,28 +35,28 @@
     }).format(amount);
   }
   
-  function getStatusBadge(status: string): string {
-    const badges: Record<string, string> = {
-      'PENDING': 'warning',
-      'APPROVED': 'info',
-      'PAID': 'success',
-      'FAILED': 'danger'
+  function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+      'PENDING': 'secondary',
+      'APPROVED': 'outline',
+      'PAID': 'default',
+      'FAILED': 'destructive'
     };
-    return badges[status] || 'default';
+    return variants[status] || 'outline';
   }
   
   function getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      'PENDING': '대기',
-      'APPROVED': '확정',
-      'PAID': '완료',
-      'FAILED': '실패'
+      'PENDING': 'Pending',
+      'APPROVED': 'Approved',
+      'PAID': 'Paid',
+      'FAILED': 'Failed'
     };
     return labels[status] || status;
   }
   
   function getEntryTypeLabel(entryType: string): string {
-    return entryType === 'CREDIT' ? '수취' : '지급';
+    return entryType === 'CREDIT' ? 'Credit' : 'Debit';
   }
   
   function sortBy(field: string) {
@@ -96,7 +101,7 @@
       
       loading = false;
     } catch (err) {
-      error = '데이터를 불러오는데 실패했습니다.';
+      error = 'Failed to load data.';
       loading = false;
       console.error(err);
     }
@@ -126,422 +131,178 @@
     loadSettlements();
     loadSummary();
   });
+
+  function getSortIcon(field: string): string {
+    if (sortField !== field) return '';
+    return sortDirection === 'asc' ? ' ^' : ' v';
+  }
 </script>
 
-<div class="settlements">
-  <div class="header">
-    <h1>정산 관리</h1>
-    <p class="subtitle">전체 {totalCount}건의 정산</p>
+<div class="max-w-7xl mx-auto space-y-6">
+  <div>
+    <h1 class="text-3xl font-bold text-foreground">Settlements</h1>
+    <p class="text-muted-foreground mt-1">Total {totalCount} settlements</p>
   </div>
   
-  <div class="summary">
-    <div class="summary-item pending">
-      <span class="label">정산 대기</span>
-      <span class="value">{pendingCount} 건</span>
-    </div>
-    <div class="summary-item approved">
-      <span class="label">정산 확정</span>
-      <span class="value">{approvedCount} 건</span>
-    </div>
-    <div class="summary-item paid">
-      <span class="label">지급 완료</span>
-      <span class="value">{paidCount} 건</span>
-    </div>
-  </div>
-  
-  <div class="filters">
-    <div class="filter-group">
-      <label for="status">상태:</label>
-      <select id="status" bind:value={statusFilter} onchange={() => loadSettlements()}>
-        <option value="ALL">전체</option>
-        <option value="PENDING">대기</option>
-        <option value="APPROVED">확정</option>
-        <option value="PAID">완료</option>
-      </select>
-    </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <Card class="border-l-4 border-l-yellow-500">
+      <CardHeader class="pb-2">
+        <CardTitle class="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="text-2xl font-bold">{pendingCount}</div>
+      </CardContent>
+    </Card>
     
-    <button class="btn-primary" onclick={() => loadSettlements()}>
-      🔄 새로고침
-    </button>
+    <Card class="border-l-4 border-l-blue-500">
+      <CardHeader class="pb-2">
+        <CardTitle class="text-sm font-medium text-muted-foreground">Approved</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="text-2xl font-bold">{approvedCount}</div>
+      </CardContent>
+    </Card>
+    
+    <Card class="border-l-4 border-l-green-500">
+      <CardHeader class="pb-2">
+        <CardTitle class="text-sm font-medium text-muted-foreground">Paid</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="text-2xl font-bold">{paidCount}</div>
+      </CardContent>
+    </Card>
   </div>
+  
+  <Card>
+    <CardContent class="pt-6">
+      <div class="flex flex-wrap gap-4 items-end">
+        <div class="space-y-2">
+          <Label for="status">Status</Label>
+          <select 
+            id="status" 
+            bind:value={statusFilter}
+            onchange={() => loadSettlements()}
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="ALL">All</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="PAID">Paid</option>
+          </select>
+        </div>
+        
+        <Button onclick={() => loadSettlements()}>
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
   
   {#if loading}
-    <div class="loading">데이터를 불러오는 중...</div>
+    <div class="text-center py-12 text-lg text-muted-foreground">Loading data...</div>
   {:else if error}
-    <div class="error">{error}</div>
+    <div class="text-center py-12 text-lg text-destructive">{error}</div>
   {:else}
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-        <th onclick={() => sortBy('entity_type')} class="sortable">
-          엔티티 타입
-          {#if sortField === 'entity_type'}
-            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-          {/if}
-        </th>
-        <th onclick={() => sortBy('entry_type')} class="sortable">
-          입출금
-          {#if sortField === 'entry_type'}
-            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-          {/if}
-        </th>
-        <th onclick={() => sortBy('amount')} class="sortable">
-          금액
-          {#if sortField === 'amount'}
-            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-          {/if}
-        </th>
-        <th onclick={() => sortBy('fee_amount')} class="sortable">
-          수수료
-          {#if sortField === 'fee_amount'}
-            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-          {/if}
-        </th>
-        <th onclick={() => sortBy('net_amount')} class="sortable">
-          정산 금액
-          {#if sortField === 'net_amount'}
-            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-          {/if}
-        </th>
-        <th onclick={() => sortBy('status')} class="sortable">
-          상태
-          {#if sortField === 'status'}
-            <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-          {/if}
-        </th>
-        <th onclick={() => sortBy('created_at')} class="sortable">
-          생성 일시
-          {#if sortField === 'created_at'}
-                <span class="sort-icon">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              {/if}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('entity_type')}>
+              Entity Type{getSortIcon('entity_type')}
+            </TableHead>
+            <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('entry_type')}>
+              Entry Type{getSortIcon('entry_type')}
+            </TableHead>
+            <TableHead class="cursor-pointer hover:bg-muted/50 text-right" onclick={() => sortBy('amount')}>
+              Amount{getSortIcon('amount')}
+            </TableHead>
+            <TableHead class="cursor-pointer hover:bg-muted/50 text-right" onclick={() => sortBy('fee_amount')}>
+              Fee{getSortIcon('fee_amount')}
+            </TableHead>
+            <TableHead class="cursor-pointer hover:bg-muted/50 text-right" onclick={() => sortBy('net_amount')}>
+              Net Amount{getSortIcon('net_amount')}
+            </TableHead>
+            <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('status')}>
+              Status{getSortIcon('status')}
+            </TableHead>
+            <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('created_at')}>
+              Created At{getSortIcon('created_at')}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {#each displaySettlements as settlement}
-            <tr>
-              <td>{settlement.entityType}</td>
-              <td>
-                <span class="entry-type entry-{settlement.entryType.toLowerCase()}">
+            <TableRow>
+              <TableCell>{settlement.entityType}</TableCell>
+              <TableCell>
+                <Badge variant={settlement.entryType === 'CREDIT' ? 'default' : 'destructive'}>
                   {getEntryTypeLabel(settlement.entryType)}
-                </span>
-              </td>
-              <td class="amount">{formatCurrency(settlement.amount)}</td>
-              <td class="amount">{formatCurrency(settlement.feeAmount)}</td>
-              <td class="amount net">{formatCurrency(settlement.netAmount)}</td>
-              <td>
-                <span class="badge badge-{getStatusBadge(settlement.status)}">
+                </Badge>
+              </TableCell>
+              <TableCell class="text-right font-semibold">{formatCurrency(settlement.amount)}</TableCell>
+              <TableCell class="text-right">{formatCurrency(settlement.feeAmount)}</TableCell>
+              <TableCell class="text-right font-bold text-primary">{formatCurrency(settlement.netAmount)}</TableCell>
+              <TableCell>
+                <Badge variant={getStatusVariant(settlement.status)}>
                   {getStatusLabel(settlement.status)}
-                </span>
-              </td>
-              <td>{format(new Date(settlement.createdAt), 'yyyy-MM-dd HH:mm:ss')}</td>
-            </tr>
+                </Badge>
+              </TableCell>
+              <TableCell>{format(new Date(settlement.createdAt), 'yyyy-MM-dd HH:mm:ss')}</TableCell>
+            </TableRow>
           {/each}
           
           {#if displaySettlements.length === 0}
-            <tr>
-              <td colspan="7" class="empty">조회된 정산이 없습니다.</td>
-            </tr>
+            <TableRow>
+              <TableCell colspan={7} class="text-center py-12 text-muted-foreground">
+                No settlements found.
+              </TableCell>
+            </TableRow>
           {/if}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </Card>
     
-    <div class="pagination">
-      <button 
-        class="btn-page" 
+    <div class="flex justify-center items-center gap-2">
+      <Button 
+        variant="outline"
+        size="sm"
         disabled={currentPage === 0}
         onclick={() => { currentPage = 0; loadSettlements(); }}
       >
-        처음
-      </button>
-      <button 
-        class="btn-page" 
+        First
+      </Button>
+      <Button 
+        variant="outline"
+        size="sm"
         disabled={currentPage === 0}
         onclick={() => { currentPage--; loadSettlements(); }}
       >
-        이전
-      </button>
+        Previous
+      </Button>
       
-      <span class="page-info">
-        {currentPage + 1} / {totalPages} 페이지
+      <span class="px-4 font-medium text-sm">
+        {currentPage + 1} / {totalPages} pages
       </span>
       
-      <button 
-        class="btn-page" 
+      <Button 
+        variant="outline"
+        size="sm"
         disabled={currentPage >= totalPages - 1}
         onclick={() => { currentPage++; loadSettlements(); }}
       >
-        다음
-      </button>
-      <button 
-        class="btn-page" 
+        Next
+      </Button>
+      <Button 
+        variant="outline"
+        size="sm"
         disabled={currentPage >= totalPages - 1}
         onclick={() => { currentPage = totalPages - 1; loadSettlements(); }}
       >
-        마지막
-      </button>
+        Last
+      </Button>
     </div>
   {/if}
 </div>
-
-<style>
-  .settlements {
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  
-  .header {
-    margin-bottom: 2rem;
-  }
-  
-  h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-  }
-  
-  .subtitle {
-    color: #666;
-    font-size: 0.95rem;
-  }
-  
-  .loading, .error {
-    text-align: center;
-    padding: 3rem;
-    font-size: 1.1rem;
-  }
-  
-  .error {
-    color: #dc2626;
-  }
-  
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  
-  .summary-item {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
-  
-  .summary-item.pending {
-    border-left: 4px solid #f59e0b;
-  }
-  
-  .summary-item.approved {
-    border-left: 4px solid #3b82f6;
-  }
-  
-  .summary-item.paid {
-    border-left: 4px solid #10b981;
-  }
-  
-  .label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-weight: 500;
-  }
-  
-  .value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #1f2937;
-  }
-  
-  .filters {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-  }
-  
-  .filter-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .filter-group label {
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-  
-  .filter-group select {
-    padding: 0.5rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-  }
-  
-  .btn-primary {
-    padding: 0.5rem 1.5rem;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  
-  .btn-primary:hover {
-    background: #5568d3;
-  }
-  
-  .table-wrapper {
-    background: white;
-    border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
-  
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  .data-table thead {
-    background: #f9fafb;
-  }
-  
-  .data-table th {
-    padding: 1rem;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: #374151;
-    border-bottom: 2px solid #e5e7eb;
-  }
-  
-  .data-table th.sortable {
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s;
-  }
-  
-  .data-table th.sortable:hover {
-    background: #f3f4f6;
-  }
-  
-  .sort-icon {
-    margin-left: 0.25rem;
-    color: #667eea;
-  }
-  
-  .data-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 0.9rem;
-  }
-  
-  .data-table tbody tr:hover {
-    background: #f9fafb;
-  }
-  
-  .data-table td.amount {
-    font-weight: 600;
-    text-align: right;
-  }
-  
-  .data-table td.amount.net {
-    color: #667eea;
-    font-size: 1rem;
-  }
-  
-  .data-table td.empty {
-    text-align: center;
-    padding: 3rem;
-    color: #9ca3af;
-  }
-  
-  .badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-  
-  .badge-success {
-    background: #d1fae5;
-    color: #065f46;
-  }
-  
-  .badge-danger {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-  
-  .badge-warning {
-    background: #fef3c7;
-    color: #92400e;
-  }
-  
-  .badge-info {
-    background: #dbeafe;
-    color: #1e40af;
-  }
-  
-  .entry-type {
-    display: inline-block;
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-  
-  .entry-credit {
-    background: #d1fae5;
-    color: #065f46;
-  }
-  
-  .entry-debit {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-  
-  .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 2rem;
-    padding: 1rem;
-  }
-  
-  .btn-page {
-    padding: 0.5rem 1rem;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .btn-page:hover:not(:disabled) {
-    background: #667eea;
-    color: white;
-    border-color: #667eea;
-  }
-  
-  .btn-page:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .page-info {
-    padding: 0 1rem;
-    font-weight: 500;
-  }
-</style>

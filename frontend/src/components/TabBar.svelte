@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cn } from '$lib/utils';
   import { tabStore } from '../lib/tabStore';
   
   // Get reactive state from tabStore
@@ -28,22 +29,27 @@
   }
 </script>
 
-<div class="tab-bar">
-  <div class="tab-list" role="tablist">
+<div class="bg-slate-50 border-b border-slate-200 pt-2 px-4 flex items-end">
+  <div class="flex gap-1 overflow-hidden pb-0" role="tablist">
     {#each tabs as tab (tab.id)}
       <div 
-        class="tab {tab.id === activeTabId ? 'active' : ''}"
+        class={cn(
+          "flex items-center gap-2 py-2.5 px-4 border border-b-0 rounded-t-lg cursor-pointer text-sm transition-all duration-150 whitespace-nowrap",
+          tab.id === activeTabId 
+            ? "bg-white text-slate-800 font-medium border-slate-200 relative after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-0.5 after:bg-white" 
+            : "bg-slate-200 border-gray-300 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        )}
         onclick={() => handleTabClick(tab.id)}
         onkeydown={(e) => e.key === 'Enter' && handleTabClick(tab.id)}
         role="tab"
         tabindex="0"
         aria-selected={tab.id === activeTabId}
       >
-        <span class="tab-icon">{tab.icon}</span>
-        <span class="tab-title">{tab.title}</span>
+        <span class="text-base">{tab.icon}</span>
+        <span class="max-w-[120px] overflow-hidden text-ellipsis">{tab.title}</span>
         {#if tab.closeable}
           <button 
-            class="tab-close"
+            class="flex items-center justify-center w-[18px] h-[18px] ml-1 -mr-1 bg-transparent border-none rounded cursor-pointer text-base text-slate-400 leading-none hover:bg-red-600 hover:text-white"
             onclick={(e) => handleCloseTab(e, tab.id)}
             type="button"
             aria-label="닫기"
@@ -55,106 +61,3 @@
     {/each}
   </div>
 </div>
-
-<style>
-  .tab-bar {
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-    padding: 0.5rem 1rem 0;
-    display: flex;
-    align-items: flex-end;
-  }
-
-  .tab-list {
-    display: flex;
-    gap: 0.25rem;
-    overflow-x: auto;
-    padding-bottom: 0;
-  }
-
-  .tab {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1rem;
-    background: #e2e8f0;
-    border: 1px solid #d1d5db;
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    cursor: pointer;
-    font-size: 0.875rem;
-    color: #64748b;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-  }
-
-  .tab:hover {
-    background: #f1f5f9;
-    color: #334155;
-  }
-
-  .tab.active {
-    background: white;
-    color: #1e293b;
-    font-weight: 500;
-    border-color: #e2e8f0;
-    position: relative;
-  }
-
-  /* Active tab overlaps border */
-  .tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: white;
-  }
-
-  .tab-icon {
-    font-size: 1rem;
-  }
-
-  .tab-title {
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tab-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    margin-left: 0.25rem;
-    margin-right: -0.25rem;
-    background: none;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    color: #94a3b8;
-    line-height: 1;
-  }
-
-  .tab-close:hover {
-    background: #dc2626;
-    color: white;
-  }
-
-  /* Scrollbar styling */
-  .tab-list::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  .tab-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .tab-list::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 2px;
-  }
-</style>

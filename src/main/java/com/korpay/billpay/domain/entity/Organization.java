@@ -50,13 +50,20 @@ public class Organization {
     @Column(name = "level", nullable = false)
     private Integer level;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "business_entity_id")
+    private BusinessEntity businessEntity;
+
     @Column(name = "business_number", length = 20)
+    @Deprecated
     private String businessNumber;
 
     @Column(name = "business_name", length = 200)
+    @Deprecated
     private String businessName;
 
     @Column(name = "representative_name", length = 100)
+    @Deprecated
     private String representativeName;
 
     @Column(name = "email", length = 255)

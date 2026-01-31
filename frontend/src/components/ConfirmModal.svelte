@@ -1,5 +1,7 @@
 <script lang="ts">
   import { fade, fly } from 'svelte/transition';
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '$lib/components/ui/card';
   
   interface Props {
     show: boolean;
@@ -34,61 +36,45 @@
       onCancel();
     }
   }
-  
-  const typeColors = {
-    warning: 'bg-yellow-500 hover:bg-yellow-600',
-    danger: 'bg-red-500 hover:bg-red-600',
-    info: 'bg-blue-500 hover:bg-blue-600'
+
+  const confirmVariant = {
+    warning: 'default' as const,
+    danger: 'destructive' as const,
+    info: 'secondary' as const
   };
 </script>
 
-<svelte:window on:keydown={handleEscape} />
+<svelte:window onkeydown={handleEscape} />
 
 {#if show}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     transition:fade={{ duration: 200 }}
     onclick={handleBackdropClick}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="modal-title"
   >
-    <div
-      class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
-      transition:fly={{ y: -20, duration: 300 }}
-    >
-      <div class="p-6">
-        <h3 id="modal-title" class="text-lg font-semibold text-gray-900 mb-3">
-          {title}
-        </h3>
-        <p class="text-gray-600 mb-6">
-          {message}
-        </p>
-        <div class="flex gap-3 justify-end">
-          <button
-            type="button"
-            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            onclick={onCancel}
-          >
+    <div transition:fly={{ y: -20, duration: 300 }}>
+      <Card class="w-full max-w-md shadow-xl">
+        <CardHeader>
+          <CardTitle id="modal-title" class="text-lg">
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p class="text-muted-foreground">
+            {message}
+          </p>
+        </CardContent>
+        <CardFooter class="flex justify-end gap-3">
+          <Button variant="outline" onclick={onCancel}>
             {cancelText}
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 text-white rounded-md transition-colors {typeColors[type]}"
-            onclick={onConfirm}
-          >
+          </Button>
+          <Button variant={confirmVariant[type]} onclick={onConfirm}>
             {confirmText}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   </div>
 {/if}
-
-<style>
-  @media (max-width: 640px) {
-    .max-w-md {
-      max-width: calc(100% - 2rem);
-    }
-  }
-</style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Organization, OrgType } from '../types/api';
   import { apiClient } from '../lib/api';
+  import { Label } from '$lib/components/ui/label';
   
   interface Props {
     selectedParentId?: string | null;
@@ -50,7 +51,7 @@
   
   function getIndentedLabel(org: Organization): string {
     const level = org.level || 0;
-    const indent = '└─ '.repeat(Math.max(0, level - 1));
+    const indent = '-- '.repeat(Math.max(0, level - 1));
     return `${indent}${org.name} (${org.orgCode}) [${org.orgType}]`;
   }
   
@@ -87,25 +88,25 @@
   });
 </script>
 
-<div class="parent-selector">
-  <label for="parent-select" class="label">
+<div class="flex flex-col gap-2">
+  <Label for="parent-select" class="flex items-center gap-2">
     Parent Organization
     {#if nextOrgType}
-      <span class="hint">(Will create {nextOrgType})</span>
+      <span class="text-muted-foreground font-normal text-sm">(Will create {nextOrgType})</span>
     {/if}
-  </label>
+  </Label>
   
   {#if loading}
-    <div class="loading">Loading...</div>
+    <div class="p-2 rounded-md bg-muted text-muted-foreground text-sm">Loading...</div>
   {:else if error}
-    <div class="error">{error}</div>
+    <div class="p-2 rounded-md bg-destructive/10 text-destructive text-sm">{error}</div>
   {:else}
     <select
       id="parent-select"
       bind:value={selectedParentId}
       onchange={handleSelect}
       {disabled}
-      class="select"
+      class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
     >
       <option value="">Select parent...</option>
       {#each parentOptions as org (org.id)}
@@ -117,81 +118,8 @@
   {/if}
   
   {#if !nextOrgType && selectedParentId}
-    <p class="warning">
-      ⚠️ Selected organization cannot have child organizations
+    <p class="p-2 bg-yellow-50 text-yellow-700 rounded-md text-sm m-0">
+      Warning: Selected organization cannot have child organizations
     </p>
   {/if}
 </div>
-
-<style>
-  .parent-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .label {
-    font-weight: 500;
-    color: #374151;
-  }
-  
-  .hint {
-    color: #6b7280;
-    font-weight: 400;
-    font-size: 0.875rem;
-  }
-  
-  .select {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    color: #111827;
-    background-color: white;
-    cursor: pointer;
-  }
-  
-  .select:disabled {
-    background-color: #f3f4f6;
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  
-  .select:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-  
-  .loading,
-  .error {
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-  }
-  
-  .loading {
-    background-color: #f3f4f6;
-    color: #6b7280;
-  }
-  
-  .error {
-    background-color: #fee2e2;
-    color: #dc2626;
-  }
-  
-  .warning {
-    padding: 0.5rem 0.75rem;
-    background-color: #fef3c7;
-    color: #d97706;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    margin: 0;
-  }
-  
-  @media (max-width: 640px) {
-    .select {
-      font-size: 0.8125rem;
-    }
-  }
-</style>

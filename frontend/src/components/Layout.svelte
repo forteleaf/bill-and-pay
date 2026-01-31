@@ -10,31 +10,12 @@
   let { navigate, children }: Props = $props();
 </script>
 
-<div class="layout">
+<div class="flex min-h-screen">
   <Sidebar {navigate} />
-  <div class="main-content">
+  <div class="flex-1 flex flex-col">
     <Header />
-    <main class="content">
+    <main class="flex-1 p-6 bg-muted/50">
       {@render children?.()}
     </main>
   </div>
 </div>
-
-<style>
-  .layout {
-    display: flex;
-    min-height: 100vh;
-  }
-  
-  .main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .content {
-    flex: 1;
-    padding: 2rem;
-    background-color: #f5f5f5;
-  }
-</style>

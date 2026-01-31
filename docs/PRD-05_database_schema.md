@@ -286,7 +286,78 @@ CREATE INDEX idx_user_email ON users (email);
 CREATE INDEX idx_user_status ON users (status);
 ```
 
-### 4.3 businesses - 사업자
+### 4.3 business_entities - 사업자 정보 (분리)
+
+**조직(organizations)과 사업자 정보 분리**. 동일 사업자번호가 여러 조직 유형(DISTRIBUTOR, DEALER 등)으로 등록될 수 있음.
+
+```sql
+CREATE TABLE business_entities (
+    id              UUID PRIMARY KEY DEFAULT uuidv7(),
+
+    -- 사업자 유형
+    business_type   VARCHAR(20) NOT NULL,         -- CORPORATION, INDIVIDUAL, NON_BUSINESS
+
+    -- 사업자등록 정보
+    business_number VARCHAR(12),                  -- 000-00-00000 (비사업자는 NULL)
+    corporate_number VARCHAR(14),                 -- 000000-0000000 (법인만 필수)
+
+    -- 상호 정보
+    business_name   VARCHAR(200) NOT NULL,        -- 상호명
+    representative_name VARCHAR(100) NOT NULL,    -- 대표자명
+    open_date       DATE,                         -- 개업연월일
+
+    -- 주소
+    business_address TEXT,                        -- 사업장 소재지
+    actual_address  TEXT,                         -- 실사업장 소재지
+
+    -- 업종/업태
+    business_category VARCHAR(100),               -- 업태
+    business_sub_category VARCHAR(100),           -- 업종
+
+    -- 연락처
+    main_phone      VARCHAR(20),                  -- 대표번호
+    manager_name    VARCHAR(100),                 -- 담당자명
+    manager_phone   VARCHAR(20),                  -- 담당자 연락처
+    email           VARCHAR(255),
+
+    -- 감사
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at      TIMESTAMPTZ,                  -- 소프트 삭제
+
+    CONSTRAINT chk_business_entity_type CHECK (
+        business_type IN ('CORPORATION', 'INDIVIDUAL', 'NON_BUSINESS')
+    ),
+    -- 사업자번호 유일성 (NULL 제외)
+    CONSTRAINT uq_business_entity_number UNIQUE NULLS NOT DISTINCT (business_number),
+    -- 비사업자는 사업자번호 불가, 사업자는 사업자번호 필수
+    CONSTRAINT chk_business_number_rule CHECK (
+        (business_type = 'NON_BUSINESS' AND business_number IS NULL) OR
+        (business_type != 'NON_BUSINESS' AND business_number IS NOT NULL)
+    ),
+    -- 법인사업자는 법인등록번호 필수
+    CONSTRAINT chk_corporate_number_rule CHECK (
+        (business_type = 'CORPORATION' AND corporate_number IS NOT NULL) OR
+        (business_type != 'CORPORATION')
+    )
+);
+
+-- 인덱스
+CREATE INDEX idx_business_entity_number ON business_entities (business_number) WHERE business_number IS NOT NULL;
+CREATE INDEX idx_business_entity_type ON business_entities (business_type);
+CREATE INDEX idx_business_entity_name ON business_entities (business_name);
+```
+
+**organizations 테이블에 FK 추가**:
+
+```sql
+ALTER TABLE organizations 
+    ADD COLUMN business_entity_id UUID REFERENCES business_entities(id);
+
+CREATE INDEX idx_org_business_entity ON organizations (business_entity_id) WHERE business_entity_id IS NOT NULL;
+```
+
+### 4.4 businesses - 사업자 (레거시, 가맹점용)
 
 **1 사업자 : N 가맹점 관계**. 동일 사업자가 수수료 체계가 다른 여러 가맹점을 가질 수 있음.
 

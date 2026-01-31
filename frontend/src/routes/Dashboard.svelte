@@ -3,6 +3,8 @@
   import { tenantStore } from '../lib/stores';
   import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
   
   interface DashboardMetrics {
     todaySales: number;
@@ -83,7 +85,7 @@
       
       loading = false;
     } catch (err) {
-      error = '데이터를 불러오는데 실패했습니다.';
+      error = 'Failed to load data.';
       loading = false;
       console.error(err);
     }
@@ -92,389 +94,130 @@
   $effect(() => {
     loadDashboardData();
   });
+
+  function getRankBadgeClass(index: number): string {
+    if (index === 0) return 'bg-yellow-400 text-yellow-900';
+    if (index === 1) return 'bg-gray-300 text-gray-700';
+    if (index === 2) return 'bg-amber-600 text-white';
+    return 'bg-muted text-muted-foreground';
+  }
 </script>
 
-<div class="dashboard">
-  <div class="header">
-    <h1>대시보드</h1>
-    <p class="subtitle">{format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}</p>
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-foreground">Dashboard</h1>
+    <p class="text-muted-foreground mt-1">{format(new Date(), 'yyyy-MM-dd (E)', { locale: ko })}</p>
   </div>
   
   {#if loading}
-    <div class="loading">데이터를 불러오는 중...</div>
+    <div class="text-center py-12 text-lg text-muted-foreground">Loading data...</div>
   {:else if error}
-    <div class="error">{error}</div>
+    <div class="text-center py-12 text-lg text-destructive">{error}</div>
   {:else}
-    <!-- Metrics Cards -->
-    <div class="metrics-grid">
-      <div class="metric-card primary">
-        <div class="metric-icon">💰</div>
-        <div class="metric-content">
-          <h3>오늘 매출</h3>
-          <p class="metric-value">{formatCurrency(metrics.todaySales)}</p>
-          <span class="metric-change positive">+12.5%</span>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card class="bg-gradient-to-br from-primary to-purple-600 text-primary-foreground">
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium opacity-90">Today's Sales</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{formatCurrency(metrics.todaySales)}</div>
+          <Badge variant="secondary" class="mt-2 bg-white/20 text-white hover:bg-white/30">+12.5%</Badge>
+        </CardContent>
+      </Card>
       
-      <div class="metric-card">
-        <div class="metric-icon">📊</div>
-        <div class="metric-content">
-          <h3>이번 달 매출</h3>
-          <p class="metric-value">{formatCurrency(metrics.monthSales)}</p>
-          <span class="metric-change positive">+8.3%</span>
-        </div>
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium text-muted-foreground">Monthly Sales</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold text-foreground">{formatCurrency(metrics.monthSales)}</div>
+          <Badge variant="secondary" class="mt-2">+8.3%</Badge>
+        </CardContent>
+      </Card>
       
-      <div class="metric-card">
-        <div class="metric-icon">⏳</div>
-        <div class="metric-content">
-          <h3>정산 대기</h3>
-          <p class="metric-value">{formatNumber(metrics.pendingSettlements)} 건</p>
-          <span class="metric-change">전일 대비</span>
-        </div>
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium text-muted-foreground">Pending Settlements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold text-foreground">{formatNumber(metrics.pendingSettlements)}</div>
+          <span class="text-sm text-muted-foreground">vs yesterday</span>
+        </CardContent>
+      </Card>
       
-      <div class="metric-card">
-        <div class="metric-icon">🔢</div>
-        <div class="metric-content">
-          <h3>총 거래 건수</h3>
-          <p class="metric-value">{formatNumber(metrics.transactionCount)} 건</p>
-          <span class="metric-change positive">+5.2%</span>
-        </div>
-      </div>
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-sm font-medium text-muted-foreground">Total Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold text-foreground">{formatNumber(metrics.transactionCount)}</div>
+          <Badge variant="secondary" class="mt-2">+5.2%</Badge>
+        </CardContent>
+      </Card>
     </div>
     
-    <!-- Rankings and Calendar -->
-    <div class="content-grid">
-      <!-- Top Merchants -->
-      <div class="section">
-        <div class="section-header">
-          <h2>🏆 상위 매출 가맹점</h2>
-        </div>
-        <div class="ranking-list">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2">
+            <svg class="h-5 w-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+            </svg>
+            Top Merchants
+          </CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-3">
           {#each topMerchants as merchant, index}
-            <div class="ranking-item">
-              <div class="rank-badge rank-{index + 1}">{index + 1}</div>
-              <div class="ranking-info">
-                <span class="merchant-name">{merchant.merchantName}</span>
-                <span class="transaction-count">{formatNumber(merchant.transactionCount)}건</span>
+            <div class="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold {getRankBadgeClass(index)}">
+                {index + 1}
               </div>
-              <div class="ranking-amount">{formatCurrency(merchant.amount)}</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-foreground truncate">{merchant.merchantName}</div>
+                <div class="text-sm text-muted-foreground">{formatNumber(merchant.transactionCount)} transactions</div>
+              </div>
+              <div class="font-bold text-primary">{formatCurrency(merchant.amount)}</div>
             </div>
           {/each}
-        </div>
-      </div>
+          {#if topMerchants.length === 0}
+            <div class="text-center py-8 text-muted-foreground">No merchant data available</div>
+          {/if}
+        </CardContent>
+      </Card>
       
-      <!-- Calendar -->
-      <div class="section">
-        <div class="section-header">
-          <h2>📅 월간 캘린더</h2>
-          <span class="month-label">{format(currentMonth, 'yyyy년 M월', { locale: ko })}</span>
-        </div>
-        <div class="calendar">
-          <div class="calendar-header">
-            <div class="day-label">일</div>
-            <div class="day-label">월</div>
-            <div class="day-label">화</div>
-            <div class="day-label">수</div>
-            <div class="day-label">목</div>
-            <div class="day-label">금</div>
-            <div class="day-label">토</div>
+      <Card>
+        <CardHeader>
+          <div class="flex items-center justify-between">
+            <CardTitle class="flex items-center gap-2">
+              <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Monthly Calendar
+            </CardTitle>
+            <span class="text-sm text-muted-foreground">{format(currentMonth, 'yyyy-MM', { locale: ko })}</span>
           </div>
-          <div class="calendar-body">
+        </CardHeader>
+        <CardContent>
+          <div class="grid grid-cols-7 gap-1 text-center text-sm">
+            {#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as day}
+              <div class="py-2 font-semibold text-muted-foreground">{day}</div>
+            {/each}
             {#each monthDays as day}
+              {@const isToday = isSameDay(day, new Date())}
+              {@const hasTransactions = Math.random() > 0.3}
               <div 
-                class="calendar-day"
-                class:today={isSameDay(day, new Date())}
-                class:has-transactions={Math.random() > 0.3}
+                class="aspect-square flex flex-col items-center justify-center rounded-md cursor-pointer transition-colors
+                  {isToday ? 'bg-primary text-primary-foreground font-bold' : hasTransactions ? 'bg-primary/10' : 'hover:bg-muted'}"
               >
-                <span class="day-number">{format(day, 'd')}</span>
-                {#if Math.random() > 0.3}
-                  <span class="day-sales">₩{(Math.random() * 5000000).toFixed(0)}K</span>
+                <span class="text-sm">{format(day, 'd')}</span>
+                {#if hasTransactions && !isToday}
+                  <span class="text-[10px] text-primary mt-0.5">${(Math.random() * 50).toFixed(0)}K</span>
                 {/if}
               </div>
             {/each}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   {/if}
 </div>
-
-<style>
-  .dashboard {
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  
-  .header {
-    margin-bottom: 2rem;
-  }
-  
-  h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-  }
-  
-  .subtitle {
-    color: #666;
-    font-size: 0.95rem;
-  }
-  
-  .loading, .error {
-    text-align: center;
-    padding: 3rem;
-    font-size: 1.1rem;
-  }
-  
-  .error {
-    color: #dc2626;
-  }
-  
-  /* Metrics Grid */
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  
-  .metric-card {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    display: flex;
-    gap: 1rem;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  
-  .metric-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  }
-  
-  .metric-card.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-  }
-  
-  .metric-icon {
-    font-size: 2.5rem;
-  }
-  
-  .metric-content {
-    flex: 1;
-  }
-  
-  .metric-content h3 {
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    opacity: 0.9;
-  }
-  
-  .metric-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-  }
-  
-  .metric-change {
-    font-size: 0.8rem;
-    opacity: 0.8;
-  }
-  
-  .metric-change.positive {
-    color: #10b981;
-  }
-  
-  .metric-card.primary .metric-change.positive {
-    color: #d1fae5;
-  }
-  
-  /* Content Grid */
-  .content-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-  }
-  
-  @media (max-width: 1024px) {
-    .content-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  .section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
-  
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-  }
-  
-  .section-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-  
-  .month-label {
-    font-size: 0.9rem;
-    color: #666;
-  }
-  
-  /* Rankings */
-  .ranking-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .ranking-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 0.5rem;
-    transition: background 0.2s;
-  }
-  
-  .ranking-item:hover {
-    background: #f3f4f6;
-  }
-  
-  .rank-badge {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-  }
-  
-  .rank-badge.rank-1 {
-    background: #ffd700;
-    color: #9a3412;
-  }
-  
-  .rank-badge.rank-2 {
-    background: #c0c0c0;
-    color: #374151;
-  }
-  
-  .rank-badge.rank-3 {
-    background: #cd7f32;
-    color: white;
-  }
-  
-  .rank-badge.rank-4,
-  .rank-badge.rank-5 {
-    background: #e5e7eb;
-    color: #6b7280;
-  }
-  
-  .ranking-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  
-  .merchant-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-  
-  .transaction-count {
-    font-size: 0.8rem;
-    color: #6b7280;
-  }
-  
-  .ranking-amount {
-    font-weight: 700;
-    font-size: 1rem;
-    color: #667eea;
-  }
-  
-  /* Calendar */
-  .calendar {
-    font-size: 0.875rem;
-  }
-  
-  .calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .day-label {
-    text-align: center;
-    font-weight: 600;
-    color: #6b7280;
-    padding: 0.5rem 0;
-  }
-  
-  .calendar-body {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
-  }
-  
-  .calendar-day {
-    aspect-ratio: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-  }
-  
-  .calendar-day:hover {
-    background: #f3f4f6;
-  }
-  
-  .calendar-day.today {
-    background: #667eea;
-    color: white;
-    font-weight: 700;
-  }
-  
-  .calendar-day.has-transactions {
-    background: #e0e7ff;
-  }
-  
-  .calendar-day.today.has-transactions {
-    background: #667eea;
-  }
-  
-  .day-number {
-    font-weight: 500;
-  }
-  
-  .day-sales {
-    font-size: 0.65rem;
-    color: #667eea;
-    margin-top: 0.25rem;
-  }
-  
-  .calendar-day.today .day-sales {
-    color: white;
-  }
-</style>
