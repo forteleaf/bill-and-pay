@@ -34,12 +34,12 @@
     flatOrgs.forEach(org => {
       const node = orgMap.get(org.id)!;
       
-      const pathSegments = org.orgCode.split('.');
+      const pathSegments = org.path.split('.');
       if (pathSegments.length === 1) {
         roots.push(node);
       } else {
         const parentPath = pathSegments.slice(0, -1).join('.');
-        const parent = flatOrgs.find(o => o.orgCode === parentPath);
+        const parent = flatOrgs.find(o => o.path === parentPath);
         if (parent) {
           const parentNode = orgMap.get(parent.id);
           if (parentNode) {

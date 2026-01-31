@@ -194,13 +194,13 @@
     
     flatOrgs.forEach(org => {
       const node = orgMap.get(org.id)!;
-      const pathSegments = org.orgCode.split('.');
+      const pathSegments = org.path.split('.');
       
       if (pathSegments.length === 1) {
         roots.push(node);
       } else {
         const parentPath = pathSegments.slice(0, -1).join('.');
-        const parent = flatOrgs.find(o => o.orgCode === parentPath);
+        const parent = flatOrgs.find(o => o.path === parentPath);
         if (parent) {
           const parentNode = orgMap.get(parent.id);
           if (parentNode) parentNode.children.push(node);
@@ -284,12 +284,11 @@
     const collapsedIds = new Set(nodes.filter(n => n.collapsed).map(n => n.id));
     const hiddenIds = new Set<string>();
     
-    // Find all descendants of collapsed nodes
     for (const node of nodes) {
-      const pathParts = node.orgCode.split('.');
+      const pathParts = node.path.split('.');
       for (let i = 1; i < pathParts.length; i++) {
         const ancestorPath = pathParts.slice(0, i).join('.');
-        const ancestor = nodes.find(n => n.orgCode === ancestorPath);
+        const ancestor = nodes.find(n => n.path === ancestorPath);
         if (ancestor && collapsedIds.has(ancestor.id)) {
           hiddenIds.add(node.id);
           break;
@@ -302,10 +301,10 @@
   
   function generateConnections(nodes: MindmapNode[]): Array<{ from: MindmapNode; to: MindmapNode; path: string }> {
     const connections: Array<{ from: MindmapNode; to: MindmapNode; path: string }> = [];
-    const nodeMap = new Map(nodes.map(n => [n.orgCode, n]));
+    const nodeMap = new Map(nodes.map(n => [n.path, n]));
     
     for (const node of nodes) {
-      const pathParts = node.orgCode.split('.');
+      const pathParts = node.path.split('.');
       if (pathParts.length > 1) {
         const parentPath = pathParts.slice(0, -1).join('.');
         const parent = nodeMap.get(parentPath);
@@ -929,7 +928,7 @@
                     class="text-xs fill-muted-foreground pointer-events-none select-none"
                     dominant-baseline="middle"
                   >
-                    {ORG_TYPE_LABELS[node.orgType]} · {node.orgCode.split('.').pop()}
+                    {ORG_TYPE_LABELS[node.orgType]} · {node.path.split('.').pop()}
                   </text>
                 {/if}
                 
