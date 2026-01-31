@@ -9,6 +9,7 @@
     path: string;
     level: number;
     hasChildren: boolean;
+    layoutDirection?: 'vertical' | 'horizontal';
     onAddChild?: (nodeId: string) => void;
     onDoubleClick?: (nodeId: string) => void;
     [key: string]: unknown;
@@ -24,6 +25,23 @@
   let { id, data }: NodeProps<OrgNodeType> = $props();
 
   let isHovered = $state(false);
+  let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Layout direction determines handle positions
+  let isHorizontal = $derived(data.layoutDirection === 'horizontal');
+  let targetPosition = $derived(isHorizontal ? Position.Left : Position.Top);
+  let sourcePosition = $derived(isHorizontal ? Position.Right : Position.Bottom);
+
+  function handleMouseEnter() {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    isHovered = true;
+  }
+
+  function handleMouseLeave() {
+    hoverTimeout = setTimeout(() => {
+      isHovered = false;
+    }, 300);
+  }
 
   const ORG_TYPE_LABELS: Record<string, string> = {
     DISTRIBUTOR: '총판',
@@ -95,13 +113,13 @@
 
 <div
   class="relative group"
-  onmouseenter={() => isHovered = true}
-  onmouseleave={() => isHovered = false}
+  onmouseenter={handleMouseEnter}
+  onmouseleave={handleMouseLeave}
 >
   <Handle 
     type="target" 
-    position={Position.Top} 
-    class="!w-3 !h-3 !bg-slate-400 !border-2 !border-white dark:!border-slate-800 !rounded-full !-top-1.5"
+    position={targetPosition} 
+    class="!w-3 !h-3 !bg-slate-400 !border-2 !border-white dark:!border-slate-800 !rounded-full {isHorizontal ? '!-left-1.5' : '!-top-1.5'}"
   />
   
   <div
@@ -148,14 +166,15 @@
   
   <Handle 
     type="source" 
-    position={Position.Bottom} 
-    class="!w-3 !h-3 !bg-slate-400 !border-2 !border-white dark:!border-slate-800 !rounded-full !-bottom-1.5"
+    position={sourcePosition} 
+    class="!w-3 !h-3 !bg-slate-400 !border-2 !border-white dark:!border-slate-800 !rounded-full {isHorizontal ? '!-right-1.5' : '!-bottom-1.5'}"
   />
   
   {#if canAddChild && isHovered}
     <button
       onclick={handleAddChild}
-      class="absolute -bottom-10 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-primary/90 hover:bg-primary text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 z-10"
+      onmouseenter={handleMouseEnter}
+      class="absolute {isHorizontal ? '-right-10 top-1/2 -translate-y-1/2' : '-bottom-10 left-1/2 -translate-x-1/2'} w-8 h-8 rounded-full bg-primary/90 hover:bg-primary text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 z-10"
       title="하위 조직 추가"
     >
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

@@ -189,6 +189,7 @@
           path: org.path,
           level: org.level,
           hasChildren,
+          layoutDirection,
           onAddChild: handleAddChild,
           onDoubleClick: handleNodeDoubleClick
         }
