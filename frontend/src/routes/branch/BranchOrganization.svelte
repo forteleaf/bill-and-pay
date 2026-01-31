@@ -77,6 +77,8 @@
   let toasts = $state<Array<{ id: number; message: string; type: 'success' | 'error' }>>([]);
   let toastCounter = 0;
 
+  let layoutDirection = $state<'vertical' | 'horizontal'>('vertical');
+
   let stats = $derived({
     total: countNodes(organizations),
     byType: countByType(organizations),
@@ -210,7 +212,11 @@
     return { nodes: flowNodes, edges: flowEdges };
   }
 
-  async function layoutNodes(inputNodes: Node<OrgNodeData>[], inputEdges: Edge[]): Promise<Node<OrgNodeData>[]> {
+  async function layoutNodes(
+    inputNodes: Node<OrgNodeData>[], 
+    inputEdges: Edge[],
+    direction: 'vertical' | 'horizontal' = 'vertical'
+  ): Promise<Node<OrgNodeData>[]> {
     try {
       const elk = new ELK();
       
@@ -218,7 +224,7 @@
         id: 'root',
         layoutOptions: {
           'elk.algorithm': 'mrtree',
-          'elk.direction': 'DOWN',
+          'elk.direction': direction === 'vertical' ? 'DOWN' : 'RIGHT',
           'spacing.nodeNode': '60',
           'spacing.edgeNode': '100'
         },
@@ -246,8 +252,8 @@
             x: (layoutedNode?.x || 0) - NODE_WIDTH / 2,
             y: (layoutedNode?.y || 0) - NODE_HEIGHT / 2
           },
-          targetPosition: Position.Top,
-          sourcePosition: Position.Bottom
+          targetPosition: direction === 'vertical' ? Position.Top : Position.Left,
+          sourcePosition: direction === 'vertical' ? Position.Bottom : Position.Right
         };
       });
     } catch (e) {
@@ -256,8 +262,8 @@
       return inputNodes.map((node, index) => ({
         ...node,
         position: { x: index * 250, y: 0 },
-        targetPosition: Position.Top,
-        sourcePosition: Position.Bottom
+        targetPosition: direction === 'vertical' ? Position.Top : Position.Left,
+        sourcePosition: direction === 'vertical' ? Position.Bottom : Position.Right
       }));
     }
   }
@@ -287,7 +293,7 @@
         flatOrganizations = response.data;
         organizations = buildTree(response.data);
         const { nodes: flowNodes, edges: flowEdges } = organizationsToFlow(organizations);
-        nodes = await layoutNodes(flowNodes, flowEdges);
+        nodes = await layoutNodes(flowNodes, flowEdges, layoutDirection);
         edges = flowEdges;
       } else {
         error = response.error?.message || 'Failed to load organizations';
@@ -426,8 +432,8 @@
       moveTargetId = closestNode.id;
       showMoveModal = true;
     }
-
-    loadOrganizations();
+    // Note: Removed unconditional loadOrganizations() to allow free node dragging
+    // Layout reset only happens when move modal is cancelled (handleMoveCancel)
   }
 
   async function handleMoveConfirm() {
@@ -444,6 +450,12 @@
     moveNodeId = null;
     moveTargetId = null;
     loadOrganizations();
+  }
+
+  async function toggleLayout() {
+    layoutDirection = layoutDirection === 'vertical' ? 'horizontal' : 'vertical';
+    const { nodes: flowNodes, edges: flowEdges } = organizationsToFlow(organizations);
+    nodes = await layoutNodes(flowNodes, flowEdges, layoutDirection);
   }
 
   onMount(() => {
@@ -495,6 +507,25 @@
       <span class="text-sm font-medium text-emerald-600">정상</span>
       <span class="text-lg font-bold text-emerald-600">{stats.byStatus['ACTIVE'] || 0}</span>
     </div>
+    <div class="flex-1"></div>
+    <Button 
+      variant="outline" 
+      size="sm"
+      onclick={toggleLayout}
+      class="flex items-center gap-2 whitespace-nowrap"
+    >
+      {#if layoutDirection === 'vertical'}
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12H3M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/>
+        </svg>
+        가로 배치
+      {:else}
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 21V3M3 12h18M8 7l-5 5 5 5M16 7l5 5-5 5"/>
+        </svg>
+        세로 배치
+      {/if}
+    </Button>
   </div>
 
   <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
