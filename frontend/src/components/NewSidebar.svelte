@@ -35,7 +35,8 @@
       icon: '🏢',
       children: [
         { id: 'branch-register', title: '영업점 등록', icon: '➕', component: 'BranchRegistration' },
-        { id: 'branch-list', title: '영업점 목록', icon: '📑', component: 'BranchList' }
+        { id: 'branch-list', title: '영업점 목록', icon: '📑', component: 'BranchList' },
+        { id: 'branch-org', title: '조직 구성', icon: '🌳', component: 'BranchOrganization' }
       ]
     },
     {

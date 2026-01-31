@@ -15,6 +15,7 @@
   import BranchRegistration from '../routes/branch/BranchRegistration.svelte';
   import BranchList from '../routes/branch/BranchList.svelte';
   import BranchDetail from '../routes/branch/BranchDetail.svelte';
+  import BranchOrganization from '../routes/branch/BranchOrganization.svelte';
   
   import type { Component } from 'svelte';
   
@@ -29,6 +30,7 @@
     'BranchRegistration': BranchRegistration,
     'BranchList': BranchList,
     'BranchDetail': BranchDetail,
+    'BranchOrganization': BranchOrganization,
     'ComingSoon': null,
   };
   
