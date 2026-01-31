@@ -2,7 +2,7 @@
   import { apiClient } from '../lib/api';
   import { tenantStore } from '../lib/stores';
   import { format } from 'date-fns';
-  import type { Transaction } from '../types/api';
+  import type { Transaction, PagedResponse } from '../types/api';
   
   let transactions = $state<Transaction[]>([]);
   let loading = $state(true);
