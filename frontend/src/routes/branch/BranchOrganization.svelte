@@ -77,7 +77,7 @@
   let toasts = $state<Array<{ id: number; message: string; type: 'success' | 'error' }>>([]);
   let toastCounter = 0;
 
-  let layoutDirection = $state<'vertical' | 'horizontal'>('vertical');
+  let layoutDirection = $state<'vertical' | 'horizontal'>('horizontal');
 
   let stats = $derived({
     total: countNodes(organizations),
