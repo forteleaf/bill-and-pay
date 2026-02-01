@@ -84,3 +84,12 @@
   3. 컬러: 신뢰감 있는 파란색/남색 또는 금융 느낌의 초록색/골드
 
 
+
+---
+# BUG
+
+## 무한 API 호출 버그 수정
+
+- 문제: MerchantTransactions, MerchantSettlements에서 무한 조회 발생
+- 원인: onMount와 $effect 둘 다 API 호출 + $effect 내부 state 변경이 재트리거 유발
+- 해결: $effect 제거, onMount만 사용

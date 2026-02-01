@@ -10,6 +10,8 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { SettlementAccountEntityType } from '../../types/settlementAccount';
+  import SettlementAccountManager from '../../components/SettlementAccountManager.svelte';
 
   interface Props {
     branchId: string;
@@ -263,27 +265,10 @@
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle class="text-base">정산계좌</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="grid grid-cols-2 gap-5">
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">은행</label>
-                <span class="text-sm">{branch.bankAccount?.bankName || '-'}</span>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">계좌번호</label>
-                <span class="text-sm font-mono text-muted-foreground">{branch.bankAccount?.accountNumber || '-'}</span>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">예금주</label>
-                <span class="text-sm">{branch.bankAccount?.accountHolder || '-'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+         <SettlementAccountManager 
+           entityType={SettlementAccountEntityType.BUSINESS_ENTITY} 
+           entityId={branch.businessEntity?.id || ''} 
+         />
 
         <Card>
           <CardHeader>

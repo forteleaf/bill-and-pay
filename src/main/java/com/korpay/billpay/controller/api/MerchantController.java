@@ -54,13 +54,9 @@ public class MerchantController {
         }
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<Merchant> merchantsPage = merchantService.findAccessibleMerchants(currentUser, pageable);
+        Page<MerchantDto> merchantsPage = merchantService.findAccessibleMerchantsWithPrimaryContact(currentUser, pageable);
         
-        List<MerchantDto> dtos = merchantsPage.getContent().stream()
-                .map(MerchantDto::from)
-                .collect(Collectors.toList());
-        
-        PagedResponse<MerchantDto> pagedResponse = PagedResponse.of(merchantsPage, dtos);
+        PagedResponse<MerchantDto> pagedResponse = PagedResponse.of(merchantsPage, merchantsPage.getContent());
         
         return ResponseEntity.ok(ApiResponse.success(pagedResponse));
     }

@@ -65,6 +65,20 @@ public class MerchantService {
         return new PageImpl<>(pageContent, pageable, accessibleMerchants.size());
     }
 
+    public Page<MerchantDto> findAccessibleMerchantsWithPrimaryContact(User user, Pageable pageable) {
+        Page<Merchant> merchantPage = findAccessibleMerchants(user, pageable);
+        
+        List<MerchantDto> dtos = merchantPage.getContent().stream()
+                .map(merchant -> {
+                    Contact primaryContact = contactRepository.findPrimaryByEntityTypeAndEntityId(
+                            ContactEntityType.MERCHANT, merchant.getId()).orElse(null);
+                    return MerchantDto.from(merchant, primaryContact, null);
+                })
+                .collect(Collectors.toList());
+        
+        return new PageImpl<>(dtos, pageable, merchantPage.getTotalElements());
+    }
+
     public Merchant findById(UUID id, User user) {
         Merchant merchant = merchantRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + id));

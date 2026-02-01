@@ -256,37 +256,39 @@
   <!-- Table Container -->
   <div class="bg-background border border-border rounded-xl overflow-hidden shadow-sm">
     <Table>
-      <TableHeader>
-        <TableRow class="bg-gradient-to-b from-muted/50 to-muted">
-          <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">가맹점코드</TableHead>
-          <TableHead class="min-w-[160px] font-bold text-xs uppercase tracking-wide">상호</TableHead>
-          <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">영업점</TableHead>
-          <TableHead class="w-[100px] font-bold text-xs uppercase tracking-wide">대표자</TableHead>
-          <TableHead class="w-[130px] font-bold text-xs uppercase tracking-wide">사업자번호</TableHead>
-          <TableHead class="w-[100px] text-center font-bold text-xs uppercase tracking-wide">유형</TableHead>
-          <TableHead class="w-[80px] text-center font-bold text-xs uppercase tracking-wide">상태</TableHead>
-          <TableHead class="w-[100px] font-bold text-xs uppercase tracking-wide">등록일</TableHead>
-        </TableRow>
-      </TableHeader>
+       <TableHeader>
+         <TableRow class="bg-gradient-to-b from-muted/50 to-muted">
+           <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">가맹점코드</TableHead>
+           <TableHead class="min-w-[160px] font-bold text-xs uppercase tracking-wide">상호</TableHead>
+           <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">영업점</TableHead>
+           <TableHead class="w-[100px] font-bold text-xs uppercase tracking-wide">담당자</TableHead>
+           <TableHead class="w-[120px] font-bold text-xs uppercase tracking-wide">연락처</TableHead>
+           <TableHead class="w-[130px] font-bold text-xs uppercase tracking-wide">사업자번호</TableHead>
+           <TableHead class="w-[100px] text-center font-bold text-xs uppercase tracking-wide">유형</TableHead>
+           <TableHead class="w-[80px] text-center font-bold text-xs uppercase tracking-wide">상태</TableHead>
+           <TableHead class="w-[100px] font-bold text-xs uppercase tracking-wide">등록일</TableHead>
+         </TableRow>
+       </TableHeader>
       <TableBody>
-        {#if initialLoading}
-          <!-- Loading Skeleton -->
-          {#each Array(8) as _}
-            <TableRow>
-              <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
-              <TableCell><div class="h-4 w-32 bg-muted animate-pulse rounded"></div></TableCell>
-              <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
-              <TableCell><div class="h-4 w-16 bg-muted animate-pulse rounded"></div></TableCell>
-              <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
-              <TableCell class="text-center"><div class="h-4 w-16 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
-              <TableCell class="text-center"><div class="h-4 w-12 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
-              <TableCell><div class="h-4 w-20 bg-muted animate-pulse rounded"></div></TableCell>
-            </TableRow>
-          {/each}
-        {:else if merchants.length === 0}
-          <!-- Empty State -->
-          <TableRow>
-            <TableCell colspan={8} class="py-16 text-center">
+         {#if initialLoading}
+           <!-- Loading Skeleton -->
+           {#each Array(8) as _}
+             <TableRow>
+               <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
+               <TableCell><div class="h-4 w-32 bg-muted animate-pulse rounded"></div></TableCell>
+               <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
+               <TableCell><div class="h-4 w-16 bg-muted animate-pulse rounded"></div></TableCell>
+               <TableCell><div class="h-4 w-20 bg-muted animate-pulse rounded"></div></TableCell>
+               <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
+               <TableCell class="text-center"><div class="h-4 w-16 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
+               <TableCell class="text-center"><div class="h-4 w-12 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
+               <TableCell><div class="h-4 w-20 bg-muted animate-pulse rounded"></div></TableCell>
+             </TableRow>
+           {/each}
+         {:else if merchants.length === 0}
+           <!-- Empty State -->
+           <TableRow>
+             <TableCell colspan={9} class="py-16 text-center">
               <div class="flex flex-col items-center gap-3">
                 <svg class="w-16 h-16 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M3 21h18M3 7v1a3 3 0 003 3h12a3 3 0 003-3V7M3 7l2-4h14l2 4"/>
@@ -314,15 +316,18 @@
               <TableCell>
                 <span class="font-medium text-foreground">{merchant.name}</span>
               </TableCell>
-              <TableCell>
-                <span class="text-sm text-muted-foreground">{merchant.organizationName || '-'}</span>
-              </TableCell>
-              <TableCell>
-                {merchant.representative || '-'}
-              </TableCell>
-              <TableCell>
-                <span class="font-mono text-sm">{formatBusinessNumber(merchant.businessNumber)}</span>
-              </TableCell>
+               <TableCell>
+                 <span class="text-sm text-muted-foreground">{merchant.organizationName || '-'}</span>
+               </TableCell>
+               <TableCell>
+                 <span class="text-sm">{merchant.primaryContact?.name || '-'}</span>
+               </TableCell>
+               <TableCell>
+                 <span class="text-sm text-muted-foreground">{merchant.primaryContact?.phone || '-'}</span>
+               </TableCell>
+               <TableCell>
+                 <span class="font-mono text-sm">{formatBusinessNumber(merchant.businessNumber)}</span>
+               </TableCell>
               <TableCell class="text-center">
                 {#if merchant.businessType}
                   <Badge variant="secondary" class="text-xs">

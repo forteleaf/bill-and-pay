@@ -11,8 +11,10 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { SettlementAccountEntityType } from '../../types/settlementAccount';
   import MerchantTransactions from './MerchantTransactions.svelte';
   import MerchantSettlements from './MerchantSettlements.svelte';
+  import SettlementAccountManager from '../../components/SettlementAccountManager.svelte';
 
   interface Props {
     merchantId: string;
@@ -286,25 +288,30 @@
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle class="text-base">등록정보</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="grid grid-cols-2 gap-5">
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">등록일시</label>
-                <span class="text-sm text-muted-foreground">{formatDate(merchant.createdAt)}</span>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">수정일시</label>
-                <span class="text-sm text-muted-foreground">{formatDate(merchant.updatedAt)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+         <Card>
+           <CardHeader>
+             <CardTitle class="text-base">등록정보</CardTitle>
+           </CardHeader>
+           <CardContent>
+             <div class="grid grid-cols-2 gap-5">
+               <div class="flex flex-col gap-1.5">
+                 <label class="text-xs font-medium text-muted-foreground">등록일시</label>
+                 <span class="text-sm text-muted-foreground">{formatDate(merchant.createdAt)}</span>
+               </div>
+               <div class="flex flex-col gap-1.5">
+                 <label class="text-xs font-medium text-muted-foreground">수정일시</label>
+                 <span class="text-sm text-muted-foreground">{formatDate(merchant.updatedAt)}</span>
+               </div>
+             </div>
+           </CardContent>
+         </Card>
 
-      {:else if activeSection === 'transaction'}
+         <SettlementAccountManager 
+           entityType={SettlementAccountEntityType.MERCHANT} 
+           entityId={merchant.id} 
+         />
+
+       {:else if activeSection === 'transaction'}
         <Card>
           <CardHeader>
             <CardTitle class="text-base">거래내역</CardTitle>

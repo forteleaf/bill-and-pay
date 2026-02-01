@@ -114,8 +114,8 @@
 - ✅ PostgreSQL ltree 기반 5단계 조직 계층
 - ✅ 복식부기 정산 엔진 (Zero-Sum 검증, 부분취소 비례 계산)
 - ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
-- ✅ REST API 24개 엔드포인트 (조직/가맹점/거래/정산/대시보드/사업자)
-- ✅ Flyway 마이그레이션 (public 2개, tenant 13개)
+- ✅ REST API 30개 엔드포인트 (조직/가맹점/거래/정산/대시보드/사업자/사용자/정산계좌/담당자)
+- ✅ Flyway 마이그레이션 (public 2개, tenant 19개)
 - ✅ JPA 엔티티 11개, Repository 11개
 - ✅ CORS 설정
 - ✅ JWT 인증 (Spring Security + JWT)
@@ -128,6 +128,10 @@
   - BusinessEntity 엔티티 (법인/개인/비사업자 구분)
   - BusinessEntityController (CRUD + 검색 API 6개)
   - 영업점(Organization)과 1:N 관계
+- ✅ **사용자 관리** (User Management)
+  - UserService (CRUD, 비밀번호 변경, 접근 제어)
+  - UserController (REST API 6개 엔드포인트)
+  - UserCreateRequest, UserUpdateRequest, UserResponse DTOs
 
 ### 프론트엔드 (Svelte 5)
 - ✅ Runes API ($state, $derived, $effect)
@@ -162,6 +166,19 @@
   - 영업점 등록 위자드 (BranchRegistration.svelte)
   - 영업점 상세/수정 (BranchDetail.svelte)
   - 사업자 정보 검색/선택 기능 연동
+- ✅ **사용자 관리** (User Management)
+  - 사용자 목록 (UserList.svelte) - 필터링, 페이지네이션
+  - 사용자 상세/수정 (UserDetail.svelte) - 비밀번호 변경 포함
+  - 사용자 등록 (UserRegistration.svelte)
+  - userApi.ts, user.ts 타입 정의
+- ✅ **정산계좌 관리** (Settlement Account)
+  - SettlementAccountManager.svelte - 재사용 가능한 CRUD 컴포넌트
+  - settlementAccountApi.ts, settlementAccount.ts 타입 정의
+  - MerchantDetail, BranchDetail에 통합
+- ✅ **담당자 관리** (Contact Management)
+  - ContactManager.svelte - 재사용 가능한 CRUD 컴포넌트
+  - contactApi.ts - Contact API 클라이언트
+  - MerchantList에 담당자/연락처 컬럼 추가
 
 ### 인프라 (Finch/Docker)
 - ✅ PostgreSQL 18 + ltree 확장
@@ -175,7 +192,7 @@
 - ⏳ Seed 데이터 (Flyway)
 - ⏳ 로깅 및 모니터링 (Logback, Micrometer)
 - ⏳ 2FA (TOTP)
-- ⏳ 사용자 관리 UI
+- ⏳ 사용자 관리 사이드바 연동
 
 ## 실행 가이드
 
