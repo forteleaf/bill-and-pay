@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { toast } from 'svelte-sonner';
   import { branchApi } from '../../lib/branchApi';
   import {
     BRANCH_TYPE_LABELS,
@@ -105,7 +106,7 @@
       if (response.success && response.data) {
         branch = response.data;
         editMode = false;
-        alert('저장되었습니다.');
+        toast.success('저장되었습니다.');
       } else {
         error = response.error?.message || '저장에 실패했습니다.';
       }

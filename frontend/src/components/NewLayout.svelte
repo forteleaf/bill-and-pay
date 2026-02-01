@@ -3,6 +3,7 @@
   import NewSidebar from './NewSidebar.svelte';
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
+  import { Toaster } from '$lib/components/ui/sonner';
   import { tabStore } from '../lib/tabStore';
   
   import Dashboard from '../routes/Dashboard.svelte';
@@ -58,6 +59,8 @@
     activeTab ? componentMap[activeTab.component] : null
   );
 </script>
+
+<Toaster position="top-right" richColors />
 
 <div class="flex min-h-screen max-h-screen overflow-hidden">
   <NewSidebar />
