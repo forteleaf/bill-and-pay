@@ -12,6 +12,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
   import MerchantTransactions from './MerchantTransactions.svelte';
+  import MerchantSettlements from './MerchantSettlements.svelte';
 
   interface Props {
     merchantId: string;
@@ -315,12 +316,11 @@
 
       {:else if activeSection === 'settlement'}
         <Card>
-          <CardContent class="pt-6">
-            <div class="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <span class="text-5xl mb-4">📊</span>
-              <h3 class="text-lg font-semibold text-foreground mb-2">정산내역</h3>
-              <p class="text-sm">정산내역 조회 기능이 곧 제공될 예정입니다.</p>
-            </div>
+          <CardHeader>
+            <CardTitle class="text-base">정산내역</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MerchantSettlements merchantId={merchantId} />
           </CardContent>
         </Card>
       {/if}
