@@ -28,9 +28,8 @@ public class OrganizationCreateRequest {
     
     private UUID parentId;
     
-    private String businessNumber;
-    private String businessName;
-    private String representativeName;
+    @NotNull(message = "Business entity is required")
+    private UUID businessEntityId;
     
     @Email(message = "Invalid email format")
     private String email;

@@ -325,7 +325,7 @@
                 </Badge>
               </TableCell>
               <TableCell>
-                {branch.businessInfo?.representative || '-'}
+                {branch.businessEntity?.representativeName || '-'}
               </TableCell>
               <TableCell class="text-center">
                 <Badge variant={getStatusVariant(branch.status)}>

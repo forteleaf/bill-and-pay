@@ -18,9 +18,7 @@ public class OrganizationUpdateRequest {
     
     private UUID parentId;
     private String name;
-    private String businessNumber;
-    private String businessName;
-    private String representativeName;
+    private UUID businessEntityId;
     
     @Email(message = "Invalid email format")
     private String email;

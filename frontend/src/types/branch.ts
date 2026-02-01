@@ -1,7 +1,8 @@
-import type { Organization, CreateOrgRequest, UpdateOrgRequest } from "./api";
+import type { Organization, CreateOrgRequest, UpdateOrgRequest, BusinessEntityDto } from "./api";
 import { OrgType, OrgStatus } from "./api";
 
 export { OrgType, OrgStatus };
+export type { BusinessEntityDto };
 
 // Branch type aliases (영업점 = Organization)
 export type BranchType = OrgType;
@@ -91,23 +92,19 @@ export interface LimitConfig {
 
 // Extended Branch type for UI
 export interface Branch extends Organization {
-	businessInfo?: BusinessInfo;
 	bankAccount?: BankAccountInfo;
 	feeConfig?: {
-		terminal?: FeeConfig; // 단말기
-		oldAuth?: FeeConfig; // 구인증
-		nonAuth?: FeeConfig; // 비인증
-		authPay?: FeeConfig; // 인증결제
-		recurring?: FeeConfig; // 정기과금
+		terminal?: FeeConfig;
+		oldAuth?: FeeConfig;
+		nonAuth?: FeeConfig;
+		authPay?: FeeConfig;
+		recurring?: FeeConfig;
 	};
 	limitConfig?: LimitConfig;
-	createdAt?: string;
-	updatedAt?: string;
 }
 
 // Create request for wizard
 export interface BranchCreateRequest extends CreateOrgRequest {
-	businessInfo?: BusinessInfo;
 	bankAccount?: BankAccountInfo;
 	feeConfig?: Branch["feeConfig"];
 	limitConfig?: LimitConfig;
@@ -115,7 +112,6 @@ export interface BranchCreateRequest extends CreateOrgRequest {
 
 // Update request
 export interface BranchUpdateRequest extends UpdateOrgRequest {
-	businessInfo?: BusinessInfo;
 	bankAccount?: BankAccountInfo;
 	feeConfig?: Branch["feeConfig"];
 	limitConfig?: LimitConfig;

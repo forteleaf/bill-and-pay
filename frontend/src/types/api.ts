@@ -18,6 +18,26 @@ export interface PagedResponse<T> {
   hasPrevious: boolean;
 }
 
+export interface BusinessEntityDto {
+  id: string;
+  businessType: string;
+  businessNumber?: string;
+  corporateNumber?: string;
+  businessName: string;
+  representativeName: string;
+  openDate?: string;
+  businessAddress?: string;
+  actualAddress?: string;
+  businessCategory?: string;
+  businessSubCategory?: string;
+  mainPhone?: string;
+  managerName?: string;
+  managerPhone?: string;
+  email?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Organization {
   id: string;
   orgCode: string;
@@ -26,6 +46,13 @@ export interface Organization {
   path: string;
   level: number;
   status: string;
+  businessEntityId?: string;
+  businessEntity?: BusinessEntityDto;
+  email?: string;
+  phone?: string;
+  address?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Merchant {
@@ -148,6 +175,7 @@ export interface CreateOrgRequest {
   name: string;
   orgType: OrgType;
   parentId?: string;
+  businessEntityId: string;
   email?: string;
   phone?: string;
   address?: string;
@@ -156,6 +184,7 @@ export interface CreateOrgRequest {
 export interface UpdateOrgRequest {
   name?: string;
   status?: OrgStatus;
+  businessEntityId?: string;
   email?: string;
   phone?: string;
   address?: string;

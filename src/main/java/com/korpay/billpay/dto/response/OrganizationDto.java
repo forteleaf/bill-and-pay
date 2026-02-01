@@ -25,9 +25,8 @@ public class OrganizationDto {
     private String path;
     private Integer level;
     private UUID parentId;
-    private String businessNumber;
-    private String businessName;
-    private String representativeName;
+    private UUID businessEntityId;
+    private BusinessEntityResponse businessEntity;
     private String email;
     private String phone;
     private String address;
@@ -45,9 +44,8 @@ public class OrganizationDto {
                 .path(organization.getPath())
                 .level(organization.getLevel())
                 .parentId(organization.getParent() != null ? organization.getParent().getId() : null)
-                .businessNumber(organization.getBusinessNumber())
-                .businessName(organization.getBusinessName())
-                .representativeName(organization.getRepresentativeName())
+                .businessEntityId(organization.getBusinessEntity() != null ? organization.getBusinessEntity().getId() : null)
+                .businessEntity(organization.getBusinessEntity() != null ? BusinessEntityResponse.from(organization.getBusinessEntity()) : null)
                 .email(organization.getEmail())
                 .phone(organization.getPhone())
                 .address(organization.getAddress())

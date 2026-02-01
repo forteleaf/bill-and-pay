@@ -10,6 +10,7 @@
     type FeeConfig,
     type LimitConfig,
     type BusinessEntity,
+    type BusinessEntityCreateRequest,
   } from "../../types/branch";
   import { Button } from "$lib/components/ui/button";
   import { Card, CardContent } from "$lib/components/ui/card";
@@ -297,16 +298,52 @@
     loading = true;
     submitResult = null;
 
-    const requestData: BranchCreateRequest = {
-      name: orgName,
-      orgType: orgType,
-      businessInfo: businessInfo,
-      bankAccount: bankAccount,
-      feeConfig: feeConfig,
-      limitConfig: limitConfig,
-    };
-
     try {
+      let businessEntityId: string;
+
+      if (selectedBusinessEntity) {
+        businessEntityId = selectedBusinessEntity.id;
+      } else {
+        const createEntityRequest: BusinessEntityCreateRequest = {
+          businessType: businessInfo.businessType,
+          businessNumber: businessInfo.businessNumber || undefined,
+          corporateNumber: businessInfo.corporateNumber || undefined,
+          businessName: orgName,
+          representativeName: businessInfo.representative,
+          openDate: businessInfo.openDate || undefined,
+          businessAddress: businessInfo.businessAddress || undefined,
+          actualAddress: businessInfo.actualAddress || undefined,
+          businessCategory: businessInfo.businessCategory || undefined,
+          businessSubCategory: businessInfo.businessType2 || undefined,
+          mainPhone: businessInfo.mainPhone || undefined,
+          managerName: businessInfo.managerName || undefined,
+          managerPhone: businessInfo.managerPhone || undefined,
+          email: businessInfo.email || undefined,
+        };
+
+        const entityResponse =
+          await businessEntityApi.create(createEntityRequest);
+        if (!entityResponse.success || !entityResponse.data) {
+          submitResult = {
+            success: false,
+            message:
+              entityResponse.error?.message ||
+              "사업자 등록에 실패했습니다. 다시 시도해주세요.",
+          };
+          return;
+        }
+        businessEntityId = entityResponse.data.id;
+      }
+
+      const requestData: BranchCreateRequest = {
+        name: orgName,
+        orgType: orgType,
+        businessEntityId: businessEntityId,
+        bankAccount: bankAccount,
+        feeConfig: feeConfig,
+        limitConfig: limitConfig,
+      };
+
       const response = await branchApi.createBranch(requestData);
       if (response.success && response.data) {
         submitResult = {

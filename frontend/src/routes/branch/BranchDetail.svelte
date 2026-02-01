@@ -5,8 +5,7 @@
     BRANCH_TYPE_LABELS,
     OrgType,
     type Branch,
-    type BranchUpdateRequest,
-    type BusinessInfo
+    type BranchUpdateRequest
   } from '../../types/branch';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
@@ -71,11 +70,11 @@
   function initEditFields() {
     if (!branch) return;
     editName = branch.name || '';
-    editPhone = branch.businessInfo?.mainPhone || '';
-    editEmail = branch.businessInfo?.email || '';
-    editManagerName = branch.businessInfo?.managerName || '';
-    editManagerPhone = branch.businessInfo?.managerPhone || '';
-    editAddress = branch.businessInfo?.businessAddress || '';
+    editPhone = branch.businessEntity?.mainPhone || branch.phone || '';
+    editEmail = branch.businessEntity?.email || branch.email || '';
+    editManagerName = branch.businessEntity?.managerName || '';
+    editManagerPhone = branch.businessEntity?.managerPhone || '';
+    editAddress = branch.businessEntity?.businessAddress || branch.address || '';
   }
 
   function toggleEditMode() {
@@ -92,27 +91,11 @@
     error = null;
 
     try {
-      const businessInfo: BusinessInfo = {
-        businessType: branch.businessInfo?.businessType || 'CORPORATION' as BusinessInfo['businessType'],
-        representative: branch.businessInfo?.representative || '',
-        businessAddress: editAddress,
-        mainPhone: editPhone,
-        managerName: editManagerName,
-        managerPhone: editManagerPhone,
-        email: editEmail,
-        businessNumber: branch.businessInfo?.businessNumber,
-        corporateNumber: branch.businessInfo?.corporateNumber,
-        openDate: branch.businessInfo?.openDate,
-        actualAddress: branch.businessInfo?.actualAddress,
-        businessCategory: branch.businessInfo?.businessCategory,
-        businessType2: branch.businessInfo?.businessType2
-      };
-
       const data: BranchUpdateRequest = {
         name: editName,
         phone: editPhone,
         email: editEmail,
-        businessInfo
+        address: editAddress
       };
 
       const response = await branchApi.updateBranch(branch.id, data);
@@ -222,7 +205,7 @@
             <div class="grid grid-cols-2 gap-5">
               <div class="flex flex-col gap-1.5">
                 <label class="text-xs font-medium text-muted-foreground">사업자번호</label>
-                <span class="text-sm font-mono text-muted-foreground">{branch.businessInfo?.businessNumber || '-'}</span>
+                <span class="text-sm font-mono text-muted-foreground">{branch.businessEntity?.businessNumber || '-'}</span>
               </div>
               <div class="flex flex-col gap-1.5">
                 <label class="text-xs font-medium text-muted-foreground">상호</label>
@@ -234,14 +217,14 @@
               </div>
               <div class="flex flex-col gap-1.5">
                 <label class="text-xs font-medium text-muted-foreground">대표자</label>
-                <span class="text-sm">{branch.businessInfo?.representative || '-'}</span>
+                <span class="text-sm">{branch.businessEntity?.representativeName || '-'}</span>
               </div>
               <div class="flex flex-col gap-1.5">
                 <label class="text-xs font-medium text-muted-foreground">연락처</label>
                 {#if editMode}
                   <input type="text" bind:value={editPhone} placeholder="010-0000-0000" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{branch.businessInfo?.mainPhone || '-'}</span>
+                  <span class="text-sm">{branch.businessEntity?.mainPhone || branch.phone || '-'}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
@@ -249,7 +232,7 @@
                 {#if editMode}
                   <input type="text" bind:value={editAddress} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{branch.businessInfo?.businessAddress || '-'}</span>
+                  <span class="text-sm">{branch.businessEntity?.businessAddress || branch.address || '-'}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
@@ -257,7 +240,7 @@
                 {#if editMode}
                   <input type="text" bind:value={editManagerName} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{branch.businessInfo?.managerName || '-'}</span>
+                  <span class="text-sm">{branch.businessEntity?.managerName || '-'}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
@@ -265,7 +248,7 @@
                 {#if editMode}
                   <input type="text" bind:value={editManagerPhone} placeholder="010-0000-0000" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{branch.businessInfo?.managerPhone || '-'}</span>
+                  <span class="text-sm">{branch.businessEntity?.managerPhone || '-'}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
@@ -273,7 +256,7 @@
                 {#if editMode}
                   <input type="email" bind:value={editEmail} placeholder="example@email.com" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{branch.businessInfo?.email || '-'}</span>
+                  <span class="text-sm">{branch.businessEntity?.email || branch.email || '-'}</span>
                 {/if}
               </div>
             </div>

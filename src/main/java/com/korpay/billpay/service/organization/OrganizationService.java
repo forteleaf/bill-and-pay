@@ -1,5 +1,6 @@
 package com.korpay.billpay.service.organization;
 
+import com.korpay.billpay.domain.entity.BusinessEntity;
 import com.korpay.billpay.domain.entity.Organization;
 import com.korpay.billpay.domain.entity.User;
 import com.korpay.billpay.domain.enums.OrganizationStatus;
@@ -8,6 +9,7 @@ import com.korpay.billpay.dto.request.OrganizationCreateRequest;
 import com.korpay.billpay.dto.request.OrganizationUpdateRequest;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
+import com.korpay.billpay.repository.BusinessEntityRepository;
 import com.korpay.billpay.repository.OrganizationRepository;
 import com.korpay.billpay.service.auth.AccessControlService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ import java.util.stream.Stream;
 public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
+    private final BusinessEntityRepository businessEntityRepository;
     private final AccessControlService accessControlService;
 
     public Page<Organization> findAccessibleOrganizations(User user, Pageable pageable) {
@@ -67,9 +70,13 @@ public class OrganizationService {
                         org.getOrgCode().toLowerCase().contains(searchLower);
                 boolean matchName = org.getName() != null && 
                         org.getName().toLowerCase().contains(searchLower);
-                boolean matchRepresentative = org.getRepresentativeName() != null && 
-                        org.getRepresentativeName().toLowerCase().contains(searchLower);
-                return matchOrgCode || matchName || matchRepresentative;
+                boolean matchBusinessName = org.getBusinessEntity() != null && 
+                        org.getBusinessEntity().getBusinessName() != null &&
+                        org.getBusinessEntity().getBusinessName().toLowerCase().contains(searchLower);
+                boolean matchRepresentative = org.getBusinessEntity() != null && 
+                        org.getBusinessEntity().getRepresentativeName() != null &&
+                        org.getBusinessEntity().getRepresentativeName().toLowerCase().contains(searchLower);
+                return matchOrgCode || matchName || matchBusinessName || matchRepresentative;
             });
         }
         
@@ -158,6 +165,9 @@ public class OrganizationService {
             throw new ValidationException("Organization code already exists: " + orgCode);
         }
         
+        BusinessEntity businessEntity = businessEntityRepository.findById(request.getBusinessEntityId())
+                .orElseThrow(() -> new EntityNotFoundException("Business entity not found: " + request.getBusinessEntityId()));
+        
         Organization organization = Organization.builder()
                 .orgCode(orgCode)
                 .name(request.getName())
@@ -165,9 +175,7 @@ public class OrganizationService {
                 .path(newPath)
                 .parent(parent)
                 .level(newLevel)
-                .businessNumber(request.getBusinessNumber())
-                .businessName(request.getBusinessName())
-                .representativeName(request.getRepresentativeName())
+                .businessEntity(businessEntity)
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .address(request.getAddress())
@@ -190,14 +198,10 @@ public class OrganizationService {
         if (request.getName() != null) {
             organization.setName(request.getName());
         }
-        if (request.getBusinessNumber() != null) {
-            organization.setBusinessNumber(request.getBusinessNumber());
-        }
-        if (request.getBusinessName() != null) {
-            organization.setBusinessName(request.getBusinessName());
-        }
-        if (request.getRepresentativeName() != null) {
-            organization.setRepresentativeName(request.getRepresentativeName());
+        if (request.getBusinessEntityId() != null) {
+            BusinessEntity businessEntity = businessEntityRepository.findById(request.getBusinessEntityId())
+                    .orElseThrow(() -> new EntityNotFoundException("Business entity not found: " + request.getBusinessEntityId()));
+            organization.setBusinessEntity(businessEntity);
         }
         if (request.getEmail() != null) {
             organization.setEmail(request.getEmail());
