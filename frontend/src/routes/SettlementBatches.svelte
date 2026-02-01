@@ -8,7 +8,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
-  import { Input } from '$lib/components/ui/input';
+  import { DatePicker } from '$lib/components/ui/date-picker';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
   
   let batches = $state<SettlementBatch[]>([]);
@@ -124,21 +124,19 @@
         
         <div class="space-y-2">
           <Label for="startDate">Start Date</Label>
-          <Input 
-            type="date" 
-            id="startDate" 
+          <DatePicker 
             value={startDate}
-            oninput={(e) => { startDate = e.currentTarget.value; currentPage = 0; loadBatches(); }}
+            onchange={(d) => { startDate = d; currentPage = 0; loadBatches(); }}
+            placeholder="시작일"
           />
         </div>
         
         <div class="space-y-2">
           <Label for="endDate">End Date</Label>
-          <Input 
-            type="date" 
-            id="endDate" 
+          <DatePicker 
             value={endDate}
-            oninput={(e) => { endDate = e.currentTarget.value; currentPage = 0; loadBatches(); }}
+            onchange={(d) => { endDate = d; currentPage = 0; loadBatches(); }}
+            placeholder="종료일"
           />
         </div>
         

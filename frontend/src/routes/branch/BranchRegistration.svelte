@@ -14,6 +14,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
+  import { DatePicker } from '$lib/components/ui/date-picker';
 
   let currentStep = $state(1);
   const totalSteps = 3;
@@ -616,12 +617,12 @@
                 </div>
                 <div class="flex flex-col gap-2">
                   <Label for="openDate">개업연월일</Label>
-                  <input
-                    id="openDate"
-                    type="date"
-                    bind:value={businessInfo.openDate}
+                  <DatePicker
+                    value={businessInfo.openDate}
+                    onchange={(d) => businessInfo.openDate = d}
                     disabled={!!selectedBusinessEntity}
-                    class="h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}"
+                    placeholder="개업일 선택"
+                    class={selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}
                   />
                 </div>
               </div>

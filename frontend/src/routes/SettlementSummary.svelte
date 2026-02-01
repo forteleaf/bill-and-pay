@@ -7,7 +7,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
-  import { Input } from '$lib/components/ui/input';
+  import { DatePicker } from '$lib/components/ui/date-picker';
   
   let summary = $state<SettlementSummary | null>(null);
   let loading = $state(true);
@@ -104,21 +104,19 @@
         
         <div class="space-y-2">
           <Label for="startDate">Start Date</Label>
-          <Input 
-            type="date" 
-            id="startDate" 
+          <DatePicker 
             value={startDate}
-            oninput={(e) => { startDate = e.currentTarget.value; loadSummary(); }}
+            onchange={(d) => { startDate = d; loadSummary(); }}
+            placeholder="시작일"
           />
         </div>
         
         <div class="space-y-2">
           <Label for="endDate">End Date</Label>
-          <Input 
-            type="date" 
-            id="endDate" 
+          <DatePicker 
             value={endDate}
-            oninput={(e) => { endDate = e.currentTarget.value; loadSummary(); }}
+            onchange={(d) => { endDate = d; loadSummary(); }}
+            placeholder="종료일"
           />
         </div>
         

@@ -14,6 +14,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Badge } from '$lib/components/ui/badge';
+  import { DatePicker } from '$lib/components/ui/date-picker';
   import {
     Table,
     TableBody,
@@ -242,9 +243,9 @@
         <div class="flex flex-col gap-1.5">
           <Label for="startDate">기간</Label>
           <div class="flex items-center gap-2">
-            <input id="startDate" type="date" bind:value={startDate} class="h-10 w-[140px] px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            <DatePicker value={startDate} onchange={(d) => startDate = d} placeholder="시작일" class="w-[140px]" />
             <span class="text-muted-foreground font-medium">~</span>
-            <input id="endDate" type="date" bind:value={endDate} aria-label="종료일" class="h-10 w-[140px] px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            <DatePicker value={endDate} onchange={(d) => endDate = d} placeholder="종료일" class="w-[140px]" />
           </div>
         </div>
         <div class="flex gap-1">
