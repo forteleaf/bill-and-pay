@@ -3,6 +3,7 @@ import type { ApiResponse, PagedResponse } from '../types/api';
 import type {
   MerchantDto,
   MerchantCreateRequest,
+  MerchantUpdateRequest,
   MerchantListParams,
   AccessibleOrganization,
   BlacklistCheckResponse
@@ -39,6 +40,10 @@ class MerchantApi {
 
   async getMerchantById(id: string): Promise<ApiResponse<MerchantDto>> {
     return apiClient.get<MerchantDto>(`/merchants/${id}`);
+  }
+
+  async update(id: string, data: MerchantUpdateRequest): Promise<ApiResponse<MerchantDto>> {
+    return apiClient.put<MerchantDto>(`/merchants/${id}`, data);
   }
 }
 

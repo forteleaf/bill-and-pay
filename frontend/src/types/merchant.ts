@@ -43,6 +43,26 @@ export interface MerchantCreateRequest {
 	config?: Record<string, unknown>;
 }
 
+export enum ContactRole {
+	PRIMARY = "PRIMARY",
+	SECONDARY = "SECONDARY",
+	SETTLEMENT = "SETTLEMENT",
+	TECHNICAL = "TECHNICAL",
+}
+
+export interface ContactDto {
+	id: string;
+	name: string;
+	phone?: string;
+	email?: string;
+	role: ContactRole;
+	entityType: string;
+	entityId: string;
+	isPrimary: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export interface MerchantDto {
 	id: string;
 	merchantCode: string;
@@ -51,16 +71,13 @@ export interface MerchantDto {
 	organizationName?: string;
 	businessNumber?: string;
 	businessType?: BusinessType;
-	corporateNumber?: string;
-	representative?: string;
 	address?: string;
-	contactName?: string;
-	contactEmail?: string;
-	contactPhone?: string;
 	status: MerchantStatus;
 	config?: Record<string, unknown>;
 	createdAt: string;
 	updatedAt: string;
+	primaryContact?: ContactDto;
+	contacts?: ContactDto[];
 }
 
 export interface MerchantListParams {
@@ -70,4 +87,16 @@ export interface MerchantListParams {
 	businessType?: BusinessType;
 	organizationId?: string;
 	search?: string;
+}
+
+export interface MerchantUpdateRequest {
+	name?: string;
+	businessNumber?: string;
+	businessType?: BusinessType;
+	contactName?: string;
+	contactEmail?: string;
+	contactPhone?: string;
+	address?: string;
+	status?: MerchantStatus;
+	config?: Record<string, unknown>;
 }

@@ -1,18 +1,23 @@
 package com.korpay.billpay.service.merchant;
 
+import com.korpay.billpay.domain.entity.Contact;
 import com.korpay.billpay.domain.entity.Merchant;
 import com.korpay.billpay.domain.entity.Organization;
 import com.korpay.billpay.domain.entity.User;
+import com.korpay.billpay.domain.enums.ContactEntityType;
+import com.korpay.billpay.domain.enums.ContactRole;
 import com.korpay.billpay.domain.enums.MerchantStatus;
 import com.korpay.billpay.domain.enums.TransactionStatus;
 import com.korpay.billpay.dto.request.MerchantCreateRequest;
 import com.korpay.billpay.dto.request.MerchantUpdateRequest;
 import com.korpay.billpay.dto.response.BlacklistCheckResponse;
+import com.korpay.billpay.dto.response.MerchantDto;
 import com.korpay.billpay.dto.response.MerchantStatisticsDto;
 import com.korpay.billpay.dto.response.OrganizationDto;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
 import com.korpay.billpay.domain.entity.MerchantOrgHistory;
+import com.korpay.billpay.repository.ContactRepository;
 import com.korpay.billpay.repository.MerchantOrgHistoryRepository;
 import com.korpay.billpay.repository.MerchantRepository;
 import com.korpay.billpay.repository.OrganizationRepository;
@@ -28,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -41,6 +47,7 @@ public class MerchantService {
     private final OrganizationRepository organizationRepository;
     private final TransactionRepository transactionRepository;
     private final MerchantOrgHistoryRepository merchantOrgHistoryRepository;
+    private final ContactRepository contactRepository;
     private final AccessControlService accessControlService;
 
     public Page<Merchant> findAccessibleMerchants(User user, Pageable pageable) {
@@ -67,6 +74,25 @@ public class MerchantService {
         return merchant;
     }
 
+    public MerchantDto findByIdWithContacts(UUID id, User user) {
+        Merchant merchant = findById(id, user);
+        Contact primaryContact = contactRepository.findPrimaryByEntityTypeAndEntityId(
+                ContactEntityType.MERCHANT, merchant.getId()).orElse(null);
+        List<Contact> contacts = contactRepository.findByEntityTypeAndEntityId(
+                ContactEntityType.MERCHANT, merchant.getId());
+        return MerchantDto.from(merchant, primaryContact, contacts);
+    }
+
+    public List<Contact> getMerchantContacts(UUID merchantId, User user) {
+        Merchant merchant = findById(merchantId, user);
+        return contactRepository.findByEntityTypeAndEntityId(ContactEntityType.MERCHANT, merchant.getId());
+    }
+
+    public Contact getPrimaryContact(UUID merchantId) {
+        return contactRepository.findPrimaryByEntityTypeAndEntityId(
+                ContactEntityType.MERCHANT, merchantId).orElse(null);
+    }
+
     @Transactional
     public Merchant create(MerchantCreateRequest request, User user) {
         Organization organization = organizationRepository.findById(request.getOrganizationId())
@@ -85,15 +111,27 @@ public class MerchantService {
                 .orgPath(organization.getPath())
                 .businessNumber(request.getBusinessNumber())
                 .businessType(request.getBusinessType())
-                .contactName(request.getContactName())
-                .contactEmail(request.getContactEmail())
-                .contactPhone(request.getContactPhone())
                 .address(request.getAddress())
                 .status(MerchantStatus.ACTIVE)
                 .config(request.getConfig())
                 .build();
         
-        return merchantRepository.save(merchant);
+        Merchant savedMerchant = merchantRepository.save(merchant);
+        
+        if (request.getContactName() != null && !request.getContactName().isBlank()) {
+            Contact primaryContact = Contact.builder()
+                    .name(request.getContactName())
+                    .phone(request.getContactPhone())
+                    .email(request.getContactEmail())
+                    .role(ContactRole.PRIMARY)
+                    .entityType(ContactEntityType.MERCHANT)
+                    .entityId(savedMerchant.getId())
+                    .isPrimary(true)
+                    .build();
+            contactRepository.save(primaryContact);
+        }
+        
+        return savedMerchant;
     }
 
     @Transactional
@@ -109,15 +147,6 @@ public class MerchantService {
         if (request.getBusinessType() != null) {
             merchant.setBusinessType(request.getBusinessType());
         }
-        if (request.getContactName() != null) {
-            merchant.setContactName(request.getContactName());
-        }
-        if (request.getContactEmail() != null) {
-            merchant.setContactEmail(request.getContactEmail());
-        }
-        if (request.getContactPhone() != null) {
-            merchant.setContactPhone(request.getContactPhone());
-        }
         if (request.getAddress() != null) {
             merchant.setAddress(request.getAddress());
         }
@@ -128,7 +157,41 @@ public class MerchantService {
             merchant.setConfig(request.getConfig());
         }
         
+        if (request.getContactName() != null || request.getContactEmail() != null || request.getContactPhone() != null) {
+            updatePrimaryContact(merchant.getId(), request);
+        }
+        
         return merchantRepository.save(merchant);
+    }
+
+    private void updatePrimaryContact(UUID merchantId, MerchantUpdateRequest request) {
+        Optional<Contact> existingContact = contactRepository.findPrimaryByEntityTypeAndEntityId(
+                ContactEntityType.MERCHANT, merchantId);
+        
+        if (existingContact.isPresent()) {
+            Contact contact = existingContact.get();
+            if (request.getContactName() != null) {
+                contact.setName(request.getContactName());
+            }
+            if (request.getContactEmail() != null) {
+                contact.setEmail(request.getContactEmail());
+            }
+            if (request.getContactPhone() != null) {
+                contact.setPhone(request.getContactPhone());
+            }
+            contactRepository.save(contact);
+        } else if (request.getContactName() != null && !request.getContactName().isBlank()) {
+            Contact newContact = Contact.builder()
+                    .name(request.getContactName())
+                    .phone(request.getContactPhone())
+                    .email(request.getContactEmail())
+                    .role(ContactRole.PRIMARY)
+                    .entityType(ContactEntityType.MERCHANT)
+                    .entityId(merchantId)
+                    .isPrimary(true)
+                    .build();
+            contactRepository.save(newContact);
+        }
     }
 
     public MerchantStatisticsDto getStatistics(UUID id, User user) {

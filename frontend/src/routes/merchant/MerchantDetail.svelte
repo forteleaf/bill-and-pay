@@ -3,6 +3,7 @@
   import { merchantApi } from '../../lib/merchantApi';
   import {
     type MerchantDto,
+    type MerchantUpdateRequest,
     MerchantStatus,
     MERCHANT_BUSINESS_TYPE_LABELS
   } from '../../types/merchant';
@@ -10,6 +11,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import MerchantTransactions from './MerchantTransactions.svelte';
 
   interface Props {
     merchantId: string;
@@ -65,9 +67,9 @@
   function initEditFields() {
     if (!merchant) return;
     editName = merchant.name || '';
-    editContactName = merchant.contactName || '';
-    editContactPhone = merchant.contactPhone || '';
-    editContactEmail = merchant.contactEmail || '';
+    editContactName = merchant.primaryContact?.name || '';
+    editContactPhone = merchant.primaryContact?.phone || '';
+    editContactEmail = merchant.primaryContact?.email || '';
     editAddress = merchant.address || '';
   }
 
@@ -84,9 +86,21 @@
     error = null;
 
     try {
-      // TODO: Implement merchant update API
-      alert('수정 기능은 준비 중입니다.');
-      editMode = false;
+      const updateData: MerchantUpdateRequest = {
+        name: editName,
+        contactName: editContactName,
+        contactPhone: editContactPhone,
+        contactEmail: editContactEmail,
+        address: editAddress,
+      };
+
+      const response = await merchantApi.update(merchant.id, updateData);
+      if (response.success && response.data) {
+        merchant = response.data;
+        editMode = false;
+      } else {
+        error = response.error?.message || '저장에 실패했습니다.';
+      }
     } catch (err) {
       error = '저장에 실패했습니다.';
     } finally {
@@ -248,7 +262,7 @@
                 {#if editMode}
                   <input type="text" bind:value={editContactName} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{merchant.contactName || '-'}</span>
+                  <span class="text-sm">{merchant.primaryContact?.name || '-'}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
@@ -256,7 +270,7 @@
                 {#if editMode}
                   <input type="text" bind:value={editContactPhone} placeholder="010-0000-0000" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{merchant.contactPhone || '-'}</span>
+                  <span class="text-sm">{merchant.primaryContact?.phone || '-'}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
@@ -264,7 +278,7 @@
                 {#if editMode}
                   <input type="email" bind:value={editContactEmail} placeholder="example@email.com" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
-                  <span class="text-sm">{merchant.contactEmail || '-'}</span>
+                  <span class="text-sm">{merchant.primaryContact?.email || '-'}</span>
                 {/if}
               </div>
             </div>
@@ -291,12 +305,11 @@
 
       {:else if activeSection === 'transaction'}
         <Card>
-          <CardContent class="pt-6">
-            <div class="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <span class="text-5xl mb-4">💳</span>
-              <h3 class="text-lg font-semibold text-foreground mb-2">거래내역</h3>
-              <p class="text-sm">거래내역 조회 기능이 곧 제공될 예정입니다.</p>
-            </div>
+          <CardHeader>
+            <CardTitle class="text-base">거래내역</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MerchantTransactions merchantId={merchantId} />
           </CardContent>
         </Card>
 

@@ -48,15 +48,6 @@ public class Merchant {
     @Column(name = "business_type", length = 50)
     private String businessType;
 
-    @Column(name = "contact_name", length = 100)
-    private String contactName;
-
-    @Column(name = "contact_email", length = 255)
-    private String contactEmail;
-
-    @Column(name = "contact_phone", length = 20)
-    private String contactPhone;
-
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 

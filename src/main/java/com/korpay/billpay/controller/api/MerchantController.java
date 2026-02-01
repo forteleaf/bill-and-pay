@@ -69,8 +69,7 @@ public class MerchantController {
     public ResponseEntity<ApiResponse<MerchantDto>> getMerchant(@PathVariable UUID id) {
         User currentUser = userContextHolder.getCurrentUser();
         
-        Merchant merchant = merchantService.findById(id, currentUser);
-        MerchantDto dto = MerchantDto.from(merchant);
+        MerchantDto dto = merchantService.findByIdWithContacts(id, currentUser);
         
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
