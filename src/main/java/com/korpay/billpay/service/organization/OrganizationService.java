@@ -51,7 +51,7 @@ public class OrganizationService {
             LocalDate startDate,
             LocalDate endDate) {
         
-        List<Organization> allOrgs = organizationRepository.findAll();
+        List<Organization> allOrgs = organizationRepository.findAllWithBusinessEntity();
         
         Stream<Organization> stream = allOrgs.stream()
                 .filter(org -> accessControlService.hasAccessToOrganization(user, org.getPath()));
@@ -108,7 +108,7 @@ public class OrganizationService {
     }
 
     public Organization findById(UUID id, User user) {
-        Organization organization = organizationRepository.findById(id)
+        Organization organization = organizationRepository.findByIdWithBusinessEntity(id)
                 .orElseThrow(() -> new EntityNotFoundException("Organization not found: " + id));
         
         accessControlService.validateOrganizationAccess(user, organization);

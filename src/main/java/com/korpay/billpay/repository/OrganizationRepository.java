@@ -14,6 +14,12 @@ import java.util.UUID;
 @Repository
 public interface OrganizationRepository extends JpaRepository<Organization, UUID> {
 
+    @Query("SELECT o FROM Organization o LEFT JOIN FETCH o.businessEntity")
+    List<Organization> findAllWithBusinessEntity();
+
+    @Query("SELECT o FROM Organization o LEFT JOIN FETCH o.businessEntity WHERE o.id = :id")
+    Optional<Organization> findByIdWithBusinessEntity(@Param("id") UUID id);
+
     Optional<Organization> findByOrgCode(String orgCode);
 
     @Query(value = "SELECT * FROM organizations WHERE path <@ CAST(:path AS public.ltree)", nativeQuery = true)
