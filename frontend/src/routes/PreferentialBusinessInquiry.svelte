@@ -113,7 +113,7 @@
                 value={businessNumbers}
                 oninput={(e) => businessNumbers = e.currentTarget.value}
                 onkeydown={handleKeydown}
-                class="flex-1"
+                class="flex-1 pl-10"
               />
             </div>
             <Button onclick={handleQuery} disabled={loading} class="h-11 px-6">
