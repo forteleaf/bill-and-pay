@@ -14,7 +14,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Badge } from '$lib/components/ui/badge';
-  import { DatePicker } from '$lib/components/ui/date-picker';
+  import { DateRangePicker } from '$lib/components/ui/date-range-picker';
   import {
     Table,
     TableBody,
@@ -138,8 +138,8 @@
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days);
-    startDate = format(start, 'yyyy-MM-dd');
-    endDate = format(end, 'yyyy-MM-dd');
+    startDate = format(start, 'yyyy/MM/dd');
+    endDate = format(end, 'yyyy/MM/dd');
   }
 
   function handleRowClick(branch: Branch) {
@@ -241,12 +241,14 @@
       <!-- Date Range -->
       <div class="flex flex-row items-end gap-3 flex-wrap">
         <div class="flex flex-col gap-1.5">
-          <Label for="startDate">기간</Label>
-          <div class="flex items-center gap-2">
-            <DatePicker value={startDate} onchange={(d) => startDate = d} placeholder="시작일" class="w-[140px]" />
-            <span class="text-muted-foreground font-medium">~</span>
-            <DatePicker value={endDate} onchange={(d) => endDate = d} placeholder="종료일" class="w-[140px]" />
-          </div>
+          <Label for="dateRange">기간</Label>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onchange={(start, end) => { startDate = start; endDate = end; }}
+            placeholder="기간 선택"
+            class="w-[280px]"
+          />
         </div>
         <div class="flex gap-1">
           <Button variant="outline" size="sm" onclick={() => setDateRange(7)}>7일</Button>
