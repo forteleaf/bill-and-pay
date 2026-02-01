@@ -30,10 +30,6 @@
   let open = $state(false);
 
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-  const months = [
-    "1월", "2월", "3월", "4월", "5월", "6월",
-    "7월", "8월", "9월", "10월", "11월", "12월"
-  ];
 
   // Parse YYYY/MM/DD or YYYY-MM-DD string to CalendarDate
   function parseToCalendarDate(val: string): CalendarDate | undefined {
@@ -136,6 +132,7 @@
       value={calendarValue}
       onValueChange={handleValueChange}
       weekdayFormat="short"
+      locale="ko-KR"
       class="p-3"
       let:months={calendarMonths}
       let:weekdays={_calendarWeekdays}
@@ -149,12 +146,7 @@
           </svg>
         </RangeCalendar.PrevButton>
         <RangeCalendar.Heading class="text-sm font-medium" let:headingValue>
-          {#if headingValue}
-            {@const date = new Date(headingValue)}
-            {date.getFullYear()}년 {months[date.getMonth()]}
-          {:else}
-            -
-          {/if}
+          {headingValue || '-'}
         </RangeCalendar.Heading>
         <RangeCalendar.NextButton
           class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-accent disabled:pointer-events-none"

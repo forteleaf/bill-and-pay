@@ -50,7 +50,7 @@
     AGENCY: "대리점",
     DEALER: "딜러",
     SELLER: "셀러",
-    VENDOR: "가맹점",
+    VENDOR: "벤더",
   };
 
   const STATUS_LABELS: Record<string, string> = {

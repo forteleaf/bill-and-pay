@@ -9,6 +9,14 @@ import type {
   BusinessEntityCreateRequest
 } from '../types/branch';
 
+/**
+ * Convert date from display format (yyyy/MM/dd) to API format (yyyy-MM-dd)
+ */
+function toApiDateFormat(date: string | undefined): string | undefined {
+  if (!date) return undefined;
+  return date.replace(/\//g, '-');
+}
+
 class BranchApi {
   /**
    * Get paginated list of branches (organizations)
@@ -20,8 +28,10 @@ class BranchApi {
     if (params.type) queryParams.set('type', params.type);
     if (params.status) queryParams.set('status', params.status);
     if (params.search) queryParams.set('search', params.search);
-    if (params.startDate) queryParams.set('startDate', params.startDate);
-    if (params.endDate) queryParams.set('endDate', params.endDate);
+    const startDateApi = toApiDateFormat(params.startDate);
+    const endDateApi = toApiDateFormat(params.endDate);
+    if (startDateApi) queryParams.set('startDate', startDateApi);
+    if (endDateApi) queryParams.set('endDate', endDateApi);
     
     const queryString = queryParams.toString();
     const endpoint = `/organizations${queryString ? `?${queryString}` : ''}`;

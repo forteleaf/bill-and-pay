@@ -18,10 +18,6 @@
   }: Props = $props();
 
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-  const months = [
-    "1월", "2월", "3월", "4월", "5월", "6월",
-    "7월", "8월", "9월", "10월", "11월", "12월"
-  ];
 
   // Convert JS Date to CalendarDate
   function toCalendarDate(date: Date | undefined): CalendarDate | undefined {
@@ -56,6 +52,7 @@
   onValueChange={handleValueChange}
   placeholder={calendarPlaceholder}
   weekdayFormat="short"
+  locale="ko-KR"
   class={cn("p-3", className)}
   let:months={calendarMonths}
   let:weekdays={_calendarWeekdays}
@@ -69,12 +66,7 @@
       </svg>
     </CalendarPrimitive.PrevButton>
     <CalendarPrimitive.Heading class="text-sm font-medium" let:headingValue>
-      {#if headingValue}
-        {@const date = new Date(headingValue)}
-        {date.getFullYear()}년 {months[date.getMonth()]}
-      {:else}
-        -
-      {/if}
+      {headingValue || '-'}
     </CalendarPrimitive.Heading>
     <CalendarPrimitive.NextButton
       class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-accent disabled:pointer-events-none"

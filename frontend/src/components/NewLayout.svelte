@@ -18,6 +18,8 @@
   import BranchOrganization from '../routes/branch/BranchOrganization.svelte';
   import PreferentialBusinessInquiry from '../routes/PreferentialBusinessInquiry.svelte';
   import MerchantRegistration from '../routes/merchant/MerchantRegistration.svelte';
+  import MerchantList from '../routes/merchant/MerchantList.svelte';
+  import MerchantDetail from '../routes/merchant/MerchantDetail.svelte';
   
   import type { Component } from 'svelte';
   
@@ -35,6 +37,8 @@
     'BranchOrganization': BranchOrganization,
     'PreferentialBusinessInquiry': PreferentialBusinessInquiry,
     'MerchantRegistration': MerchantRegistration,
+    'MerchantList': MerchantList,
+    'MerchantDetail': MerchantDetail,
     'ComingSoon': null,
   };
   

@@ -5,14 +5,15 @@
     MerchantBusinessType,
     MERCHANT_BUSINESS_TYPE_LABELS,
     type MerchantCreateRequest,
-    type AccessibleOrganization,
     type BlacklistCheckResponse,
   } from "../../types/merchant";
   import type { BusinessEntity } from "../../types/branch";
+  import type { Organization } from "../../types/api";
   import { Button } from "$lib/components/ui/button";
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Label } from "$lib/components/ui/label";
   import { Badge } from "$lib/components/ui/badge";
+  import OrganizationPickerDialog from "../../components/OrganizationPickerDialog.svelte";
 
   let businessType = $state<MerchantBusinessType>(
     MerchantBusinessType.INDIVIDUAL,
@@ -28,8 +29,8 @@
   let contactEmail = $state("");
   let contactPhone = $state("");
 
-  let organizations = $state<AccessibleOrganization[]>([]);
-  let loadingOrgs = $state(false);
+  let showOrgPicker = $state(false);
+  let selectedOrganization = $state<Organization | null>(null);
 
   let selectedBusinessEntity = $state<BusinessEntity | null>(null);
   let businessSearching = $state(false);
@@ -56,7 +57,6 @@
 
   $effect(() => {
     generateMerchantCode();
-    loadOrganizations();
   });
 
   function generateMerchantCode() {
@@ -64,20 +64,6 @@
     const timestamp = now.toISOString().slice(0, 10).replace(/-/g, "");
     const random = Math.floor(1000 + Math.random() * 9000);
     merchantCode = `MER-${timestamp}-${random}`;
-  }
-
-  async function loadOrganizations() {
-    loadingOrgs = true;
-    try {
-      const response = await merchantApi.getAccessibleOrganizations();
-      if (response.success && response.data) {
-        organizations = response.data;
-      }
-    } catch (err) {
-      console.error("Failed to load organizations:", err);
-    } finally {
-      loadingOrgs = false;
-    }
   }
 
   function formatBusinessNumber(value: string): string {
@@ -303,6 +289,7 @@
     businessType = MerchantBusinessType.INDIVIDUAL;
     name = "";
     organizationId = "";
+    selectedOrganization = null;
     businessNumber = "";
     corporateNumber = "";
     representative = "";
@@ -460,21 +447,40 @@
               <Label for="organizationId"
                 >영업점 <span class="text-destructive">*</span></Label
               >
-              <select
-                id="organizationId"
-                value={organizationId}
-                onchange={(e) =>
-                  (organizationId = (e.target as HTMLSelectElement).value)}
-                disabled={loadingOrgs}
-                class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.organizationId
-                  ? 'border-destructive focus:ring-destructive/20'
-                  : ''}"
-              >
-                <option value="">영업점을 선택하세요</option>
-                {#each organizations as org}
-                  <option value={org.id}>{org.name} ({org.code})</option>
-                {/each}
-              </select>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  onclick={() => showOrgPicker = true}
+                  class="flex-1 h-11 px-4 rounded-md border-[1.5px] border-input bg-background text-sm text-left flex items-center justify-between hover:bg-muted/50 transition-colors {errors.organizationId
+                    ? 'border-destructive'
+                    : ''}"
+                >
+                  {#if selectedOrganization}
+                    <span class="flex items-center gap-2">
+                      <span class="font-medium text-foreground">{selectedOrganization.name}</span>
+                      <span class="text-muted-foreground font-mono text-xs">({selectedOrganization.orgCode})</span>
+                    </span>
+                  {:else}
+                    <span class="text-muted-foreground">영업점을 선택하세요</span>
+                  {/if}
+                  <svg class="w-4 h-4 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </button>
+                {#if selectedOrganization}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onclick={() => { selectedOrganization = null; organizationId = ''; }}
+                    class="h-11 w-11 shrink-0"
+                  >
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </Button>
+                {/if}
+              </div>
               {#if errors.organizationId}<span class="text-xs text-destructive"
                   >{errors.organizationId}</span
                 >{/if}
@@ -942,3 +948,12 @@
     {/if}
   </Card>
 </div>
+
+<OrganizationPickerDialog
+  bind:open={showOrgPicker}
+  selectedId={organizationId}
+  onSelect={(org) => {
+    selectedOrganization = org;
+    organizationId = org.id;
+  }}
+/>

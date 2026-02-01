@@ -50,7 +50,7 @@
     AGENCY: "대리점",
     DEALER: "딜러",
     SELLER: "셀러",
-    VENDOR: "가맹점",
+    VENDOR: "벤더",
   };
 
   const STATUS_LABELS: Record<string, string> = {
@@ -262,9 +262,9 @@
           source: parentId,
           target: org.id,
           type: "smoothstep",
-          animated: false,
+          animated: true,
           style:
-            "stroke-width: 2px; stroke: hsl(var(--muted-foreground) / 0.4);",
+            "stroke-width: 2px; stroke: hsl(var(--muted-foreground) / 0.5); stroke-dasharray: 5 5;",
         });
       }
 
