@@ -420,7 +420,81 @@ COMMENT ON COLUMN contacts.is_primary IS '주 담당자 여부 (엔티티당 1�
 
 ---
 
-### 4.5 businesses - 사업자 (레거시, 가맹점용)
+### 4.5 settlement_accounts - 정산계좌 정보
+
+**정산계좌 정보 통합 관리**. 사업자(BusinessEntity) 및 가맹점(Merchant)의 정산계좌를 별도 테이블에서 관리하여, 한 엔티티에 여러 계좌(주계좌, 부계좌 등)를 등록할 수 있음.
+
+```sql
+-- 계좌 상태 유형
+CREATE TYPE account_status AS ENUM ('ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION');
+
+CREATE TABLE settlement_accounts (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- 계좌 정보
+    bank_code       VARCHAR(10) NOT NULL,         -- 은행코드 (004, 088 등)
+    bank_name       VARCHAR(50) NOT NULL,         -- 은행명
+    account_number  VARCHAR(50) NOT NULL,         -- 계좌번호
+    account_holder  VARCHAR(100) NOT NULL,        -- 예금주
+    
+    -- 소속 엔티티
+    entity_type     contact_entity_type NOT NULL, -- 기존 enum 재사용 (BUSINESS_ENTITY/MERCHANT)
+    entity_id       UUID NOT NULL,                -- 소속 엔티티 ID
+    is_primary      BOOLEAN NOT NULL DEFAULT false, -- 주 계좌 여부
+    
+    -- 상태
+    status          account_status NOT NULL DEFAULT 'PENDING_VERIFICATION',
+    verified_at     TIMESTAMPTZ,                  -- 계좌 검증 일시
+    memo            TEXT,                         -- 메모
+    
+    -- 감사
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at      TIMESTAMPTZ                   -- 소프트 삭제
+);
+
+-- 인덱스
+CREATE INDEX idx_settlement_accounts_entity ON settlement_accounts(entity_type, entity_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_settlement_accounts_status ON settlement_accounts(status) WHERE deleted_at IS NULL;
+
+-- 엔티티당 주계좌 1개 제한
+CREATE UNIQUE INDEX idx_settlement_accounts_primary ON settlement_accounts(entity_type, entity_id) 
+    WHERE is_primary = true AND deleted_at IS NULL;
+
+-- 코멘트
+COMMENT ON TABLE settlement_accounts IS '정산계좌 정보 (사업자/가맹점 공용)';
+COMMENT ON COLUMN settlement_accounts.status IS 'ACTIVE(사용중), INACTIVE(미사용), PENDING_VERIFICATION(검증대기)';
+COMMENT ON COLUMN settlement_accounts.is_primary IS '주 계좌 여부 (엔티티당 1개만 가능)';
+```
+
+**상태(Status) 유형**:
+
+| Status | 한글명 | 설명 |
+|--------|--------|------|
+| ACTIVE | 사용중 | 검증 완료, 정산 가능 |
+| INACTIVE | 미사용 | 비활성화 상태 |
+| PENDING_VERIFICATION | 검증대기 | 계좌 검증 대기 중 |
+
+**주요 은행코드**:
+
+| 코드 | 은행명 |
+|------|--------|
+| 004 | KB국민은행 |
+| 011 | NH농협은행 |
+| 020 | 우리은행 |
+| 088 | 신한은행 |
+| 081 | 하나은행 |
+| 003 | IBK기업은행 |
+
+**관계**:
+- 1 BusinessEntity : N SettlementAccounts (사업자 다수 계좌)
+- 1 Merchant : N SettlementAccounts (가맹점 다수 계좌)
+- 엔티티당 `is_primary=true`인 주계좌는 1개만 허용
+- `contact_entity_type` enum 재사용 (BUSINESS_ENTITY, MERCHANT)
+
+---
+
+### 4.6 businesses - 사업자 (레거시, 가맹점용)
 
 **1 사업자 : N 가맹점 관계**. 동일 사업자가 수수료 체계가 다른 여러 가맹점을 가질 수 있음.
 
@@ -474,7 +548,7 @@ CREATE INDEX idx_business_status ON businesses (status);
 CREATE INDEX idx_business_business_no ON businesses (business_no) WHERE business_no IS NOT NULL;
 ```
 
-### 4.6 fee_policies - 수수료 정책
+### 4.7 fee_policies - 수수료 정책
 
 **수수료 정책 공유 및 버전 관리**. 여러 가맹점이 동일한 수수료 정책을 참조할 수 있음.
 
@@ -548,7 +622,7 @@ CREATE INDEX idx_fee_policy_rates ON fee_policies USING gin (rates);
 }
 ```
 
-### 4.7 merchants - 가맹점
+### 4.8 merchants - 가맹점
 
 **가맹점은 수수료 체계의 단위**. 동일 사업자라도 수수료 체계가 다르면 별도 가맹점으로 분리.
 
@@ -602,7 +676,7 @@ CREATE INDEX idx_merchant_fee_policy ON merchants (fee_policy_id);
 CREATE INDEX idx_merchant_status ON merchants (status);
 ```
 
-### 4.8 merchant_pg_mappings - 가맹점 PG 매핑
+### 4.9 merchant_pg_mappings - 가맹점 PG 매핑
 
 **KORPAY 연동 시**: MID(pg_merchant_no)와 단말기번호(terminal_id)는 1:1 매핑 관계.
 MID는 온라인승인 계정으로도 사용됨.
@@ -640,7 +714,7 @@ CREATE INDEX idx_pg_mapping_terminal ON merchant_pg_mappings (pg_connection_id, 
 CREATE INDEX idx_pg_mapping_merchant ON merchant_pg_mappings (merchant_id);
 ```
 
-### 4.9 transactions - 거래 현재 상태
+### 4.10 transactions - 거래 현재 상태
 
 **하이브리드 방식**: 현재 상태를 저장하여 빠른 조회 제공 (이력은 transaction_events에서 관리)
 
@@ -708,7 +782,7 @@ CREATE INDEX idx_txn_status ON transactions (status);
 CREATE INDEX idx_txn_transacted ON transactions (transacted_at);
 ```
 
-### 4.10 transaction_events - 거래 이벤트 이력 (파티셔닝)
+### 4.11 transaction_events - 거래 이벤트 이력 (파티셔닝)
 
 **모든 거래 이벤트(승인/취소/부분취소)를 개별 레코드로 저장. 정산은 이 테이블 기준으로 처리.**
 
@@ -764,7 +838,7 @@ CREATE TABLE transaction_events_2026_01_29 PARTITION OF transaction_events
 -- ... 계속
 ```
 
-### 4.11 settlements - 정산 원장 (이벤트 기준)
+### 4.12 settlements - 정산 원장 (이벤트 기준)
 
 **각 transaction_event에 대한 정산을 기록. 복식부기 원칙 적용.**
 
@@ -814,7 +888,7 @@ CREATE INDEX idx_stl_status ON settlements (settlement_status);
 CREATE INDEX idx_stl_date ON settlements (settlement_date);
 ```
 
-### 4.12 unmapped_transactions - 미매핑 거래
+### 4.13 unmapped_transactions - 미매핑 거래
 
 ```sql
 CREATE TABLE unmapped_transactions (
@@ -844,7 +918,7 @@ CREATE INDEX idx_unmapped_status ON unmapped_transactions (status);
 CREATE INDEX idx_unmapped_pg ON unmapped_transactions (pg_connection_id, pg_merchant_no);
 ```
 
-### 4.13 notification_settings - 알림 설정
+### 4.14 notification_settings - 알림 설정
 
 ```sql
 CREATE TABLE notification_settings (
@@ -882,7 +956,7 @@ CREATE TABLE notification_settings (
 );
 ```
 
-### 4.14 audit_logs - 감사 로그
+### 4.15 audit_logs - 감사 로그
 
 ```sql
 CREATE TABLE audit_logs (

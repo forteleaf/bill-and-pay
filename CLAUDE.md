@@ -13,7 +13,8 @@
 
 ### 개발 도구
 
-# do not use npm, use bun
+- do not use npm, use bun
+
 
 ## 핵심 아키텍처 원칙
 
