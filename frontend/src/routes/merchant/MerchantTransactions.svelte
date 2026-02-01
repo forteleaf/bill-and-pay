@@ -80,13 +80,6 @@
       loadTransactions();
     }
   });
-
-  $effect(() => {
-    if (merchantId) {
-      currentPage = 0;
-      loadTransactions();
-    }
-  });
 </script>
 
 <div class="flex flex-col gap-4">

@@ -87,13 +87,6 @@
       loadSettlements();
     }
   });
-
-  $effect(() => {
-    if (merchantId) {
-      currentPage = 0;
-      loadSettlements();
-    }
-  });
 </script>
 
 <div class="flex flex-col gap-4">
