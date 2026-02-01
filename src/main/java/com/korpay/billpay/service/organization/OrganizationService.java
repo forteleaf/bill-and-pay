@@ -3,6 +3,7 @@ package com.korpay.billpay.service.organization;
 import com.korpay.billpay.domain.entity.BusinessEntity;
 import com.korpay.billpay.domain.entity.Organization;
 import com.korpay.billpay.domain.entity.User;
+import com.korpay.billpay.domain.enums.BusinessType;
 import com.korpay.billpay.domain.enums.OrganizationStatus;
 import com.korpay.billpay.domain.enums.OrganizationType;
 import com.korpay.billpay.dto.request.OrganizationCreateRequest;
@@ -165,8 +166,21 @@ public class OrganizationService {
             throw new ValidationException("Organization code already exists: " + orgCode);
         }
         
-        BusinessEntity businessEntity = businessEntityRepository.findById(request.getBusinessEntityId())
-                .orElseThrow(() -> new EntityNotFoundException("Business entity not found: " + request.getBusinessEntityId()));
+        BusinessEntity businessEntity;
+        if (request.getBusinessEntityId() != null) {
+            businessEntity = businessEntityRepository.findById(request.getBusinessEntityId())
+                    .orElseThrow(() -> new EntityNotFoundException("Business entity not found: " + request.getBusinessEntityId()));
+        } else {
+            businessEntity = BusinessEntity.builder()
+                    .businessType(BusinessType.NON_BUSINESS)
+                    .businessName(request.getName())
+                    .representativeName("대표자")
+                    .mainPhone(request.getPhone())
+                    .email(request.getEmail())
+                    .businessAddress(request.getAddress())
+                    .build();
+            businessEntity = businessEntityRepository.save(businessEntity);
+        }
         
         Organization organization = Organization.builder()
                 .orgCode(orgCode)
