@@ -24,6 +24,8 @@ PostgreSQL Database: billpay
 ├── tenant_001 (총판A 스키마)
 │   ├── organizations           -- 조직 구조
 │   ├── users                   -- 사용자
+│   ├── business_entities       -- 사업자 정보
+│   ├── contacts                -- 담당자 정보 (사업자/가맹점 공용)
 │   ├── businesses              -- 사업자 (1:N 가맹점)
 │   ├── fee_policies            -- 수수료 정책 (공유 가능)
 │   ├── merchants               -- 가맹점
@@ -357,7 +359,68 @@ ALTER TABLE organizations
 CREATE INDEX idx_org_business_entity ON organizations (business_entity_id) WHERE business_entity_id IS NOT NULL;
 ```
 
-### 4.4 businesses - 사업자 (레거시, 가맹점용)
+### 4.4 contacts - 담당자 정보
+
+**담당자 정보 통합 관리**. 사업자(BusinessEntity) 및 가맹점(Merchant)의 담당자를 별도 테이블에서 관리하여 중복을 방지하고, 한 엔티티에 여러 담당자(주담당자, 부담당자, 정산담당 등)를 등록할 수 있음.
+
+```sql
+-- 담당자 역할 유형
+CREATE TYPE contact_role AS ENUM ('PRIMARY', 'SECONDARY', 'SETTLEMENT', 'TECHNICAL');
+
+-- 담당자 소속 엔티티 유형
+CREATE TYPE contact_entity_type AS ENUM ('BUSINESS_ENTITY', 'MERCHANT');
+
+CREATE TABLE contacts (
+    id              UUID PRIMARY KEY DEFAULT uuidv7(),
+    
+    -- 담당자 정보
+    name            VARCHAR(100) NOT NULL,        -- 담당자 이름
+    phone           VARCHAR(20),                  -- 연락처
+    email           VARCHAR(255),                 -- 이메일
+    
+    -- 역할 및 소속
+    role            contact_role NOT NULL DEFAULT 'PRIMARY',  -- 역할
+    entity_type     contact_entity_type NOT NULL, -- 소속 엔티티 유형
+    entity_id       UUID NOT NULL,                -- 소속 엔티티 ID
+    is_primary      BOOLEAN NOT NULL DEFAULT false, -- 주 담당자 여부
+    
+    -- 감사
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at      TIMESTAMPTZ                   -- 소프트 삭제
+);
+
+-- 인덱스
+CREATE INDEX idx_contacts_entity ON contacts(entity_type, entity_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_contacts_role ON contacts(role) WHERE deleted_at IS NULL;
+
+-- 엔티티당 주담당자 1명 제한
+CREATE UNIQUE INDEX idx_contacts_primary_unique ON contacts(entity_type, entity_id) 
+    WHERE is_primary = true AND deleted_at IS NULL;
+
+-- 코멘트
+COMMENT ON TABLE contacts IS '담당자 정보 (사업자/가맹점 공용)';
+COMMENT ON COLUMN contacts.role IS 'PRIMARY(주담당자), SECONDARY(부담당자), SETTLEMENT(정산담당), TECHNICAL(기술담당)';
+COMMENT ON COLUMN contacts.is_primary IS '주 담당자 여부 (엔티티당 1명만 가능)';
+```
+
+**역할(Role) 유형**:
+
+| Role | 한글명 | 설명 |
+|------|--------|------|
+| PRIMARY | 주담당자 | 주요 연락 담당자 |
+| SECONDARY | 부담당자 | 보조 담당자 |
+| SETTLEMENT | 정산담당 | 정산/결제 관련 담당자 |
+| TECHNICAL | 기술담당 | 기술 지원 담당자 |
+
+**관계**:
+- 1 BusinessEntity : N Contacts (사업자 다수 담당자)
+- 1 Merchant : N Contacts (가맹점 다수 담당자)
+- 엔티티당 `is_primary=true`인 담당자는 1명만 허용
+
+---
+
+### 4.5 businesses - 사업자 (레거시, 가맹점용)
 
 **1 사업자 : N 가맹점 관계**. 동일 사업자가 수수료 체계가 다른 여러 가맹점을 가질 수 있음.
 
@@ -411,7 +474,7 @@ CREATE INDEX idx_business_status ON businesses (status);
 CREATE INDEX idx_business_business_no ON businesses (business_no) WHERE business_no IS NOT NULL;
 ```
 
-### 4.4 fee_policies - 수수료 정책
+### 4.6 fee_policies - 수수료 정책
 
 **수수료 정책 공유 및 버전 관리**. 여러 가맹점이 동일한 수수료 정책을 참조할 수 있음.
 
@@ -485,7 +548,7 @@ CREATE INDEX idx_fee_policy_rates ON fee_policies USING gin (rates);
 }
 ```
 
-### 4.5 merchants - 가맹점
+### 4.7 merchants - 가맹점
 
 **가맹점은 수수료 체계의 단위**. 동일 사업자라도 수수료 체계가 다르면 별도 가맹점으로 분리.
 
@@ -539,7 +602,7 @@ CREATE INDEX idx_merchant_fee_policy ON merchants (fee_policy_id);
 CREATE INDEX idx_merchant_status ON merchants (status);
 ```
 
-### 4.6 merchant_pg_mappings - 가맹점 PG 매핑
+### 4.8 merchant_pg_mappings - 가맹점 PG 매핑
 
 **KORPAY 연동 시**: MID(pg_merchant_no)와 단말기번호(terminal_id)는 1:1 매핑 관계.
 MID는 온라인승인 계정으로도 사용됨.
@@ -577,7 +640,7 @@ CREATE INDEX idx_pg_mapping_terminal ON merchant_pg_mappings (pg_connection_id, 
 CREATE INDEX idx_pg_mapping_merchant ON merchant_pg_mappings (merchant_id);
 ```
 
-### 4.7 transactions - 거래 현재 상태
+### 4.9 transactions - 거래 현재 상태
 
 **하이브리드 방식**: 현재 상태를 저장하여 빠른 조회 제공 (이력은 transaction_events에서 관리)
 
@@ -645,7 +708,7 @@ CREATE INDEX idx_txn_status ON transactions (status);
 CREATE INDEX idx_txn_transacted ON transactions (transacted_at);
 ```
 
-### 4.8 transaction_events - 거래 이벤트 이력 (파티셔닝)
+### 4.10 transaction_events - 거래 이벤트 이력 (파티셔닝)
 
 **모든 거래 이벤트(승인/취소/부분취소)를 개별 레코드로 저장. 정산은 이 테이블 기준으로 처리.**
 
@@ -701,7 +764,7 @@ CREATE TABLE transaction_events_2026_01_29 PARTITION OF transaction_events
 -- ... 계속
 ```
 
-### 4.9 settlements - 정산 원장 (이벤트 기준)
+### 4.11 settlements - 정산 원장 (이벤트 기준)
 
 **각 transaction_event에 대한 정산을 기록. 복식부기 원칙 적용.**
 
@@ -751,7 +814,7 @@ CREATE INDEX idx_stl_status ON settlements (settlement_status);
 CREATE INDEX idx_stl_date ON settlements (settlement_date);
 ```
 
-### 4.10 unmapped_transactions - 미매핑 거래
+### 4.12 unmapped_transactions - 미매핑 거래
 
 ```sql
 CREATE TABLE unmapped_transactions (
@@ -781,7 +844,7 @@ CREATE INDEX idx_unmapped_status ON unmapped_transactions (status);
 CREATE INDEX idx_unmapped_pg ON unmapped_transactions (pg_connection_id, pg_merchant_no);
 ```
 
-### 4.11 notification_settings - 알림 설정
+### 4.13 notification_settings - 알림 설정
 
 ```sql
 CREATE TABLE notification_settings (
@@ -819,7 +882,7 @@ CREATE TABLE notification_settings (
 );
 ```
 
-### 4.12 audit_logs - 감사 로그
+### 4.14 audit_logs - 감사 로그
 
 ```sql
 CREATE TABLE audit_logs (
@@ -1121,6 +1184,8 @@ $$ LANGUAGE plpgsql;
 │  • 1 FeePolicy : N Merchants (수수료 정책 공유)                              │
 │  • 1 Organization : N Merchants (조직 계층 소속)                             │
 │  • 1 Merchant : N PG Mappings (다중 PG/단말기)                               │
+│  • 1 BusinessEntity : N Contacts (사업자 다수 담당자)                        │
+│  • 1 Merchant : N Contacts (가맹점 다수 담당자)                              │
 │                                                                              │
 │  [데이터 흐름]                                                               │
 │  PG Webhook → transactions INSERT → transaction_events INSERT               │
@@ -1174,7 +1239,8 @@ flyway/
     ├── V7__create_transactions.sql
     ├── V8__create_transaction_events.sql   # 이벤트 이력
     ├── V9__create_settlements.sql          # 이벤트 기준 정산
-    └── V10__create_audit_logs.sql
+    ├── V10__create_audit_logs.sql
+    └── V15__create_contacts.sql            # 담당자 정보
 ```
 
 ### 9.2 테넌트 마이그레이션 실행
@@ -1209,3 +1275,4 @@ public class TenantMigrationService {
 | v2.0 | 2026-01-28 | 하이브리드 이벤트 소싱 방식 적용 - transactions(현재상태) + transaction_events(이력) 분리 |
 | v3.0 | 2026-01-29 | KORPAY 연동 필드 추가 (GID/VID 제외), MID-단말기 1:1 매핑 반영 |
 | v4.0 | 2026-01-29 | 사업자-가맹점 분리 (businesses 테이블 추가), 수수료 정책 분리 (fee_policies 테이블 추가), merchants 테이블에서 business_id/fee_policy_id FK 참조로 변경 |
+| v5.0 | 2026-02-01 | 담당자 정보 분리 (contacts 테이블 추가), 사업자/가맹점 공용 담당자 관리, 역할별(주담당자/부담당자/정산담당/기술담당) 분류 |
