@@ -24,6 +24,8 @@
   import MerchantDetail from "../routes/merchant/MerchantDetail.svelte";
   import TerminalList from "../routes/terminal/TerminalList.svelte";
   import TerminalDetail from "../routes/terminal/TerminalDetail.svelte";
+  import PgConnectionList from "../routes/pgConnection/PgConnectionList.svelte";
+  import PgConnectionDetail from "../routes/pgConnection/PgConnectionDetail.svelte";
 
   import type { Component } from "svelte";
 
@@ -45,6 +47,8 @@
     MerchantDetail: MerchantDetail,
     TerminalList: TerminalList,
     TerminalDetail: TerminalDetail,
+    PgConnectionList: PgConnectionList,
+    PgConnectionDetail: PgConnectionDetail,
     ComingSoon: null,
   };
 

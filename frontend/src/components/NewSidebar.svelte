@@ -146,6 +146,12 @@
       icon: "⚙️",
       children: [
         {
+          id: "pg-connection-list",
+          title: "PG 연결 관리",
+          icon: "🔗",
+          component: "PgConnectionList",
+        },
+        {
           id: "notices",
           title: "공지사항",
           icon: "📢",
