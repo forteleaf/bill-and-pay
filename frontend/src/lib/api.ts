@@ -87,10 +87,12 @@ class ApiClient {
       }
       
       authStore.logout();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
       throw new Error('Authentication failed. Please login again.');
+    }
+
+    if (response.status === 403) {
+      authStore.logout();
+      throw new Error('Access denied. Please login again.');
     }
 
     if (!response.ok) {

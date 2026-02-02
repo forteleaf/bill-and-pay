@@ -48,7 +48,7 @@
   }
 </script>
 
-<header class="bg-gradient-to-br from-white to-slate-50 border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sticky top-0 z-[100]">
+<header class="bg-gradient-to-br from-white to-slate-50 border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sticky top-0 z-[5]">
   <div class="flex items-center justify-between px-6 h-[60px] max-w-full">
     <button 
       class="flex items-center gap-2 bg-transparent border-none cursor-pointer py-2 px-3 -ml-3 rounded-lg transition-all duration-200 hover:bg-blue-500/[0.08] active:scale-[0.98]" 

@@ -437,7 +437,7 @@
         style="width: {((currentStep - 1) / (totalSteps - 1)) * 100}%"
       ></div>
     </div>
-    <div class="flex justify-between relative z-10">
+    <div class="flex justify-between relative z-100">
       {#each [1, 2, 3] as step}
         <div class="flex flex-col items-center gap-3">
           <div

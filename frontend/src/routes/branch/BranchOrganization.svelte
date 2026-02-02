@@ -289,8 +289,9 @@
         layoutOptions: {
           "elk.algorithm": "mrtree",
           "elk.direction": direction === "vertical" ? "DOWN" : "RIGHT",
-          "spacing.nodeNode": "60",
-          "spacing.edgeNode": "100",
+          "spacing.nodeNode": "100",
+          "spacing.edgeNode": "80",
+          "elk.spacing.nodeNodeBetweenLayers": "120",
         },
         children: inputNodes.map((node) => ({
           id: node.id,
