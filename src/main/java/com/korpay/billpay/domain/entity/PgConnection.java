@@ -30,44 +30,29 @@ public class PgConnection {
     @Column(name = "pg_code", nullable = false, unique = true, length = 20)
     private String pgCode;
 
-    @Column(name = "pg_name", nullable = false, length = 50)
+    @Column(name = "pg_name", nullable = false, length = 100)
     private String pgName;
 
-    @Column(name = "pg_api_version", length = 20)
-    private String pgApiVersion;
-
-    @Column(name = "merchant_id", nullable = false, length = 100)
-    private String merchantId;
-
-    @Column(name = "api_key_enc", nullable = false)
-    private byte[] apiKeyEnc;
-
-    @Column(name = "api_secret_enc", nullable = false)
-    private byte[] apiSecretEnc;
-
-    @Column(name = "webhook_path", nullable = false, unique = true, length = 100)
-    private String webhookPath;
-
-    @Column(name = "webhook_secret", length = 100)
-    private String webhookSecret;
-
-    @Column(name = "api_base_url", length = 200)
+    @Column(name = "api_base_url", nullable = false, length = 500)
     private String apiBaseUrl;
 
+    @Column(name = "webhook_base_url", length = 500)
+    private String webhookBaseUrl;
+
+    /** JSONB: {api_key, secret_key, merchant_id} */
     @Type(JsonBinaryType.class)
-    @Column(name = "api_endpoints", columnDefinition = "jsonb")
-    private Map<String, String> apiEndpoints;
+    @Column(name = "credentials", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> credentials;
+
+    /** JSONB: {timeout_ms, retry_count, webhook_secret} */
+    @Type(JsonBinaryType.class)
+    @Column(name = "config", columnDefinition = "jsonb")
+    private Map<String, Object> config;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private PgConnectionStatus status = PgConnectionStatus.ACTIVE;
-
-    @Column(name = "last_sync_at")
-    private OffsetDateTime lastSyncAt;
-
-    @Column(name = "last_error", columnDefinition = "TEXT")
-    private String lastError;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -76,4 +61,32 @@ public class PgConnection {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    public String getApiKey() {
+        return credentials != null ? (String) credentials.get("api_key") : null;
+    }
+
+    public String getSecretKey() {
+        return credentials != null ? (String) credentials.get("secret_key") : null;
+    }
+
+    public String getMerchantId() {
+        return credentials != null ? (String) credentials.get("merchant_id") : null;
+    }
+
+    public String getWebhookSecret() {
+        return config != null ? (String) config.get("webhook_secret") : null;
+    }
+
+    public Integer getTimeoutMs() {
+        if (config == null || !config.containsKey("timeout_ms")) return null;
+        Object val = config.get("timeout_ms");
+        return val instanceof Number ? ((Number) val).intValue() : null;
+    }
+
+    public Integer getRetryCount() {
+        if (config == null || !config.containsKey("retry_count")) return null;
+        Object val = config.get("retry_count");
+        return val instanceof Number ? ((Number) val).intValue() : null;
+    }
 }

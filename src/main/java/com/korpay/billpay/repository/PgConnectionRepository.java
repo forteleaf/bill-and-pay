@@ -14,11 +14,7 @@ public interface PgConnectionRepository extends JpaRepository<PgConnection, UUID
 
     Optional<PgConnection> findByPgCode(String pgCode);
 
-    Optional<PgConnection> findByWebhookPath(String webhookPath);
-
     List<PgConnection> findByStatus(PgConnectionStatus status);
 
     boolean existsByPgCode(String pgCode);
-
-    boolean existsByWebhookPath(String webhookPath);
 }

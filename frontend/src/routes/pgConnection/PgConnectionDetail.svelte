@@ -28,13 +28,14 @@
   let saving = $state(false);
   let error = $state<string | null>(null);
 
-  // Form fields
   let formPgCode = $state('');
   let formPgName = $state('');
+  let formApiBaseUrl = $state('');
+  let formWebhookBaseUrl = $state('');
   let formMerchantId = $state('');
   let formApiKey = $state('');
   let formSecretKey = $state('');
-  let formWebhookPath = $state('');
+  let formWebhookSecret = $state('');
   let formStatus = $state<PgConnectionStatus>(PgConnectionStatus.ACTIVE);
 
   const isNewMode = $derived(connectionId === null);
@@ -43,7 +44,6 @@
     if (connectionId) {
       loadConnection();
     } else {
-      // New mode
       loading = false;
       editMode = true;
     }
@@ -73,20 +73,24 @@
     if (!connection) return;
     formPgCode = connection.pgCode || '';
     formPgName = connection.pgName || '';
+    formApiBaseUrl = connection.apiBaseUrl || '';
+    formWebhookBaseUrl = connection.webhookBaseUrl || '';
     formMerchantId = connection.merchantId || '';
-    formApiKey = connection.apiKey || '';
-    formSecretKey = ''; // Don't show secret key
-    formWebhookPath = connection.webhookPath || '';
+    formApiKey = '';
+    formSecretKey = '';
+    formWebhookSecret = '';
     formStatus = connection.status;
   }
 
   function resetForm() {
     formPgCode = '';
     formPgName = '';
+    formApiBaseUrl = '';
+    formWebhookBaseUrl = '';
     formMerchantId = '';
     formApiKey = '';
     formSecretKey = '';
-    formWebhookPath = '';
+    formWebhookSecret = '';
     formStatus = PgConnectionStatus.ACTIVE;
   }
 
@@ -98,8 +102,13 @@
   }
 
   async function handleSave() {
-    if (!formPgCode || !formPgName || !formMerchantId) {
+    if (!formPgCode || !formPgName || !formApiBaseUrl || !formMerchantId) {
       toast.error('필수 항목을 입력해주세요.');
+      return;
+    }
+
+    if (isNewMode && (!formApiKey || !formSecretKey)) {
+      toast.error('API Key와 Secret Key는 필수입니다.');
       return;
     }
 
@@ -108,21 +117,20 @@
 
     try {
       if (isNewMode) {
-        // Create new
         const createData: PgConnectionCreateRequest = {
           pgCode: formPgCode,
           pgName: formPgName,
+          apiBaseUrl: formApiBaseUrl,
+          webhookBaseUrl: formWebhookBaseUrl || undefined,
           merchantId: formMerchantId,
-          apiKey: formApiKey || undefined,
-          secretKey: formSecretKey || undefined,
-          webhookPath: formWebhookPath || undefined,
-          status: formStatus
+          apiKey: formApiKey,
+          secretKey: formSecretKey,
+          webhookSecret: formWebhookSecret || undefined
         };
 
         const response = await pgConnectionApi.create(createData);
         if (response.success && response.data) {
           toast.success('PG 연결이 등록되었습니다.');
-          // Update tab with actual connection
           tabStore.closeTab('pg-connection-new');
           tabStore.openTab({
             id: `pg-connection-${response.data.id}`,
@@ -136,13 +144,14 @@
           error = response.error?.message || '등록에 실패했습니다.';
         }
       } else if (connection) {
-        // Update existing
         const updateData: PgConnectionUpdateRequest = {
           pgName: formPgName,
+          apiBaseUrl: formApiBaseUrl,
+          webhookBaseUrl: formWebhookBaseUrl || undefined,
           merchantId: formMerchantId,
           apiKey: formApiKey || undefined,
           secretKey: formSecretKey || undefined,
-          webhookPath: formWebhookPath || undefined,
+          webhookSecret: formWebhookSecret || undefined,
           status: formStatus
         };
 
@@ -182,14 +191,14 @@
     }
   }
 
-  function getStatusVariant(status: PgConnectionStatus): 'default' | 'secondary' | 'destructive' {
+  function getStatusVariant(status: PgConnectionStatus): 'default' | 'secondary' | 'outline' {
     switch (status) {
       case PgConnectionStatus.ACTIVE:
         return 'default';
       case PgConnectionStatus.INACTIVE:
         return 'secondary';
-      case PgConnectionStatus.ERROR:
-        return 'destructive';
+      case PgConnectionStatus.MAINTENANCE:
+        return 'outline';
       default:
         return 'secondary';
     }
@@ -251,7 +260,7 @@
       <div class="flex gap-2">
         {#if editMode}
           <Button variant="outline" onclick={handleCancel} disabled={saving}>취소</Button>
-          <Button onclick={handleSave} disabled={saving || !formPgCode || !formPgName || !formMerchantId}>
+          <Button onclick={handleSave} disabled={saving || !formPgCode || !formPgName || !formApiBaseUrl || !formMerchantId}>
             {saving ? '저장 중...' : (isNewMode ? '등록' : '저장')}
           </Button>
         {:else}
@@ -286,7 +295,7 @@
                   type="text"
                   placeholder="예: KORPAY"
                   value={formPgCode}
-                  oninput={(e) => formPgCode = e.currentTarget.value}
+                  oninput={(e) => formPgCode = e.currentTarget.value.toUpperCase()}
                   disabled={!isNewMode}
                   class="font-mono uppercase"
                 />
@@ -315,21 +324,38 @@
               {/if}
             </div>
 
-            <div class="flex flex-col gap-1.5">
-              <Label for="merchant-id" class="text-xs font-medium text-muted-foreground">
-                가맹점 ID <span class="text-destructive">*</span>
+            <div class="flex flex-col gap-1.5 col-span-2">
+              <Label for="api-base-url" class="text-xs font-medium text-muted-foreground">
+                API Base URL <span class="text-destructive">*</span>
               </Label>
               {#if editMode}
                 <Input
-                  id="merchant-id"
+                  id="api-base-url"
                   type="text"
-                  placeholder="PG사에서 발급받은 가맹점 ID"
-                  value={formMerchantId}
-                  oninput={(e) => formMerchantId = e.currentTarget.value}
+                  placeholder="https://api.pg.example.com"
+                  value={formApiBaseUrl}
+                  oninput={(e) => formApiBaseUrl = e.currentTarget.value}
                   class="font-mono"
                 />
               {:else}
-                <span class="text-sm font-mono">{connection?.merchantId || '-'}</span>
+                <span class="text-sm font-mono">{connection?.apiBaseUrl || '-'}</span>
+              {/if}
+            </div>
+
+            <div class="flex flex-col gap-1.5 col-span-2">
+              <Label for="webhook-base-url" class="text-xs font-medium text-muted-foreground">Webhook Base URL</Label>
+              {#if editMode}
+                <Input
+                  id="webhook-base-url"
+                  type="text"
+                  placeholder="https://your-domain.com/webhook"
+                  value={formWebhookBaseUrl}
+                  oninput={(e) => formWebhookBaseUrl = e.currentTarget.value}
+                  class="font-mono"
+                />
+                <p class="text-xs text-muted-foreground">PG사에서 결제 알림을 수신할 URL입니다</p>
+              {:else}
+                <span class="text-sm font-mono">{connection?.webhookBaseUrl || '-'}</span>
               {/if}
             </div>
 
@@ -362,23 +388,64 @@
         <CardContent>
           <div class="grid grid-cols-2 gap-5">
             <div class="flex flex-col gap-1.5">
-              <Label for="api-key" class="text-xs font-medium text-muted-foreground">API Key</Label>
+              <Label for="merchant-id" class="text-xs font-medium text-muted-foreground">
+                가맹점 ID <span class="text-destructive">*</span>
+              </Label>
               {#if editMode}
                 <Input
-                  id="api-key"
+                  id="merchant-id"
                   type="text"
-                  placeholder="API 인증 키"
-                  value={formApiKey}
-                  oninput={(e) => formApiKey = e.currentTarget.value}
+                  placeholder="PG사에서 발급받은 가맹점 ID"
+                  value={formMerchantId}
+                  oninput={(e) => formMerchantId = e.currentTarget.value}
                   class="font-mono"
                 />
               {:else}
-                <span class="text-sm font-mono">{connection?.apiKey ? '********' : '-'}</span>
+                <span class="text-sm font-mono">{connection?.merchantId || '-'}</span>
               {/if}
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <Label for="secret-key" class="text-xs font-medium text-muted-foreground">Secret Key</Label>
+              <Label for="webhook-secret" class="text-xs font-medium text-muted-foreground">Webhook Secret</Label>
+              {#if editMode}
+                <Input
+                  id="webhook-secret"
+                  type="password"
+                  placeholder={isNewMode ? 'Webhook 검증 키' : '변경하려면 입력하세요'}
+                  value={formWebhookSecret}
+                  oninput={(e) => formWebhookSecret = e.currentTarget.value}
+                  class="font-mono"
+                />
+              {:else}
+                <span class="text-sm font-mono">********</span>
+              {/if}
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <Label for="api-key" class="text-xs font-medium text-muted-foreground">
+                API Key {#if isNewMode}<span class="text-destructive">*</span>{/if}
+              </Label>
+              {#if editMode}
+                <Input
+                  id="api-key"
+                  type="text"
+                  placeholder={isNewMode ? 'API 인증 키' : '변경하려면 입력하세요'}
+                  value={formApiKey}
+                  oninput={(e) => formApiKey = e.currentTarget.value}
+                  class="font-mono"
+                />
+                {#if !isNewMode}
+                  <p class="text-xs text-muted-foreground">비워두면 기존 값이 유지됩니다</p>
+                {/if}
+              {:else}
+                <span class="text-sm font-mono">********</span>
+              {/if}
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <Label for="secret-key" class="text-xs font-medium text-muted-foreground">
+                Secret Key {#if isNewMode}<span class="text-destructive">*</span>{/if}
+              </Label>
               {#if editMode}
                 <Input
                   id="secret-key"
@@ -395,50 +462,11 @@
                 <span class="text-sm font-mono">********</span>
               {/if}
             </div>
-
-            <div class="flex flex-col gap-1.5 col-span-2">
-              <Label for="webhook-path" class="text-xs font-medium text-muted-foreground">Webhook 경로</Label>
-              {#if editMode}
-                <Input
-                  id="webhook-path"
-                  type="text"
-                  placeholder="예: /api/v1/webhook/korpay"
-                  value={formWebhookPath}
-                  oninput={(e) => formWebhookPath = e.currentTarget.value}
-                  class="font-mono"
-                />
-                <p class="text-xs text-muted-foreground">PG사에서 결제 알림을 수신할 경로입니다</p>
-              {:else}
-                <span class="text-sm font-mono">{connection?.webhookPath || '-'}</span>
-              {/if}
-            </div>
           </div>
         </CardContent>
       </Card>
 
       {#if !isNewMode && connection}
-        <Card>
-          <CardHeader>
-            <CardTitle class="text-base">동기화 정보</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="grid grid-cols-2 gap-5">
-              <div class="flex flex-col gap-1.5">
-                <span class="text-xs font-medium text-muted-foreground">마지막 동기화</span>
-                <span class="text-sm text-muted-foreground">{formatDate(connection.lastSyncAt)}</span>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <span class="text-xs font-medium text-muted-foreground">동기화 상태</span>
-                {#if connection.lastSyncAt}
-                  <Badge variant="outline" class="w-fit">정상</Badge>
-                {:else}
-                  <Badge variant="secondary" class="w-fit">미동기화</Badge>
-                {/if}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle class="text-base">등록 정보</CardTitle>

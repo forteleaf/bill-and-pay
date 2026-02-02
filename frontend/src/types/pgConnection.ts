@@ -1,27 +1,23 @@
 export enum PgConnectionStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
-  ERROR = 'ERROR'
+  MAINTENANCE = 'MAINTENANCE'
 }
 
 export const PG_CONNECTION_STATUS_LABELS: Record<PgConnectionStatus, string> = {
-  [PgConnectionStatus.ACTIVE]: '정상',
+  [PgConnectionStatus.ACTIVE]: '활성',
   [PgConnectionStatus.INACTIVE]: '비활성',
-  [PgConnectionStatus.ERROR]: '오류'
+  [PgConnectionStatus.MAINTENANCE]: '점검중'
 };
 
 export interface PgConnectionDto {
   id: string;
   pgCode: string;
   pgName: string;
-  pgApiVersion?: string;
   merchantId: string;
-  webhookPath: string;
-  apiBaseUrl?: string;
-  apiEndpoints?: Record<string, string>;
+  apiBaseUrl: string;
+  webhookBaseUrl?: string;
   status: PgConnectionStatus;
-  lastSyncAt?: string;
-  lastError?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,23 +25,25 @@ export interface PgConnectionDto {
 export interface PgConnectionCreateRequest {
   pgCode: string;
   pgName: string;
-  pgApiVersion?: string;
+  apiBaseUrl: string;
+  webhookBaseUrl?: string;
   merchantId: string;
   apiKey: string;
-  apiSecret: string;
-  webhookPath: string;
+  secretKey: string;
   webhookSecret?: string;
-  apiBaseUrl?: string;
-  apiEndpoints?: Record<string, string>;
+  timeoutMs?: number;
+  retryCount?: number;
 }
 
 export interface PgConnectionUpdateRequest {
   pgName?: string;
-  pgApiVersion?: string;
-  apiKey?: string;
-  apiSecret?: string;
-  webhookSecret?: string;
   apiBaseUrl?: string;
-  apiEndpoints?: Record<string, string>;
+  webhookBaseUrl?: string;
+  merchantId?: string;
+  apiKey?: string;
+  secretKey?: string;
+  webhookSecret?: string;
+  timeoutMs?: number;
+  retryCount?: number;
   status?: PgConnectionStatus;
 }

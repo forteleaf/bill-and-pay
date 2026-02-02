@@ -87,14 +87,14 @@
     }
   }
 
-  function getStatusVariant(status: PgConnectionStatus): 'default' | 'secondary' | 'destructive' {
+  function getStatusVariant(status: PgConnectionStatus): 'default' | 'secondary' | 'outline' {
     switch (status) {
       case PgConnectionStatus.ACTIVE:
         return 'default';
       case PgConnectionStatus.INACTIVE:
         return 'secondary';
-      case PgConnectionStatus.ERROR:
-        return 'destructive';
+      case PgConnectionStatus.MAINTENANCE:
+        return 'outline';
       default:
         return 'secondary';
     }
@@ -131,9 +131,9 @@
           <TableHead class="w-[100px] font-bold text-xs uppercase tracking-wide">코드</TableHead>
           <TableHead class="w-[150px] font-bold text-xs uppercase tracking-wide">이름</TableHead>
           <TableHead class="w-[120px] font-bold text-xs uppercase tracking-wide">가맹점 ID</TableHead>
-          <TableHead class="w-[180px] font-bold text-xs uppercase tracking-wide">Webhook 경로</TableHead>
+          <TableHead class="w-[200px] font-bold text-xs uppercase tracking-wide">API Base URL</TableHead>
           <TableHead class="w-[90px] text-center font-bold text-xs uppercase tracking-wide">상태</TableHead>
-          <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">마지막 동기화</TableHead>
+          <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">등록일</TableHead>
           <TableHead class="w-[100px] text-center font-bold text-xs uppercase tracking-wide">액션</TableHead>
         </TableRow>
       </TableHeader>
@@ -195,7 +195,9 @@
                 <span class="font-mono text-sm text-muted-foreground">{connection.merchantId}</span>
               </TableCell>
               <TableCell>
-                <span class="font-mono text-xs text-muted-foreground">{connection.webhookPath}</span>
+                <span class="font-mono text-xs text-muted-foreground truncate block max-w-[180px]" title={connection.apiBaseUrl}>
+                  {connection.apiBaseUrl}
+                </span>
               </TableCell>
               <TableCell class="text-center">
                 <Badge variant={getStatusVariant(connection.status)}>
@@ -203,7 +205,7 @@
                 </Badge>
               </TableCell>
               <TableCell>
-                <span class="text-sm text-muted-foreground">{formatDate(connection.lastSyncAt)}</span>
+                <span class="text-sm text-muted-foreground">{formatDate(connection.createdAt)}</span>
               </TableCell>
               <TableCell class="text-center">
                 <Button

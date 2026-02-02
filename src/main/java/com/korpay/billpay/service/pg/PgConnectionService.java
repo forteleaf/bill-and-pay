@@ -15,7 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -44,19 +45,31 @@ public class PgConnectionService {
 
     @Transactional
     public PgConnectionDto create(PgConnectionCreateRequest request) {
-        validateUniqueConstraints(request.getPgCode(), request.getWebhookPath(), null);
+        validateUniqueConstraints(request.getPgCode(), null);
+
+        Map<String, Object> credentials = new HashMap<>();
+        credentials.put("api_key", request.getApiKey());
+        credentials.put("secret_key", request.getSecretKey());
+        credentials.put("merchant_id", request.getMerchantId());
+
+        Map<String, Object> config = new HashMap<>();
+        if (request.getWebhookSecret() != null) {
+            config.put("webhook_secret", request.getWebhookSecret());
+        }
+        if (request.getTimeoutMs() != null) {
+            config.put("timeout_ms", request.getTimeoutMs());
+        }
+        if (request.getRetryCount() != null) {
+            config.put("retry_count", request.getRetryCount());
+        }
 
         PgConnection entity = PgConnection.builder()
                 .pgCode(request.getPgCode())
                 .pgName(request.getPgName())
-                .pgApiVersion(request.getPgApiVersion())
-                .merchantId(request.getMerchantId())
-                .apiKeyEnc(encryptValue(request.getApiKey()))
-                .apiSecretEnc(encryptValue(request.getApiSecret()))
-                .webhookPath(request.getWebhookPath())
-                .webhookSecret(request.getWebhookSecret())
                 .apiBaseUrl(request.getApiBaseUrl())
-                .apiEndpoints(request.getApiEndpoints())
+                .webhookBaseUrl(request.getWebhookBaseUrl())
+                .credentials(credentials)
+                .config(config.isEmpty() ? null : config)
                 .status(PgConnectionStatus.ACTIVE)
                 .build();
 
@@ -73,27 +86,45 @@ public class PgConnectionService {
         if (request.getPgName() != null) {
             entity.setPgName(request.getPgName());
         }
-        if (request.getPgApiVersion() != null) {
-            entity.setPgApiVersion(request.getPgApiVersion());
-        }
-        if (request.getApiKey() != null) {
-            entity.setApiKeyEnc(encryptValue(request.getApiKey()));
-        }
-        if (request.getApiSecret() != null) {
-            entity.setApiSecretEnc(encryptValue(request.getApiSecret()));
-        }
-        if (request.getWebhookSecret() != null) {
-            entity.setWebhookSecret(request.getWebhookSecret());
-        }
         if (request.getApiBaseUrl() != null) {
             entity.setApiBaseUrl(request.getApiBaseUrl());
         }
-        if (request.getApiEndpoints() != null) {
-            entity.setApiEndpoints(request.getApiEndpoints());
+        if (request.getWebhookBaseUrl() != null) {
+            entity.setWebhookBaseUrl(request.getWebhookBaseUrl());
         }
         if (request.getStatus() != null) {
             entity.setStatus(request.getStatus());
         }
+
+        Map<String, Object> credentials = entity.getCredentials();
+        if (credentials == null) {
+            credentials = new HashMap<>();
+        }
+        if (request.getMerchantId() != null) {
+            credentials.put("merchant_id", request.getMerchantId());
+        }
+        if (request.getApiKey() != null) {
+            credentials.put("api_key", request.getApiKey());
+        }
+        if (request.getSecretKey() != null) {
+            credentials.put("secret_key", request.getSecretKey());
+        }
+        entity.setCredentials(credentials);
+
+        Map<String, Object> config = entity.getConfig();
+        if (config == null) {
+            config = new HashMap<>();
+        }
+        if (request.getWebhookSecret() != null) {
+            config.put("webhook_secret", request.getWebhookSecret());
+        }
+        if (request.getTimeoutMs() != null) {
+            config.put("timeout_ms", request.getTimeoutMs());
+        }
+        if (request.getRetryCount() != null) {
+            config.put("retry_count", request.getRetryCount());
+        }
+        entity.setConfig(config.isEmpty() ? null : config);
 
         PgConnection saved = pgConnectionRepository.save(entity);
         log.info("Updated PG connection: {} ({})", saved.getPgCode(), saved.getId());
@@ -124,23 +155,12 @@ public class PgConnectionService {
                 .orElseThrow(() -> new EntityNotFoundException("PG 연결을 찾을 수 없습니다: " + id));
     }
 
-    private void validateUniqueConstraints(String pgCode, String webhookPath, UUID excludeId) {
+    private void validateUniqueConstraints(String pgCode, UUID excludeId) {
         pgConnectionRepository.findByPgCode(pgCode)
                 .ifPresent(existing -> {
                     if (excludeId == null || !existing.getId().equals(excludeId)) {
                         throw new ValidationException("이미 존재하는 PG 코드입니다: " + pgCode);
                     }
                 });
-
-        pgConnectionRepository.findByWebhookPath(webhookPath)
-                .ifPresent(existing -> {
-                    if (excludeId == null || !existing.getId().equals(excludeId)) {
-                        throw new ValidationException("이미 사용 중인 Webhook 경로입니다: " + webhookPath);
-                    }
-                });
-    }
-
-    private byte[] encryptValue(String value) {
-        return value.getBytes(StandardCharsets.UTF_8);
     }
 }
