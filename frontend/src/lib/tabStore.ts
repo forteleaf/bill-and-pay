@@ -104,6 +104,16 @@ class TabStore {
       this.saveToStorage();
     }
   }
+
+  reorderTabs(fromIndex: number, toIndex: number): void {
+    if (fromIndex < 0 || fromIndex >= this.state.tabs.length) return;
+    if (toIndex < 0 || toIndex >= this.state.tabs.length) return;
+    if (fromIndex === toIndex) return;
+
+    const [movedTab] = this.state.tabs.splice(fromIndex, 1);
+    this.state.tabs.splice(toIndex, 0, movedTab);
+    this.saveToStorage();
+  }
 }
 
 export const tabStore = new TabStore();

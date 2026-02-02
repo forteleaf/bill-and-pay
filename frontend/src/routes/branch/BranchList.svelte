@@ -46,6 +46,40 @@
     [OrgStatus.TERMINATED]: '해지'
   };
 
+  const ORG_TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+    DISTRIBUTOR: {
+      bg: 'bg-indigo-500/10',
+      border: 'border-indigo-500/40',
+      text: 'text-indigo-600'
+    },
+    AGENCY: {
+      bg: 'bg-violet-500/10',
+      border: 'border-violet-500/40',
+      text: 'text-violet-600'
+    },
+    DEALER: {
+      bg: 'bg-blue-500/10',
+      border: 'border-blue-500/40',
+      text: 'text-blue-600'
+    },
+    SELLER: {
+      bg: 'bg-cyan-500/10',
+      border: 'border-cyan-500/40',
+      text: 'text-cyan-600'
+    },
+    VENDOR: {
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/40',
+      text: 'text-emerald-600'
+    }
+  };
+
+  function getOrgTypeClasses(orgType: string): string {
+    const colors = ORG_TYPE_COLORS[orgType];
+    if (!colors) return '';
+    return `${colors.bg} ${colors.border} ${colors.text} border`;
+  }
+
   function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
     switch (status) {
       case OrgStatus.ACTIVE:
@@ -320,7 +354,7 @@
                 <span class="font-medium text-foreground">{branch.name}</span>
               </TableCell>
               <TableCell class="text-center">
-                <Badge variant="secondary" class="text-xs">
+                <Badge variant="outline" class="text-xs font-medium {getOrgTypeClasses(branch.orgType)}">
                   {BRANCH_TYPE_LABELS[branch.orgType as OrgType] || branch.orgType}
                 </Badge>
               </TableCell>

@@ -6,6 +6,10 @@
   let tabs = $state(tabStore.getTabs());
   let activeTabId = $state(tabStore.getActiveTabId());
   
+  // Drag state
+  let draggedIndex = $state<number | null>(null);
+  let dragOverIndex = $state<number | null>(null);
+  
   // Update when tabStore changes
   $effect(() => {
     const interval = setInterval(() => {
@@ -27,29 +31,72 @@
     tabs = tabStore.getTabs();
     activeTabId = tabStore.getActiveTabId();
   }
+  
+  function handleDragStart(e: DragEvent, index: number) {
+    draggedIndex = index;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', index.toString());
+    }
+  }
+  
+  function handleDragOver(e: DragEvent, index: number) {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    dragOverIndex = index;
+  }
+  
+  function handleDragLeave() {
+    dragOverIndex = null;
+  }
+  
+  function handleDrop(e: DragEvent, toIndex: number) {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== toIndex) {
+      tabStore.reorderTabs(draggedIndex, toIndex);
+      tabs = tabStore.getTabs();
+    }
+    draggedIndex = null;
+    dragOverIndex = null;
+  }
+  
+  function handleDragEnd() {
+    draggedIndex = null;
+    dragOverIndex = null;
+  }
 </script>
 
 <div class="bg-slate-50 border-b border-slate-200 pt-2 px-4 flex items-end">
   <div class="flex gap-1 overflow-hidden pb-0" role="tablist">
-    {#each tabs as tab (tab.id)}
+    {#each tabs as tab, index (tab.id)}
       <div 
         class={cn(
-          "flex items-center gap-2 py-2.5 px-4 border border-b-0 rounded-t-lg cursor-pointer text-sm transition-all duration-150 whitespace-nowrap",
+          "flex items-center gap-1.5 py-1.5 px-3 border border-b-0 rounded-t-lg cursor-pointer text-xs transition-all duration-150 whitespace-nowrap select-none",
           tab.id === activeTabId 
             ? "bg-white text-slate-800 font-medium border-slate-200 relative after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-0.5 after:bg-white" 
-            : "bg-slate-200 border-gray-300 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            : "bg-slate-200 border-gray-300 text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+          draggedIndex === index && "opacity-50",
+          dragOverIndex === index && draggedIndex !== index && "ring-2 ring-primary ring-offset-1"
         )}
         onclick={() => handleTabClick(tab.id)}
         onkeydown={(e) => e.key === 'Enter' && handleTabClick(tab.id)}
         role="tab"
         tabindex="0"
         aria-selected={tab.id === activeTabId}
+        draggable="true"
+        ondragstart={(e) => handleDragStart(e, index)}
+        ondragover={(e) => handleDragOver(e, index)}
+        ondragleave={handleDragLeave}
+        ondrop={(e) => handleDrop(e, index)}
+        ondragend={handleDragEnd}
       >
-        <span class="text-base">{tab.icon}</span>
-        <span class="max-w-[120px] overflow-hidden text-ellipsis">{tab.title}</span>
+        <span class="text-sm">{tab.icon}</span>
+        <span class="max-w-[100px] overflow-hidden text-ellipsis">{tab.title}</span>
         {#if tab.closeable}
           <button 
-            class="flex items-center justify-center w-[18px] h-[18px] ml-1 -mr-1 bg-transparent border-none rounded cursor-pointer text-base text-slate-400 leading-none hover:bg-red-600 hover:text-white"
+            class="flex items-center justify-center w-4 h-4 ml-0.5 -mr-0.5 bg-transparent border-none rounded cursor-pointer text-sm text-slate-400 leading-none hover:bg-red-600 hover:text-white"
             onclick={(e) => handleCloseTab(e, tab.id)}
             type="button"
             aria-label="닫기"
