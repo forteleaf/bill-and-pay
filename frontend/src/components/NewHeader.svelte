@@ -48,7 +48,7 @@
   }
 </script>
 
-<header class="bg-gradient-to-br from-white to-slate-50 border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sticky top-0 z-[5]">
+<header class="bg-gradient-to-br from-white to-slate-50 border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sticky top-0 z-[15]">
   <div class="flex items-center justify-between px-6 h-[60px] max-w-full">
     <button 
       class="flex items-center gap-2 bg-transparent border-none cursor-pointer py-2 px-3 -ml-3 rounded-lg transition-all duration-200 hover:bg-blue-500/[0.08] active:scale-[0.98]" 
@@ -84,7 +84,7 @@
           <span class="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap max-md:hidden">{currentTenantName}</span>
           <span class="text-[0.625rem] text-slate-500 transition-transform duration-200 [[data-state=open]_&]:rotate-180 max-md:hidden">▼</span>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Content class="min-w-[180px] bg-white border border-slate-200 rounded-xl p-1.5 shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] animate-[slideDown_0.15s_ease-out] z-[1000]" sideOffset={8}>
+        <DropdownMenu.Content class="min-w-[180px] bg-white border border-slate-200 rounded-xl p-1.5 shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] animate-[slideDown_0.15s_ease-out] z-[60]" sideOffset={8}>
           {#each tenants as tenant (tenant.id)}
             <DropdownMenu.Item 
               class={cn(
@@ -113,7 +113,7 @@
           <span class="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap max-md:hidden">{username}</span>
           <span class="text-[0.625rem] text-slate-500 transition-transform duration-200 [[data-state=open]_&]:rotate-180 max-md:hidden">▼</span>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Content class="min-w-[180px] bg-white border border-slate-200 rounded-xl p-1.5 shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] animate-[slideDown_0.15s_ease-out] z-[1000]" sideOffset={8} align="end">
+        <DropdownMenu.Content class="min-w-[180px] bg-white border border-slate-200 rounded-xl p-1.5 shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] animate-[slideDown_0.15s_ease-out] z-[60]" sideOffset={8} align="end">
           <DropdownMenu.Item class="flex items-center gap-2.5 py-2.5 px-3 rounded-lg cursor-pointer text-sm text-slate-700 transition-all duration-150 outline-none hover:bg-slate-100 hover:text-slate-800 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-800 active:bg-slate-200">
             <button class="flex items-center gap-2.5 w-full p-0 m-0 bg-transparent border-none cursor-pointer text-inherit text-left" onclick={handleProfileClick} type="button">
               <span class="text-base">👤</span>

@@ -26,7 +26,7 @@
   );
 </script>
 
-<footer class="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between h-[30px] px-4 bg-slate-100 border-t border-slate-200 text-xs text-slate-500">
+<footer class="fixed bottom-0 left-0 right-0 z-[30] flex items-center justify-between h-[30px] px-4 bg-slate-100 border-t border-slate-200 text-xs text-slate-500">
   <div class="flex items-center gap-4">
     <span class="font-medium text-slate-600">Bill&Pay v1.0.0</span>
     <span class="flex items-center gap-1">🟢 정상</span>
