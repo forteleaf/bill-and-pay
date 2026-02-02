@@ -87,6 +87,208 @@
 - CSS 변수 활용: `text-foreground`, `bg-muted`, `border-border`
 - 반응형: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
 
+## ⚠️ 자주 하는 실수 (Common Mistakes)
+
+### 1. $effect 무한 루프/무한 로딩 (CRITICAL)
+
+#### ❌ 잘못된 패턴: $effect 내 API 호출 (가드 없음)
+```svelte
+<!-- 무한 로딩 발생! entityId 변경 → API 호출 → 상태 변경 → $effect 재실행 -->
+$effect(() => {
+  loadContacts();  // 매 렌더링마다 API 호출
+});
+```
+
+#### ✅ 올바른 패턴: 가드 조건 추가
+```svelte
+$effect(() => {
+  if (entityId && !loading) {
+    loadContacts();
+  }
+});
+```
+
+#### ❌ 잘못된 패턴: onMount + $effect 중복
+```svelte
+onMount(() => {
+  if (entityId) loadContacts();  // 첫 번째 호출
+});
+
+$effect(() => {
+  if (entityId) loadContacts();  // 두 번째 호출 (중복!)
+});
+```
+
+#### ✅ 올바른 패턴: 하나만 사용
+```svelte
+// 초기 로딩만 필요하면 onMount
+onMount(() => {
+  if (entityId) loadContacts();
+});
+
+// 의존성 변경 감지가 필요하면 $effect만 사용 (onMount 제거)
+let prevEntityId = $state<string | null>(null);
+$effect(() => {
+  if (entityId && entityId !== prevEntityId) {
+    prevEntityId = entityId;
+    loadContacts();
+  }
+});
+```
+
+#### ❌ 잘못된 패턴: setInterval 메모리 누수
+```svelte
+$effect(() => {
+  // 매 렌더링마다 새 interval 생성 → 메모리 누수
+  setInterval(() => {
+    tabs = tabStore.getTabs();
+  }, 100);
+});
+```
+
+#### ✅ 올바른 패턴: cleanup 함수 반환
+```svelte
+$effect(() => {
+  const interval = setInterval(() => {
+    tabs = tabStore.getTabs();
+  }, 100);
+  return () => clearInterval(interval);  // cleanup 필수!
+});
+```
+
+### 2. bits-ui v2 바인딩 패턴 (CRITICAL)
+
+#### ❌ 잘못된 패턴: Select value 단방향 바인딩
+```svelte
+<!-- 상태 동기화 안됨! -->
+<Select.Root type="single" value={selectedValue} onValueChange={(v) => selectedValue = v}>
+```
+
+#### ✅ 올바른 패턴: bind:value 사용
+```svelte
+<Select.Root type="single" bind:value={selectedValue}>
+```
+
+#### ❌ 잘못된 패턴: Dialog에서 bind:open + onOpenChange 혼용
+```svelte
+<!-- 상태 충돌 가능! bind가 업데이트 → onOpenChange도 업데이트 시도 -->
+<Dialog.Root bind:open={dialogOpen} onOpenChange={(v) => { if (!v) closeDialog(); }}>
+```
+
+#### ✅ 올바른 패턴: 둘 중 하나만 사용
+```svelte
+<!-- 옵션 1: bind:open만 사용 (단순한 경우) -->
+<Dialog.Root bind:open={dialogOpen}>
+
+<!-- 옵션 2: onOpenChange만 사용 (부가 로직 필요 시) -->
+<Dialog.Root open={dialogOpen} onOpenChange={(v) => {
+  dialogOpen = v;
+  if (!v) closeDialog();
+}}>
+```
+
+#### ❌ 잘못된 패턴: Sheet bind:open 함수 구문 (bits-ui v2 호환 불가)
+```svelte
+<!-- bits-ui v2에서 지원 안 함! -->
+<Sheet.Root bind:open={() => sidebar.openMobile, (v) => sidebar.setOpenMobile(v)}>
+```
+
+#### ✅ 올바른 패턴: 단순 변수 바인딩 + onOpenChange
+```svelte
+<Sheet.Root bind:open={sidebar.openMobile} onOpenChange={(v) => sidebar.setOpenMobile(v)}>
+```
+
+### 3. API 호출 패턴
+
+#### ❌ 잘못된 패턴: 에러 메시지 무시
+```svelte
+} catch (err) {
+  error = 'Failed to load data.';  // API 에러 상세 정보 없음
+}
+```
+
+#### ✅ 올바른 패턴: 에러 메시지 추출
+```svelte
+} catch (err) {
+  error = err instanceof Error ? err.message : 'Failed to load data.';
+  console.error('API Error:', err);
+}
+```
+
+#### ❌ 잘못된 패턴: 로딩 상태 없이 API 호출
+```svelte
+async function loadData() {
+  const response = await api.get('/data');
+  data = response.data;
+}
+```
+
+#### ✅ 올바른 패턴: 로딩/에러 상태 관리
+```svelte
+let loading = $state(false);
+let error = $state<string | null>(null);
+
+async function loadData() {
+  loading = true;
+  error = null;
+  try {
+    const response = await api.get('/data');
+    if (response.success) {
+      data = response.data;
+    } else {
+      error = response.error?.message || '데이터를 불러올 수 없습니다.';
+    }
+  } catch (err) {
+    error = err instanceof Error ? err.message : '데이터를 불러올 수 없습니다.';
+  } finally {
+    loading = false;
+  }
+}
+```
+
+### 4. IntersectionObserver 무한 스크롤
+
+#### ❌ 잘못된 패턴: 중복 Observer 생성
+```svelte
+$effect(() => {
+  // sentinelEl, loading, hasMore 등 상태 변경마다 새 Observer 생성
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore();
+  });
+  observer.observe(sentinelEl);
+});
+```
+
+#### ✅ 올바른 패턴: 가드 + cleanup
+```svelte
+$effect(() => {
+  if (!sentinelEl || initialLoading) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && !loading && hasMore) {
+        loadMore();
+      }
+    },
+    { rootMargin: '100px', threshold: 0 }
+  );
+
+  observer.observe(sentinelEl);
+  return () => observer.disconnect();  // cleanup 필수!
+});
+```
+
+### 5. 기타 공통 실수
+
+| 실수 | 올바른 방법 |
+|------|------------|
+| `npm install` 사용 | `bun install` 사용 |
+| 하드코딩된 API URL | 환경변수 사용: `import.meta.env.VITE_API_BASE_URL` |
+| `Math.random()` 목업 데이터 | 실제 API 연동 또는 테스트 fixture 사용 |
+| scoped `<style>` 사용 | Tailwind 유틸리티 클래스만 사용 |
+| 스켈레톤 로더 없이 "Loading..." 텍스트 | shadcn Skeleton 컴포넌트 사용 |
+| fetch timeout 없음 | AbortController + setTimeout 사용 |
+
 ## 커스텀 에이전트
 프로젝트 개발을 위한 전문 에이전트가 `.claude/agents.md`에 정의되어 있습니다:
 - `db-schema-agent`: DB 스키마, Flyway, ltree

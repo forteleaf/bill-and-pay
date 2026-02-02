@@ -79,7 +79,7 @@
           id: "terminal-mgmt",
           title: "단말기 관리",
           icon: "💻",
-          component: "ComingSoon",
+          component: "TerminalList",
         },
       ],
     },
