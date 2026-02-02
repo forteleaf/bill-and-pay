@@ -85,7 +85,7 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
         return new HikariDataSource(config);
     }
     
-    private boolean tenantExistsInDatabase(String tenantId) {
+    public boolean tenantExistsInDatabase(String tenantId) {
         return tenantExistenceCache.computeIfAbsent(tenantId, tid -> {
             String sql = "SELECT EXISTS(SELECT 1 FROM tenants WHERE schema_name = ? AND status = 'ACTIVE')";
             

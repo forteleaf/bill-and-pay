@@ -24,9 +24,13 @@ public class PgConnectionDto {
     private String merchantId;
     private String apiBaseUrl;
     private String webhookBaseUrl;
+    private String tenantId;
     private PgConnectionStatus status;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+
+    private String generatedWebhookUrl;
+    private String legacyWebhookUrl;
 
     public static PgConnectionDto from(PgConnection entity) {
         return PgConnectionDto.builder()
@@ -36,9 +40,27 @@ public class PgConnectionDto {
                 .merchantId(entity.getMerchantId())
                 .apiBaseUrl(entity.getApiBaseUrl())
                 .webhookBaseUrl(entity.getWebhookBaseUrl())
+                .tenantId(entity.getTenantId())
                 .status(entity.getStatus())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+
+    public static PgConnectionDto from(PgConnection entity, String generatedWebhookUrl, String legacyWebhookUrl) {
+        return PgConnectionDto.builder()
+                .id(entity.getId())
+                .pgCode(entity.getPgCode())
+                .pgName(entity.getPgName())
+                .merchantId(entity.getMerchantId())
+                .apiBaseUrl(entity.getApiBaseUrl())
+                .webhookBaseUrl(entity.getWebhookBaseUrl())
+                .tenantId(entity.getTenantId())
+                .status(entity.getStatus())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .generatedWebhookUrl(generatedWebhookUrl)
+                .legacyWebhookUrl(legacyWebhookUrl)
                 .build();
     }
 }

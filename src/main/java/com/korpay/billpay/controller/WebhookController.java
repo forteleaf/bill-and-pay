@@ -1,8 +1,15 @@
 package com.korpay.billpay.controller;
 
+import com.korpay.billpay.config.tenant.TenantContextHolder;
+import com.korpay.billpay.config.tenant.TenantService;
+import com.korpay.billpay.domain.entity.PgConnection;
 import com.korpay.billpay.dto.webhook.WebhookResponse;
+import com.korpay.billpay.exception.EntityNotFoundException;
+import com.korpay.billpay.exception.InvalidTenantException;
+import com.korpay.billpay.exception.TenantNotFoundException;
 import com.korpay.billpay.exception.webhook.SignatureVerificationFailedException;
 import com.korpay.billpay.exception.webhook.WebhookProcessingException;
+import com.korpay.billpay.repository.PgConnectionRepository;
 import com.korpay.billpay.service.webhook.WebhookProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,29 +26,84 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WebhookController {
 
-    private final WebhookProcessingService webhookProcessingService;
+    private static final String TENANT_ID_PATTERN = "^[a-z][a-z0-9_]{2,49}$";
 
-    @PostMapping("/{pgCode}")
-    public ResponseEntity<WebhookResponse> receiveWebhook(
+    private final WebhookProcessingService webhookProcessingService;
+    private final TenantService tenantService;
+    private final PgConnectionRepository pgConnectionRepository;
+
+    @PostMapping("/{tenantId}/{pgCode}")
+    public ResponseEntity<WebhookResponse> receiveWebhookWithTenant(
+            @PathVariable String tenantId,
             @PathVariable String pgCode,
-            @RequestParam(required = false) UUID pgConnectionId,
-            @RequestParam(required = false) String webhookSecret,
+            @RequestParam UUID pgConnectionId,
+            @RequestParam String webhookSecret,
             @RequestHeader Map<String, String> headers,
             @RequestBody String rawBody) {
 
-        log.info("Received webhook request for PG: {}, Connection ID: {}", pgCode, pgConnectionId);
+        log.info("Received tenant-aware webhook: tenant={}, pgCode={}, connectionId={}", 
+                tenantId, pgCode, pgConnectionId);
 
-        if (pgConnectionId == null) {
-            log.error("Missing required parameter: pgConnectionId");
+        if (!tenantId.matches(TENANT_ID_PATTERN)) {
+            log.warn("Invalid tenant ID format: {}", tenantId);
             return ResponseEntity.badRequest()
-                    .body(WebhookResponse.error("Missing pgConnectionId parameter"));
+                    .body(WebhookResponse.error("Invalid tenant ID format"));
         }
 
-        if (webhookSecret == null) {
-            log.error("Missing required parameter: webhookSecret");
+        try {
+            tenantService.validateTenantExists(tenantId);
+        } catch (TenantNotFoundException e) {
+            log.warn("Tenant not found: {}", tenantId);
             return ResponseEntity.badRequest()
-                    .body(WebhookResponse.error("Missing webhookSecret parameter"));
+                    .body(WebhookResponse.error("Tenant not found: " + tenantId));
         }
+
+        return TenantContextHolder.runInTenant(tenantId, 
+            (java.util.function.Supplier<ResponseEntity<WebhookResponse>>) () -> 
+                processWebhook(pgCode, pgConnectionId, webhookSecret, rawBody, headers)
+        );
+    }
+
+    @PostMapping("/{pgCode}")
+    public ResponseEntity<WebhookResponse> receiveWebhookLegacy(
+            @PathVariable String pgCode,
+            @RequestParam UUID pgConnectionId,
+            @RequestParam String webhookSecret,
+            @RequestHeader Map<String, String> headers,
+            @RequestBody String rawBody) {
+
+        log.warn("DEPRECATED: Using legacy webhook endpoint without tenant ID. " +
+                "Please update to /webhook/{tenantId}/{pgCode}. pgCode={}, connectionId={}", 
+                pgCode, pgConnectionId);
+
+        PgConnection pgConnection = pgConnectionRepository.findById(pgConnectionId)
+                .orElse(null);
+
+        if (pgConnection == null) {
+            log.error("PG Connection not found: {}", pgConnectionId);
+            return ResponseEntity.badRequest()
+                    .body(WebhookResponse.error("PG Connection not found"));
+        }
+
+        String tenantId = pgConnection.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            log.error("PG Connection has no tenant ID assigned: {}", pgConnectionId);
+            return ResponseEntity.badRequest()
+                    .body(WebhookResponse.error("PG Connection has no tenant ID assigned. Please configure tenant_id."));
+        }
+
+        return TenantContextHolder.runInTenant(tenantId, 
+            (java.util.function.Supplier<ResponseEntity<WebhookResponse>>) () -> 
+                processWebhook(pgCode, pgConnectionId, webhookSecret, rawBody, headers)
+        );
+    }
+
+    private ResponseEntity<WebhookResponse> processWebhook(
+            String pgCode,
+            UUID pgConnectionId,
+            String webhookSecret,
+            String rawBody,
+            Map<String, String> headers) {
 
         try {
             WebhookResponse response = webhookProcessingService.processWebhook(
@@ -52,7 +113,6 @@ public class WebhookController {
                     rawBody,
                     headers
             );
-
             return ResponseEntity.ok(response);
 
         } catch (SignatureVerificationFailedException e) {

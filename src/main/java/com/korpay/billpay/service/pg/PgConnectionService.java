@@ -8,6 +8,7 @@ import com.korpay.billpay.dto.response.PgConnectionDto;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
 import com.korpay.billpay.repository.PgConnectionRepository;
+import com.korpay.billpay.service.webhook.WebhookUrlGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,21 +27,46 @@ import java.util.UUID;
 public class PgConnectionService {
 
     private final PgConnectionRepository pgConnectionRepository;
+    private final WebhookUrlGenerator webhookUrlGenerator;
 
     public Page<PgConnectionDto> findAll(Pageable pageable) {
         return pgConnectionRepository.findAll(pageable)
-                .map(PgConnectionDto::from);
+                .map(this::toDto);
     }
 
     public PgConnectionDto findById(UUID id) {
         PgConnection entity = getEntityOrThrow(id);
-        return PgConnectionDto.from(entity);
+        return toDto(entity);
     }
 
     public PgConnectionDto findByPgCode(String pgCode) {
         PgConnection entity = pgConnectionRepository.findByPgCode(pgCode)
                 .orElseThrow(() -> new EntityNotFoundException("PG 연결을 찾을 수 없습니다: " + pgCode));
-        return PgConnectionDto.from(entity);
+        return toDto(entity);
+    }
+
+    private PgConnectionDto toDto(PgConnection entity) {
+        String generatedWebhookUrl = null;
+        String legacyWebhookUrl = null;
+
+        if (entity.getTenantId() != null && entity.getWebhookSecret() != null) {
+            generatedWebhookUrl = webhookUrlGenerator.generateNewUrl(
+                    entity.getTenantId(),
+                    entity.getPgCode(),
+                    entity.getId(),
+                    entity.getWebhookSecret()
+            );
+        }
+
+        if (entity.getWebhookSecret() != null) {
+            legacyWebhookUrl = webhookUrlGenerator.generateLegacyUrl(
+                    entity.getPgCode(),
+                    entity.getId(),
+                    entity.getWebhookSecret()
+            );
+        }
+
+        return PgConnectionDto.from(entity, generatedWebhookUrl, legacyWebhookUrl);
     }
 
     @Transactional
@@ -76,7 +102,7 @@ public class PgConnectionService {
         PgConnection saved = pgConnectionRepository.save(entity);
         log.info("Created PG connection: {} ({})", saved.getPgCode(), saved.getId());
 
-        return PgConnectionDto.from(saved);
+        return toDto(saved);
     }
 
     @Transactional
@@ -129,7 +155,7 @@ public class PgConnectionService {
         PgConnection saved = pgConnectionRepository.save(entity);
         log.info("Updated PG connection: {} ({})", saved.getPgCode(), saved.getId());
 
-        return PgConnectionDto.from(saved);
+        return toDto(saved);
     }
 
     @Transactional
@@ -140,7 +166,7 @@ public class PgConnectionService {
         PgConnection saved = pgConnectionRepository.save(entity);
         log.info("Updated PG connection status: {} -> {}", saved.getPgCode(), status);
 
-        return PgConnectionDto.from(saved);
+        return toDto(saved);
     }
 
     @Transactional

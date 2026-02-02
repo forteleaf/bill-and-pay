@@ -39,6 +39,9 @@ public class PgConnection {
     @Column(name = "webhook_base_url", length = 500)
     private String webhookBaseUrl;
 
+    @Column(name = "tenant_id", length = 50)
+    private String tenantId;
+
     /** JSONB: {api_key, secret_key, merchant_id} */
     @Type(JsonBinaryType.class)
     @Column(name = "credentials", nullable = false, columnDefinition = "jsonb")

@@ -17,4 +17,8 @@ public interface PgConnectionRepository extends JpaRepository<PgConnection, UUID
     List<PgConnection> findByStatus(PgConnectionStatus status);
 
     boolean existsByPgCode(String pgCode);
+
+    Optional<PgConnection> findByIdAndTenantId(UUID id, String tenantId);
+
+    List<PgConnection> findByTenantId(String tenantId);
 }

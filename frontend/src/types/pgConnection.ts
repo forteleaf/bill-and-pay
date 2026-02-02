@@ -17,9 +17,12 @@ export interface PgConnectionDto {
   merchantId: string;
   apiBaseUrl: string;
   webhookBaseUrl?: string;
+  tenantId?: string;
   status: PgConnectionStatus;
   createdAt: string;
   updatedAt: string;
+  generatedWebhookUrl?: string;
+  legacyWebhookUrl?: string;
 }
 
 export interface PgConnectionCreateRequest {

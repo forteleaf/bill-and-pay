@@ -62,3 +62,10 @@ jwt:
   secret: ${JWT_SECRET:billpay-secret-key-for-jwt-token-generation-minimum-256-bits-required-for-hs256-algorithm}
   expiration: 86400000
   refresh-expiration: 604800000
+
+# Webhook configuration
+app:
+  webhook:
+    # Base URL for webhook endpoints (used to generate full webhook URLs for PG configuration)
+    # Override via WEBHOOK_BASE_URL environment variable in production
+    base-url: ${WEBHOOK_BASE_URL:http://localhost:8080/api}

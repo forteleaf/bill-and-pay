@@ -1,5 +1,6 @@
 package com.korpay.billpay.config.tenant;
 
+import com.korpay.billpay.exception.TenantNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,16 @@ public class TenantService {
     
     public TenantService(TenantRoutingDataSource routingDataSource) {
         this.routingDataSource = routingDataSource;
+    }
+
+    public boolean tenantExists(String tenantId) {
+        return routingDataSource.tenantExistsInDatabase(tenantId);
+    }
+
+    public void validateTenantExists(String tenantId) {
+        if (!tenantExists(tenantId)) {
+            throw new TenantNotFoundException(tenantId);
+        }
     }
     
     public void evictTenantCache(String tenantId) {
