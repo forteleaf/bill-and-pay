@@ -1,9 +1,9 @@
 <script lang="ts">
   import { Collapsible } from 'bits-ui';
-  import { cn } from '$lib/utils';
+  import * as Sidebar from '$lib/components/ui/sidebar';
   import { tabStore, type Tab } from '../lib/tabStore';
+  import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 
-  // Menu item types
   interface MenuItem {
     id: string;
     title: string;
@@ -18,7 +18,6 @@
     children: MenuItem[];
   }
 
-  // Full menu structure from PRD-01
   const menuItems: (MenuItem | MenuGroup)[] = [
     { id: 'dashboard', title: '대시보드', icon: '📊', component: 'Dashboard' },
     {
@@ -88,11 +87,9 @@
     }
   ];
 
-  // Expanded state with localStorage persistence
   let expandedGroups = $state<Set<string>>(new Set());
   const STORAGE_KEY = 'billpay-sidebar-expanded';
 
-  // Load expanded state from localStorage on mount
   $effect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -112,7 +109,7 @@
     } else {
       expandedGroups.add(groupId);
     }
-    expandedGroups = new Set(expandedGroups); // trigger reactivity
+    expandedGroups = new Set(expandedGroups);
     saveExpandedState();
   }
 
@@ -138,51 +135,90 @@
   }
 </script>
 
-<aside class="w-[250px] min-w-[250px] h-screen bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d] text-neutral-200 flex flex-col border-r border-[#2a2a2a] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#333] hover:scrollbar-thumb-[#444]">
-  <div class="flex items-center gap-3 py-6 px-5 border-b border-[#2a2a2a] bg-gradient-to-br from-indigo-500/10 to-transparent">
-    <span class="text-2xl">💎</span>
-    <h1 class="text-xl font-bold bg-gradient-to-br from-indigo-300 to-indigo-500 bg-clip-text text-transparent -tracking-[0.02em]">Bill&Pay</h1>
-  </div>
+<Sidebar.Root class="border-r border-sidebar-border">
+  <Sidebar.Header class="border-b border-sidebar-border">
+    <Sidebar.Menu>
+      <Sidebar.MenuItem>
+        <Sidebar.MenuButton size="lg" class="hover:bg-sidebar-accent">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">💎</span>
+            <div class="flex flex-col">
+              <span class="text-lg font-bold">Bill&Pay</span>
+              <span class="text-xs text-sidebar-foreground/60">Settlement Platform</span>
+            </div>
+          </div>
+        </Sidebar.MenuButton>
+      </Sidebar.MenuItem>
+    </Sidebar.Menu>
+  </Sidebar.Header>
 
-  <nav class="flex-1 py-3 flex flex-col gap-0.5">
+  <Sidebar.Content>
     {#each menuItems as item}
       {#if isGroup(item)}
         <Collapsible.Root
           open={expandedGroups.has(item.id)}
           onOpenChange={() => toggleGroup(item.id)}
+          class="group/collapsible"
         >
-          <Collapsible.Trigger class="flex items-center gap-3 w-full py-3 px-5 text-left bg-transparent border-none text-neutral-400 cursor-pointer text-sm transition-all duration-150 relative before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-0 before:bg-gradient-to-b before:from-indigo-500 before:to-indigo-300 before:rounded-r-sm before:transition-all before:duration-200 hover:bg-white/5 hover:text-white hover:before:h-[60%] active:bg-white/[0.08]">
-            <span class="text-base min-w-[1.25rem] text-center">{item.icon}</span>
-            <span class="flex-1 font-medium">{item.title}</span>
-            <span class={cn(
-              "text-[0.625rem] text-neutral-500 transition-transform duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-              expandedGroups.has(item.id) && "rotate-90"
-            )}>▶</span>
-          </Collapsible.Trigger>
-          <Collapsible.Content class="overflow-hidden animate-[slideDown_0.25s_cubic-bezier(0.4,0,0.2,1)]">
-            {#each item.children as child}
-              <button 
-                class="flex items-center gap-3 w-full py-2.5 pl-12 pr-5 text-left bg-transparent border-none text-[#8a8a8a] cursor-pointer text-[0.8125rem] transition-all duration-150 relative before:content-[''] before:absolute before:left-6 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-0 before:bg-gradient-to-b before:from-indigo-500 before:to-indigo-300 before:rounded-r-sm before:transition-all before:duration-200 hover:bg-white/5 hover:text-neutral-300 hover:before:h-[60%]" 
-                onclick={() => openTab(child)}
-              >
-                <span class="flex-1 font-medium">{child.title}</span>
-              </button>
-            {/each}
-          </Collapsible.Content>
+          <Sidebar.Group>
+            <Sidebar.GroupLabel class="pr-0">
+              {#snippet child({ props })}
+                <Collapsible.Trigger
+                  {...props}
+                  class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                >
+                  <span class="text-base">{item.icon}</span>
+                  <span class="flex-1 text-left">{item.title}</span>
+                  <ChevronRightIcon
+                    class="size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                  />
+                </Collapsible.Trigger>
+              {/snippet}
+            </Sidebar.GroupLabel>
+            <Collapsible.Content>
+              <Sidebar.GroupContent>
+                <Sidebar.Menu>
+                  {#each item.children as child}
+                    <Sidebar.MenuItem>
+                      <Sidebar.MenuButton
+                        class="pl-8 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                        onclick={() => openTab(child)}
+                      >
+                        <span>{child.title}</span>
+                      </Sidebar.MenuButton>
+                    </Sidebar.MenuItem>
+                  {/each}
+                </Sidebar.Menu>
+              </Sidebar.GroupContent>
+            </Collapsible.Content>
+          </Sidebar.Group>
         </Collapsible.Root>
       {:else}
-        <button 
-          class="flex items-center gap-3 w-full py-3.5 px-5 text-left bg-transparent border-none text-neutral-400 cursor-pointer text-sm transition-all duration-150 relative before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-0 before:bg-gradient-to-b before:from-indigo-500 before:to-indigo-300 before:rounded-r-sm before:transition-all before:duration-200 hover:bg-white/5 hover:text-white hover:before:h-[60%] active:bg-white/[0.08]" 
-          onclick={() => openTab(item)}
-        >
-          <span class="text-base min-w-[1.25rem] text-center">{item.icon}</span>
-          <span class="flex-1 font-medium">{item.title}</span>
-        </button>
+        <Sidebar.Group>
+          <Sidebar.GroupContent>
+            <Sidebar.Menu>
+              <Sidebar.MenuItem>
+                <Sidebar.MenuButton onclick={() => openTab(item)}>
+                  <span class="text-base">{item.icon}</span>
+                  <span>{item.title}</span>
+                </Sidebar.MenuButton>
+              </Sidebar.MenuItem>
+            </Sidebar.Menu>
+          </Sidebar.GroupContent>
+        </Sidebar.Group>
       {/if}
     {/each}
-  </nav>
+  </Sidebar.Content>
 
-  <div class="py-4 px-5 border-t border-[#2a2a2a] flex justify-center">
-    <span class="text-[0.6875rem] text-neutral-600 font-mono tracking-[0.05em]">v1.0.0</span>
-  </div>
-</aside>
+  <Sidebar.Footer class="border-t border-sidebar-border">
+    <Sidebar.Menu>
+      <Sidebar.MenuItem>
+        <div class="flex justify-center py-2">
+          <span class="text-xs text-sidebar-foreground/50 font-mono">v1.0.0</span>
+        </div>
+      </Sidebar.MenuItem>
+    </Sidebar.Menu>
+  </Sidebar.Footer>
+
+  <Sidebar.Rail />
+</Sidebar.Root>

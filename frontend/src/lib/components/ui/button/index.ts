@@ -1,9 +1,17 @@
-import Root from "./button.svelte";
-
-export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-export type ButtonSize = "default" | "sm" | "lg" | "icon";
+import Root, {
+	type ButtonProps,
+	type ButtonSize,
+	type ButtonVariant,
+	buttonVariants,
+} from "./button.svelte";
 
 export {
-  Root,
-  Root as Button,
+	Root,
+	type ButtonProps as Props,
+	//
+	Root as Button,
+	buttonVariants,
+	type ButtonProps,
+	type ButtonSize,
+	type ButtonVariant,
 };

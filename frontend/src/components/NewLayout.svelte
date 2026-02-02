@@ -4,6 +4,7 @@
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
   import { Toaster } from '$lib/components/ui/sonner';
+  import * as Sidebar from '$lib/components/ui/sidebar';
   import { tabStore } from '../lib/tabStore';
   
   import Dashboard from '../routes/Dashboard.svelte';
@@ -62,35 +63,36 @@
 
 <Toaster position="top-right" richColors />
 
-<div class="flex min-h-screen max-h-screen overflow-hidden">
+<Sidebar.Provider>
   <NewSidebar />
-  
-  <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-    <NewHeader />
-    
-    <TabBar />
-    
-    <main class="flex-1 p-6 bg-neutral-100 overflow-y-auto">
-      {#key activeTab?.id}
-        {#if activeComponent}
-          {@const DynamicComponent = activeComponent}
-          <DynamicComponent {...activeTab?.props || {}} />
-        {:else if activeTab}
-          <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
-            <div class="text-7xl mb-6 opacity-80">🚧</div>
-            <h2 class="text-2xl font-semibold text-slate-700 mb-2">준비 중입니다</h2>
-            <p class="text-[15px] text-slate-400">{activeTab.title} 기능은 곧 제공될 예정입니다.</p>
-          </div>
-        {:else}
-          <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
-            <div class="text-7xl mb-6 opacity-80">📋</div>
-            <h2 class="text-2xl font-semibold text-slate-700 mb-2">탭을 선택해주세요</h2>
-            <p class="text-[15px] text-slate-400">좌측 메뉴에서 원하는 기능을 선택하세요.</p>
-          </div>
-        {/if}
-      {/key}
-    </main>
-    
-    <StatusBar />
-  </div>
-</div>
+  <Sidebar.Inset>
+    <div class="flex flex-1 flex-col min-w-0 overflow-hidden h-screen">
+      <NewHeader />
+      
+      <TabBar />
+      
+      <main class="flex-1 p-6 bg-neutral-100 overflow-y-auto">
+        {#key activeTab?.id}
+          {#if activeComponent}
+            {@const DynamicComponent = activeComponent}
+            <DynamicComponent {...activeTab?.props || {}} />
+          {:else if activeTab}
+            <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
+              <div class="text-7xl mb-6 opacity-80">🚧</div>
+              <h2 class="text-2xl font-semibold text-slate-700 mb-2">준비 중입니다</h2>
+              <p class="text-[15px] text-slate-400">{activeTab.title} 기능은 곧 제공될 예정입니다.</p>
+            </div>
+          {:else}
+            <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
+              <div class="text-7xl mb-6 opacity-80">📋</div>
+              <h2 class="text-2xl font-semibold text-slate-700 mb-2">탭을 선택해주세요</h2>
+              <p class="text-[15px] text-slate-400">좌측 메뉴에서 원하는 기능을 선택하세요.</p>
+            </div>
+          {/if}
+        {/key}
+      </main>
+      
+      <StatusBar />
+    </div>
+  </Sidebar.Inset>
+</Sidebar.Provider>
