@@ -26,18 +26,29 @@
     onCancel
   }: Props = $props();
   
-  const initialName = initialData?.name || '';
-  const initialOrgType = (initialData?.orgType || '') as OrgType;
-  const initialStatus = (initialData?.status || 'ACTIVE') as OrgStatus;
+  // Use $derived for reactive access to initialData
+  const initialName = $derived(initialData?.name || '');
+  const initialOrgType = $derived((initialData?.orgType || '') as OrgType);
+  const initialStatus = $derived((initialData?.status || 'ACTIVE') as OrgStatus);
+  const initialBusinessEntityId = $derived(initialData?.businessEntityId || '');
   
   let formData = $state({
-    name: initialName,
-    orgType: initialOrgType,
+    name: '',
+    orgType: '' as OrgType,
     parentId: '',
-    status: initialStatus,
+    status: 'ACTIVE' as OrgStatus,
+    businessEntityId: '',
     email: '',
     phone: '',
     address: ''
+  });
+  
+  // Sync formData with initialData when it changes
+  $effect(() => {
+    formData.name = initialName;
+    formData.orgType = initialOrgType;
+    formData.status = initialStatus;
+    formData.businessEntityId = initialBusinessEntityId;
   });
   
   let touched = $state({
@@ -63,7 +74,7 @@
     formData.name.length >= 3 &&
     !errors.email &&
     !errors.phone &&
-    (mode === 'create' ? formData.parentId && formData.orgType : true)
+    (mode === 'create' ? formData.parentId && formData.orgType && formData.businessEntityId : true)
   );
   
   function handleParentSelect(parentId: string, allowedChildType: OrgType) {
@@ -114,6 +125,7 @@
           name: formData.name,
           orgType: formData.orgType,
           parentId: formData.parentId || undefined,
+          businessEntityId: formData.businessEntityId,
           email: formData.email || undefined,
           phone: formData.phone || undefined,
           address: formData.address || undefined
@@ -179,6 +191,21 @@
             value={formData.orgType}
             disabled
           />
+        </div>
+      {/if}
+      
+      {#if mode === 'create'}
+        <div class="space-y-2">
+          <Label for="businessEntityId">Business Entity ID *</Label>
+          <Input
+            id="businessEntityId"
+            type="text"
+            value={formData.businessEntityId}
+            oninput={(e) => formData.businessEntityId = e.currentTarget.value}
+            placeholder="Enter business entity ID"
+            required
+          />
+          <span class="text-xs text-muted-foreground">Associated business entity for this organization</span>
         </div>
       {/if}
       

@@ -176,11 +176,10 @@
                 {#each week as day}
                   <RangeCalendar.Cell
                     date={day}
+                    month={month.value}
                     class="relative h-9 w-9 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([data-selected])]:bg-accent [&:has([data-selection-start])]:rounded-l-md [&:has([data-selection-end])]:rounded-r-md [&:has([data-selected][data-outside-month])]:bg-accent/50"
                   >
                     <RangeCalendar.Day
-                      date={day}
-                      month={month.value}
                       class={cn(
                         "inline-flex h-9 w-9 items-center justify-center rounded-md p-0 text-sm font-normal ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",

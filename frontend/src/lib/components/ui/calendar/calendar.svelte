@@ -48,6 +48,7 @@
 </script>
 
 <CalendarPrimitive.Root
+  type="single"
   value={calendarValue}
   onValueChange={handleValueChange}
   placeholder={calendarPlaceholder}
@@ -96,11 +97,10 @@
             {#each week as day}
               <CalendarPrimitive.Cell
                 date={day}
+                month={month.value}
                 class="relative h-9 w-9 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([data-selected])]:bg-accent first:[&:has([data-selected])]:rounded-l-md last:[&:has([data-selected])]:rounded-r-md [&:has([data-selected][data-outside-month])]:bg-accent/50"
               >
                 <CalendarPrimitive.Day
-                  date={day}
-                  month={month.value}
                   class={cn(
                     "inline-flex h-9 w-9 items-center justify-center rounded-md p-0 text-sm font-normal ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",

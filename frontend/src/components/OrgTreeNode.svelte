@@ -17,8 +17,9 @@
     onSelect
   }: Props = $props();
   
-  const initialLevel = level;
-  let expanded = $state(initialLevel < 2);
+  // Intentionally capture initial level value for default expansion state
+  const defaultExpanded = level < 2;
+  let expanded = $state(defaultExpanded);
   
   const orgTypeIcons: Record<string, string> = {
     DISTRIBUTOR: 'D',

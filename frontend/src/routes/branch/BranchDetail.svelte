@@ -207,11 +207,11 @@
           <CardContent>
             <div class="grid grid-cols-2 gap-5">
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">사업자번호</label>
+                <span class="text-xs font-medium text-muted-foreground">사업자번호</span>
                 <span class="text-sm font-mono text-muted-foreground">{branch.businessEntity?.businessNumber || '-'}</span>
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">상호</label>
+                <span class="text-xs font-medium text-muted-foreground">상호</span>
                 {#if editMode}
                   <input type="text" bind:value={editName} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -219,11 +219,11 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">대표자</label>
+                <span class="text-xs font-medium text-muted-foreground">대표자</span>
                 <span class="text-sm">{branch.businessEntity?.representativeName || '-'}</span>
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">연락처</label>
+                <span class="text-xs font-medium text-muted-foreground">연락처</span>
                 {#if editMode}
                   <input type="text" bind:value={editPhone} placeholder="010-0000-0000" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -231,7 +231,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
-                <label class="text-xs font-medium text-muted-foreground">주소</label>
+                <span class="text-xs font-medium text-muted-foreground">주소</span>
                 {#if editMode}
                   <input type="text" bind:value={editAddress} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -239,7 +239,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">담당자</label>
+                <span class="text-xs font-medium text-muted-foreground">담당자</span>
                 {#if editMode}
                   <input type="text" bind:value={editManagerName} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -247,7 +247,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">담당자 연락처</label>
+                <span class="text-xs font-medium text-muted-foreground">담당자 연락처</span>
                 {#if editMode}
                   <input type="text" bind:value={editManagerPhone} placeholder="010-0000-0000" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -255,7 +255,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
-                <label class="text-xs font-medium text-muted-foreground">이메일</label>
+                <span class="text-xs font-medium text-muted-foreground">이메일</span>
                 {#if editMode}
                   <input type="email" bind:value={editEmail} placeholder="example@email.com" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -278,11 +278,11 @@
           <CardContent>
             <div class="grid grid-cols-2 gap-5">
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">1회 한도</label>
+                <span class="text-xs font-medium text-muted-foreground">1회 한도</span>
                 <span class="text-sm font-semibold text-primary">{(branch.limitConfig?.perTransaction || 0).toLocaleString()}백만원</span>
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">1일 한도</label>
+                <span class="text-xs font-medium text-muted-foreground">1일 한도</span>
                 <span class="text-sm font-semibold text-primary">{(branch.limitConfig?.perDay || 0).toLocaleString()}백만원</span>
               </div>
             </div>
@@ -308,27 +308,27 @@
               {#if branch.feeConfig?.[activeFeeTab]}
                 <div class="grid grid-cols-3 gap-4">
                   <div class="flex flex-col items-center gap-1.5 p-4 bg-background rounded-lg border border-border">
-                    <label class="text-xs font-medium text-muted-foreground">일반</label>
+                    <span class="text-xs font-medium text-muted-foreground">일반</span>
                     <span class="text-xl font-semibold text-primary">{branch.feeConfig[activeFeeTab]!.general}%</span>
                   </div>
                   <div class="flex flex-col items-center gap-1.5 p-4 bg-background rounded-lg border border-border">
-                    <label class="text-xs font-medium text-muted-foreground">영세</label>
+                    <span class="text-xs font-medium text-muted-foreground">영세</span>
                     <span class="text-xl font-semibold text-primary">{branch.feeConfig[activeFeeTab]!.small}%</span>
                   </div>
                   <div class="flex flex-col items-center gap-1.5 p-4 bg-background rounded-lg border border-border">
-                    <label class="text-xs font-medium text-muted-foreground">중소1</label>
+                    <span class="text-xs font-medium text-muted-foreground">중소1</span>
                     <span class="text-xl font-semibold text-primary">{branch.feeConfig[activeFeeTab]!.medium1}%</span>
                   </div>
                   <div class="flex flex-col items-center gap-1.5 p-4 bg-background rounded-lg border border-border">
-                    <label class="text-xs font-medium text-muted-foreground">중소2</label>
+                    <span class="text-xs font-medium text-muted-foreground">중소2</span>
                     <span class="text-xl font-semibold text-primary">{branch.feeConfig[activeFeeTab]!.medium2}%</span>
                   </div>
                   <div class="flex flex-col items-center gap-1.5 p-4 bg-background rounded-lg border border-border">
-                    <label class="text-xs font-medium text-muted-foreground">중소3</label>
+                    <span class="text-xs font-medium text-muted-foreground">중소3</span>
                     <span class="text-xl font-semibold text-primary">{branch.feeConfig[activeFeeTab]!.medium3}%</span>
                   </div>
                   <div class="flex flex-col items-center gap-1.5 p-4 bg-background rounded-lg border border-border">
-                    <label class="text-xs font-medium text-muted-foreground">해외카드</label>
+                    <span class="text-xs font-medium text-muted-foreground">해외카드</span>
                     <span class="text-xl font-semibold text-primary">{branch.feeConfig[activeFeeTab]!.foreign}%</span>
                   </div>
                 </div>

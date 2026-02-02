@@ -115,7 +115,7 @@
     ORG_TYPE_ORDER.indexOf(data.orgType) < ORG_TYPE_ORDER.length - 1,
   );
 
-  function handleDoubleClick(e: MouseEvent) {
+  function handleDoubleClick(e: MouseEvent | KeyboardEvent) {
     e.stopPropagation();
     data.onDoubleClick?.(id);
   }
@@ -128,6 +128,7 @@
 
 <div
   class="relative group"
+  role="group"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
 >
@@ -141,7 +142,10 @@
 
   <div
     class="w-[200px] bg-white dark:bg-slate-800 rounded-xl border-2 {colors.border} shadow-lg transition-all duration-200 hover:shadow-xl hover:ring-4 {colors.ring} cursor-pointer overflow-hidden"
+    role="button"
+    tabindex="0"
     ondblclick={handleDoubleClick}
+    onkeydown={(e) => e.key === 'Enter' && handleDoubleClick(e)}
   >
     <div class="h-1.5 bg-gradient-to-r {colors.gradient}"></div>
 

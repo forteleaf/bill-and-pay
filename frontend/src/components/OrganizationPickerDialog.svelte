@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Dialog as DialogPrimitive } from "bits-ui";
-  import { onMount } from 'svelte';
+  
   import type { Organization, OrgTree as OrgTreeType } from '../types/api';
   import { apiClient } from '../lib/api';
   import { Button } from '$lib/components/ui/button';
@@ -27,7 +27,12 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let searchQuery = $state('');
-  let currentSelectedId = $state<string | null>(selectedId);
+  let currentSelectedId = $state<string | null>(null);
+  
+  // Sync currentSelectedId with prop when it changes
+  $effect(() => {
+    currentSelectedId = selectedId;
+  });
 
   const ORG_TYPE_LABELS: Record<string, string> = {
     DISTRIBUTOR: '총판',

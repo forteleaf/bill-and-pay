@@ -269,11 +269,11 @@
           <CardContent>
             <div class="grid grid-cols-2 gap-5">
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">사업자번호</label>
+                <span class="text-xs font-medium text-muted-foreground">사업자번호</span>
                 <span class="text-sm font-mono">{formatBusinessNumber(merchant.businessNumber)}</span>
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">상호</label>
+                <span class="text-xs font-medium text-muted-foreground">상호</span>
                 {#if editMode}
                   <input type="text" bind:value={editName} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -281,13 +281,13 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">사업자유형</label>
+                <span class="text-xs font-medium text-muted-foreground">사업자유형</span>
                 <span class="text-sm">
                   {merchant.businessType ? MERCHANT_BUSINESS_TYPE_LABELS[merchant.businessType as BusinessType] || merchant.businessType : '-'}
                 </span>
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">소속 영업점</label>
+                <span class="text-xs font-medium text-muted-foreground">소속 영업점</span>
                 {#if merchant.organizationId}
                   <button
                     type="button"
@@ -301,7 +301,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
-                <label class="text-xs font-medium text-muted-foreground">주소</label>
+                <span class="text-xs font-medium text-muted-foreground">주소</span>
                 {#if editMode}
                   <input type="text" bind:value={editAddress} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -319,7 +319,7 @@
           <CardContent>
             <div class="grid grid-cols-2 gap-5">
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">담당자명</label>
+                <span class="text-xs font-medium text-muted-foreground">담당자명</span>
                 {#if editMode}
                   <input type="text" bind:value={editContactName} class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -327,7 +327,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">연락처</label>
+                <span class="text-xs font-medium text-muted-foreground">연락처</span>
                 {#if editMode}
                   <input type="text" bind:value={editContactPhone} placeholder="010-0000-0000" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -335,7 +335,7 @@
                 {/if}
               </div>
               <div class="flex flex-col gap-1.5 col-span-2">
-                <label class="text-xs font-medium text-muted-foreground">이메일</label>
+                <span class="text-xs font-medium text-muted-foreground">이메일</span>
                 {#if editMode}
                   <input type="email" bind:value={editContactEmail} placeholder="example@email.com" class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 {:else}
@@ -353,11 +353,11 @@
            <CardContent>
              <div class="grid grid-cols-2 gap-5">
                <div class="flex flex-col gap-1.5">
-                 <label class="text-xs font-medium text-muted-foreground">등록일시</label>
+                 <span class="text-xs font-medium text-muted-foreground">등록일시</span>
                  <span class="text-sm text-muted-foreground">{formatDate(merchant.createdAt)}</span>
                </div>
                <div class="flex flex-col gap-1.5">
-                 <label class="text-xs font-medium text-muted-foreground">수정일시</label>
+                 <span class="text-xs font-medium text-muted-foreground">수정일시</span>
                  <span class="text-sm text-muted-foreground">{formatDate(merchant.updatedAt)}</span>
                </div>
              </div>

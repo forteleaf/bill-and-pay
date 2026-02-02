@@ -1096,11 +1096,11 @@
                   <div class="grid grid-cols-6 gap-3">
                     {#each Object.keys(config) as category}
                       <div class="flex flex-col gap-1.5">
-                        <label
+                        <span
                           class="text-xs font-semibold text-muted-foreground text-center"
                           >{feeCategoryLabels[
                             category as keyof FeeConfig
-                          ]}</label
+                          ]}</span
                         >
                         <div class="relative">
                           <input
