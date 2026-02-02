@@ -30,6 +30,7 @@
   import { Input } from "$lib/components/ui/input";
   import { Badge } from "$lib/components/ui/badge";
   import { Label } from "$lib/components/ui/label";
+  import * as Select from "$lib/components/ui/select";
   import OrgFlowNode, {
     type OrgNodeData,
   } from "../../components/OrgFlowNode.svelte";
@@ -960,16 +961,22 @@
         </div>
         <div>
           <Label for="org-type" class="text-sm font-medium">조직 유형</Label>
-          <select
-            id="org-type"
-            bind:value={newOrgType}
-            class="mt-1.5 w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">유형 선택</option>
-            {#each availableChildTypes as type}
-              <option value={type}>{ORG_TYPE_LABELS[type]}</option>
-            {/each}
-          </select>
+          <Select.Root type="single" value={newOrgType || undefined} onValueChange={(v) => newOrgType = v || ''}>
+            <Select.Trigger id="org-type" class="mt-1.5 w-full">
+              {#if newOrgType}
+                {ORG_TYPE_LABELS[newOrgType]}
+              {:else}
+                <span class="text-muted-foreground">유형 선택</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              {#each availableChildTypes as type}
+                <Select.Item value={type} label={ORG_TYPE_LABELS[type]}>
+                  {ORG_TYPE_LABELS[type]}
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
         </div>
       </div>
       <div
@@ -1016,15 +1023,16 @@
         </div>
         <div>
           <Label for="edit-status" class="text-sm font-medium">상태</Label>
-          <select
-            id="edit-status"
-            bind:value={editStatus}
-            class="mt-1.5 w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="ACTIVE">정상</option>
-            <option value="SUSPENDED">정지</option>
-            <option value="TERMINATED">해지</option>
-          </select>
+          <Select.Root type="single" value={editStatus} onValueChange={(v) => editStatus = v || 'ACTIVE'}>
+            <Select.Trigger id="edit-status" class="mt-1.5 w-full">
+              {STATUS_LABELS[editStatus] || editStatus}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="ACTIVE" label="정상">정상</Select.Item>
+              <Select.Item value="SUSPENDED" label="정지">정지</Select.Item>
+              <Select.Item value="TERMINATED" label="해지">해지</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
       </div>
       <div

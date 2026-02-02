@@ -8,13 +8,12 @@
 |------|------|------|
 | Database | PostgreSQL | 18 |
 | Backend | Spring Boot | 3.5.10 |
-| Frontend | Svelte | 5 |
+| Frontend | Svelte + svelte-shadcn | 5 |
 | Runtime | Java | 25 LTS |
 
 ### 개발 도구
 
 - do not use npm, use bun
-
 
 ## 핵심 아키텍처 원칙
 
