@@ -224,7 +224,7 @@
           <Input
             id="search"
             type="text"
-            placeholder="TID, CAT ID, 가맹점명..."
+            placeholder="CAT ID, 가맹점명..."
             value={searchQuery}
             oninput={(e) => searchQuery = e.currentTarget.value}
             onkeydown={(e) => e.key === 'Enter' && handleSearch()}
@@ -275,7 +275,6 @@
     <Table>
       <TableHeader>
         <TableRow class="bg-gradient-to-b from-muted/50 to-muted">
-          <TableHead class="w-[140px] font-bold text-xs uppercase tracking-wide">TID</TableHead>
           <TableHead class="w-[120px] font-bold text-xs uppercase tracking-wide">CAT ID</TableHead>
           <TableHead class="w-[100px] text-center font-bold text-xs uppercase tracking-wide">유형</TableHead>
           <TableHead class="min-w-[180px] font-bold text-xs uppercase tracking-wide">가맹점</TableHead>
@@ -289,7 +288,6 @@
           <!-- Loading Skeleton -->
           {#each Array(8) as _}
             <TableRow>
-              <TableCell><div class="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
               <TableCell><div class="h-4 w-20 bg-muted animate-pulse rounded"></div></TableCell>
               <TableCell class="text-center"><div class="h-4 w-16 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
               <TableCell><div class="h-4 w-40 bg-muted animate-pulse rounded"></div></TableCell>
@@ -301,7 +299,7 @@
         {:else if terminals.length === 0}
           <!-- Empty State -->
           <TableRow>
-            <TableCell colspan={7} class="py-16 text-center">
+            <TableCell colspan={6} class="py-16 text-center">
               <div class="flex flex-col items-center gap-3">
                 <svg class="w-16 h-16 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
@@ -323,9 +321,6 @@
               role="button"
               tabindex={0}
             >
-              <TableCell>
-                <span class="font-mono text-sm text-primary font-medium">{terminal.tid}</span>
-              </TableCell>
               <TableCell>
                 <span class="font-mono text-sm text-muted-foreground">{terminal.catId || '-'}</span>
               </TableCell>
