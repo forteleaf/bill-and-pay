@@ -84,9 +84,6 @@ public class TransactionEvent {
     @Column(name = "cat_id", length = 50)
     private String catId;
 
-    @Column(name = "tid", length = 100)
-    private String tid;
-
     @Type(JsonBinaryType.class)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;

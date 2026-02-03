@@ -30,18 +30,21 @@ public class TransactionService {
         log.info("Creating or updating transaction from webhook. PG TID: {}, Event Type: {}",
                 dto.getPgTid(), dto.getEventType());
 
-        Optional<Transaction> existingTransaction = transactionRepository.findByCatIdAndTid(
-                dto.getTerminalId(), dto.getPgTid());
+        // PG별 거래고유번호로 중복 체크 (pg_connection_id + pg_transaction_id)
+        Optional<Transaction> existingTransaction = transactionRepository.findByPgConnectionIdAndPgTransactionId(
+                merchantPgMapping.getPgConnectionId(), dto.getPgTid());
 
         if (existingTransaction.isPresent()) {
             if (dto.getEventType() == EventType.APPROVAL) {
-                log.warn("Duplicate approval transaction detected: {}", dto.getPgTid());
+                log.warn("Duplicate approval transaction detected: pgConnectionId={}, pgTid={}",
+                        merchantPgMapping.getPgConnectionId(), dto.getPgTid());
                 throw new DuplicateTransactionException(dto.getPgTid());
             }
             return updateTransaction(existingTransaction.get(), dto);
         } else {
             if (dto.getEventType() != EventType.APPROVAL) {
-                log.error("Cannot create cancel/partial_cancel without original transaction: {}", dto.getPgTid());
+                log.error("Cannot create cancel/partial_cancel without original transaction: pgConnectionId={}, pgTid={}",
+                        merchantPgMapping.getPgConnectionId(), dto.getPgTid());
                 throw new WebhookProcessingException("Original transaction not found for cancel event");
             }
             return createTransaction(dto, merchantPgMapping);
@@ -75,7 +78,6 @@ public class TransactionService {
                 .pgTransactionId(dto.getPgTid())
                 .approvalNumber(dto.getApprovalNo())
                 .catId(dto.getTerminalId())
-                .tid(dto.getPgTid())
                 .metadata(dto.getMetadata())
                 .occurredAt(dto.getTransactedAt() != null ? dto.getTransactedAt() : OffsetDateTime.now())
                 .build();
@@ -112,7 +114,6 @@ public class TransactionService {
                 .approvalNumber(dto.getApprovalNo())
                 .approvedAt(dto.getTransactedAt())
                 .catId(dto.getTerminalId())
-                .tid(dto.getPgTid())
                 .metadata(dto.getMetadata())
                 .build();
 

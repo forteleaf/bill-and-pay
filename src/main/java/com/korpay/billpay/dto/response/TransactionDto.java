@@ -32,7 +32,6 @@ public class TransactionDto {
     private OffsetDateTime approvedAt;
     private OffsetDateTime cancelledAt;
     private String catId;
-    private String tid;
     private Map<String, Object> metadata;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
@@ -54,7 +53,6 @@ public class TransactionDto {
                 .approvedAt(transaction.getApprovedAt())
                 .cancelledAt(transaction.getCancelledAt())
                 .catId(transaction.getCatId())
-                .tid(transaction.getTid())
                 .metadata(transaction.getMetadata())
                 .createdAt(transaction.getCreatedAt())
                 .updatedAt(transaction.getUpdatedAt())

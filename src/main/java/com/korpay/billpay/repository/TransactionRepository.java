@@ -35,7 +35,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     Optional<Transaction> findByPgTransactionId(String pgTransactionId);
 
-    Optional<Transaction> findByCatIdAndTid(String catId, String tid);
+    Optional<Transaction> findByPgConnectionIdAndPgTransactionId(Long pgConnectionId, String pgTransactionId);
 
     @Query(value = """
         SELECT COALESCE(SUM(t.amount), 0)
