@@ -19,10 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class TerminalCreateRequest {
 
-    @NotBlank(message = "TID는 필수입니다")
-    @Size(max = 50, message = "TID는 50자 이하여야 합니다")
-    private String tid;
-
+    @NotBlank(message = "CAT ID는 필수입니다")
     @Size(max = 50, message = "CAT ID는 50자 이하여야 합니다")
     private String catId;
 

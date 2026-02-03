@@ -443,8 +443,7 @@ CREATE INDEX idx_settlement_accounts_primary ON settlement_accounts(entity_type,
 -- =============================================================================
 CREATE TABLE terminals (
   id UUID PRIMARY KEY DEFAULT uuidv7(),
-  tid VARCHAR(50) NOT NULL UNIQUE,
-  cat_id VARCHAR(50),
+  cat_id VARCHAR(50) NOT NULL UNIQUE,
   terminal_type VARCHAR(20) NOT NULL,
   merchant_id UUID NOT NULL REFERENCES merchants(id),
   organization_id UUID REFERENCES organizations(id),
@@ -466,7 +465,7 @@ CREATE TABLE terminals (
 CREATE INDEX idx_terminals_merchant_id ON terminals(merchant_id);
 CREATE INDEX idx_terminals_organization_id ON terminals(organization_id) WHERE organization_id IS NOT NULL;
 CREATE INDEX idx_terminals_status ON terminals(status) WHERE status = 'ACTIVE';
-CREATE INDEX idx_terminals_cat_id ON terminals(cat_id) WHERE cat_id IS NOT NULL;
+CREATE INDEX idx_terminals_cat_id ON terminals(cat_id);
 
 -- =============================================================================
 -- Users Table (Tenant-specific)

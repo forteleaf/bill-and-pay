@@ -29,10 +29,7 @@ public class Terminal {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "tid", nullable = false, unique = true, length = 50)
-    private String tid;
-
-    @Column(name = "cat_id", length = 50)
+    @Column(name = "cat_id", nullable = false, unique = true, length = 50)
     private String catId;
 
     @Enumerated(EnumType.STRING)

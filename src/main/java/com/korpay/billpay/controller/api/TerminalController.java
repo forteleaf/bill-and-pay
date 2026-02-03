@@ -69,10 +69,10 @@ public class TerminalController {
         return ResponseEntity.ok(ApiResponse.success(terminal));
     }
 
-    @GetMapping("/tid/{tid}")
-    public ResponseEntity<ApiResponse<TerminalDto>> getTerminalByTid(@PathVariable String tid) {
+    @GetMapping("/cat/{catId}")
+    public ResponseEntity<ApiResponse<TerminalDto>> getTerminalByCatId(@PathVariable String catId) {
         User currentUser = userContextHolder.getCurrentUser();
-        TerminalDto terminal = terminalService.findByTid(tid, currentUser);
+        TerminalDto terminal = terminalService.findByCatId(catId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(terminal));
     }
 

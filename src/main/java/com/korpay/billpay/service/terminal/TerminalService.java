@@ -64,9 +64,9 @@ public class TerminalService {
         return TerminalDto.from(terminal);
     }
 
-    public TerminalDto findByTid(String tid, User user) {
-        Terminal terminal = terminalRepository.findByTid(tid)
-                .orElseThrow(() -> new EntityNotFoundException("단말기를 찾을 수 없습니다: " + tid));
+    public TerminalDto findByCatId(String catId, User user) {
+        Terminal terminal = terminalRepository.findByCatId(catId)
+                .orElseThrow(() -> new EntityNotFoundException("단말기를 찾을 수 없습니다: " + catId));
         accessControlService.validateMerchantAccess(user, terminal.getMerchant());
         return TerminalDto.from(terminal);
     }
@@ -88,11 +88,7 @@ public class TerminalService {
 
         accessControlService.validateMerchantAccess(user, merchant);
 
-        if (terminalRepository.existsByTid(request.getTid())) {
-            throw new ValidationException("이미 존재하는 TID입니다: " + request.getTid());
-        }
-
-        if (request.getCatId() != null && terminalRepository.existsByCatId(request.getCatId())) {
+        if (terminalRepository.existsByCatId(request.getCatId())) {
             throw new ValidationException("이미 존재하는 CAT ID입니다: " + request.getCatId());
         }
 
@@ -103,7 +99,6 @@ public class TerminalService {
         }
 
         Terminal terminal = Terminal.builder()
-                .tid(request.getTid())
                 .catId(request.getCatId())
                 .terminalType(request.getTerminalType())
                 .merchant(merchant)
@@ -118,7 +113,7 @@ public class TerminalService {
                 .build();
 
         Terminal saved = terminalRepository.save(terminal);
-        log.info("Created terminal: {} ({})", saved.getTid(), saved.getId());
+        log.info("Created terminal: {} ({})", saved.getCatId(), saved.getId());
 
         return TerminalDto.from(saved);
     }
@@ -159,7 +154,7 @@ public class TerminalService {
         }
 
         Terminal saved = terminalRepository.save(terminal);
-        log.info("Updated terminal: {} ({})", saved.getTid(), saved.getId());
+        log.info("Updated terminal: {} ({})", saved.getCatId(), saved.getId());
 
         return TerminalDto.from(saved);
     }
@@ -170,7 +165,7 @@ public class TerminalService {
         accessControlService.validateMerchantAccess(user, terminal.getMerchant());
 
         terminalRepository.delete(terminal);
-        log.info("Deleted terminal: {} ({})", terminal.getTid(), id);
+        log.info("Deleted terminal: {} ({})", terminal.getCatId(), id);
     }
 
     private Terminal getTerminalOrThrow(UUID id) {

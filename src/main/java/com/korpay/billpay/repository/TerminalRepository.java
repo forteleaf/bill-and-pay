@@ -17,8 +17,6 @@ import java.util.UUID;
 @Repository
 public interface TerminalRepository extends JpaRepository<Terminal, UUID> {
 
-    Optional<Terminal> findByTid(String tid);
-
     Optional<Terminal> findByCatId(String catId);
 
     List<Terminal> findByMerchantId(UUID merchantId);
@@ -36,7 +34,7 @@ public interface TerminalRepository extends JpaRepository<Terminal, UUID> {
            "(:terminalType IS NULL OR t.terminalType = :terminalType) AND " +
            "(:merchantId IS NULL OR t.merchant.id = :merchantId) AND " +
            "(:organizationId IS NULL OR t.organization.id = :organizationId) AND " +
-           "(:search IS NULL OR t.tid LIKE %:search% OR t.catId LIKE %:search% OR t.merchant.name LIKE %:search%)")
+           "(:search IS NULL OR t.catId LIKE %:search% OR t.merchant.name LIKE %:search%)")
     Page<Terminal> findByFilters(
             @Param("status") TerminalStatus status,
             @Param("terminalType") TerminalType terminalType,
@@ -44,8 +42,6 @@ public interface TerminalRepository extends JpaRepository<Terminal, UUID> {
             @Param("organizationId") UUID organizationId,
             @Param("search") String search,
             Pageable pageable);
-
-    boolean existsByTid(String tid);
 
     boolean existsByCatId(String catId);
 }

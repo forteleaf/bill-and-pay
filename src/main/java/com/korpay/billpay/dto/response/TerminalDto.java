@@ -20,7 +20,6 @@ import java.util.UUID;
 public class TerminalDto {
 
     private UUID id;
-    private String tid;
     private String catId;
     private TerminalType terminalType;
     private UUID merchantId;
@@ -42,7 +41,6 @@ public class TerminalDto {
     public static TerminalDto from(Terminal terminal) {
         return TerminalDto.builder()
                 .id(terminal.getId())
-                .tid(terminal.getTid())
                 .catId(terminal.getCatId())
                 .terminalType(terminal.getTerminalType())
                 .merchantId(terminal.getMerchant().getId())
