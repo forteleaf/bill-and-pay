@@ -1,3 +1,17 @@
+// =============================================================================
+// Flyway 설정 (buildscript는 plugins 앞에 위치해야 함)
+// =============================================================================
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.flywaydb:flyway-core:11.3.0'
+        classpath 'org.flywaydb:flyway-database-postgresql:11.3.0'
+        classpath 'org.postgresql:postgresql:42.7.4'
+    }
+}
+
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.10'
@@ -45,23 +59,23 @@ dependencies {
 
     // Database
     runtimeOnly 'org.postgresql:postgresql'
-    
+
     // Flyway
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
-    
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    
+
     // Hypersistence Utils (for JSONB support)
     implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.8.1'
-    
+
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
-    
+
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
@@ -72,3 +86,102 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+// =============================================================================
+// Flyway 태스크
+// =============================================================================
+import org.flywaydb.core.Flyway
+
+def dbUrl = System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/billpay'
+def dbUser = System.getenv('DB_USER') ?: 'postgres'
+def dbPassword = System.getenv('DB_PASSWORD') ?: 'postgres'
+def migrationsDir = "${projectDir}/src/main/resources"
+
+// Public 스키마 마이그레이션
+tasks.register('flywayMigratePublic') {
+    group = 'flyway'
+    description = 'Migrate public schema'
+    doLast {
+        Flyway.configure()
+            .dataSource(dbUrl, dbUser, dbPassword)
+            .schemas('public')
+            .locations("filesystem:${migrationsDir}/db/migration/public")
+            .baselineOnMigrate(true)
+            .baselineVersion('0')
+            .load()
+            .migrate()
+        println 'Public schema migration completed.'
+    }
+}
+
+// Tenant 스키마 마이그레이션 (tenant_001)
+tasks.register('flywayMigrateTenant') {
+    group = 'flyway'
+    description = 'Migrate tenant_001 schema'
+    doLast {
+        Flyway.configure()
+            .dataSource(dbUrl, dbUser, dbPassword)
+            .schemas('tenant_001')
+            .locations("filesystem:${migrationsDir}/db/migration/tenant")
+            .baselineOnMigrate(true)
+            .baselineVersion('0')
+            .createSchemas(true)
+            .load()
+            .migrate()
+        println 'Tenant schema migration completed.'
+    }
+}
+
+// 모든 스키마 마이그레이션 (public + tenant)
+tasks.register('flywayMigrateAll') {
+    group = 'flyway'
+    description = 'Migrate all schemas (public + tenant_001)'
+    dependsOn 'flywayMigratePublic', 'flywayMigrateTenant'
+}
+
+// Tenant 마이그레이션 정보 조회
+tasks.register('flywayInfoTenant') {
+    group = 'flyway'
+    description = 'Show tenant_001 migration info'
+    doLast {
+        def flyway = Flyway.configure()
+            .dataSource(dbUrl, dbUser, dbPassword)
+            .schemas('tenant_001')
+            .locations("filesystem:${migrationsDir}/db/migration/tenant")
+            .load()
+        def info = flyway.info()
+        println '\n=== Tenant Schema Migration Info ==='
+        println String.format('%-10s %-50s %-15s %-10s', 'Version', 'Description', 'State', 'Type')
+        println '-' * 90
+        info.all().each { mi ->
+            println String.format('%-10s %-50s %-15s %-10s',
+                mi.version ?: '',
+                mi.description ?: '',
+                mi.state?.name() ?: '',
+                mi.type?.name() ?: '')
+        }
+    }
+}
+
+// Public 마이그레이션 정보 조회
+tasks.register('flywayInfoPublic') {
+    group = 'flyway'
+    description = 'Show public schema migration info'
+    doLast {
+        def flyway = Flyway.configure()
+            .dataSource(dbUrl, dbUser, dbPassword)
+            .schemas('public')
+            .locations("filesystem:${migrationsDir}/db/migration/public")
+            .load()
+        def info = flyway.info()
+        println '\n=== Public Schema Migration Info ==='
+        println String.format('%-10s %-50s %-15s %-10s', 'Version', 'Description', 'State', 'Type')
+        println '-' * 90
+        info.all().each { mi ->
+            println String.format('%-10s %-50s %-15s %-10s',
+                mi.version ?: '',
+                mi.description ?: '',
+                mi.state?.name() ?: '',
+                mi.type?.name() ?: '')
+        }
+    }
+}
