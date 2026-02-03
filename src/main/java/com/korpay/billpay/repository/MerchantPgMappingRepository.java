@@ -18,6 +18,4 @@ public interface MerchantPgMappingRepository extends JpaRepository<MerchantPgMap
     List<MerchantPgMapping> findByPgConnectionId(Long pgConnectionId);
 
     Optional<MerchantPgMapping> findByCatId(String catId);
-
-    Optional<MerchantPgMapping> findByMerchantIdAndPgConnectionId(UUID merchantId, Long pgConnectionId);
 }
