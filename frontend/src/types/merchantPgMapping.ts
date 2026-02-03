@@ -13,7 +13,7 @@ export interface MerchantPgMappingDto {
   merchantId: string;
   merchantName?: string;
   merchantCode?: string;
-  pgConnectionId: string;
+  pgConnectionId: number;
   pgCode?: string;
   pgName?: string;
   mid: string;
@@ -27,7 +27,7 @@ export interface MerchantPgMappingDto {
 
 export interface MerchantPgMappingCreateRequest {
   merchantId: string;
-  pgConnectionId: string;
+  pgConnectionId: number;
   mid: string;
   terminalId?: string;
   catId?: string;
@@ -36,7 +36,7 @@ export interface MerchantPgMappingCreateRequest {
 }
 
 export interface MerchantPgMappingUpdateRequest {
-  pgConnectionId?: string;
+  pgConnectionId?: number;
   mid?: string;
   terminalId?: string;
   catId?: string;

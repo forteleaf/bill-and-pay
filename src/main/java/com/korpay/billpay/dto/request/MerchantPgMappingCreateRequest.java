@@ -22,7 +22,7 @@ public class MerchantPgMappingCreateRequest {
     private UUID merchantId;
 
     @NotNull(message = "PG 연결 ID는 필수입니다")
-    private UUID pgConnectionId;
+    private Long pgConnectionId;
 
     @NotBlank(message = "MID는 필수입니다")
     @Size(max = 50, message = "MID는 50자를 초과할 수 없습니다")

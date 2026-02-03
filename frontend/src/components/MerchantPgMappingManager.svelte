@@ -39,7 +39,7 @@
   let editingMapping = $state<MerchantPgMappingDto | null>(null);
   let saving = $state(false);
 
-  let formPgConnectionId = $state("");
+  let formPgConnectionId = $state<number | null>(null);
   let formMid = $state("");
   let formTerminalId = $state("");
   let formCatId = $state("");
@@ -80,7 +80,7 @@
   }
 
   function resetForm() {
-    formPgConnectionId = "";
+    formPgConnectionId = null;
     formMid = "";
     formTerminalId = "";
     formCatId = "";
@@ -91,6 +91,7 @@
     dialogMode = "add";
     editingMapping = null;
     resetForm();
+    error = null;
     dialogOpen = true;
   }
 
@@ -102,6 +103,7 @@
     formTerminalId = mapping.terminalId || "";
     formCatId = mapping.catId || "";
     formStatus = mapping.status;
+    error = null;
     dialogOpen = true;
   }
 
@@ -112,7 +114,7 @@
   }
 
   async function handleSave() {
-    if (!formPgConnectionId || !formMid) {
+    if (formPgConnectionId === null || !formMid) {
       return;
     }
 
@@ -213,9 +215,9 @@
     return status === MerchantPgMappingStatus.ACTIVE ? "default" : "secondary";
   }
 
-  function getPgName(pgConnectionId: string): string {
+  function getPgName(pgConnectionId: number): string {
     const pg = pgConnections.find(p => p.id === pgConnectionId);
-    return pg?.pgName || pg?.pgCode || pgConnectionId;
+    return pg?.pgName || pg?.pgCode || String(pgConnectionId);
   }
 </script>
 
@@ -391,7 +393,11 @@
           <Label for="pg-select" class="text-sm font-medium">PG사 <span class="text-destructive">*</span></Label>
           <select
             id="pg-select"
-            bind:value={formPgConnectionId}
+            value={formPgConnectionId ?? ""}
+            onchange={(e) => {
+              const val = e.currentTarget.value;
+              formPgConnectionId = val ? Number(val) : null;
+            }}
             class="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
           >
             <option value="">PG사를 선택하세요</option>
@@ -452,11 +458,23 @@
         </div>
       </div>
 
+      {#if error}
+        <div class="mx-6 mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div class="flex items-start gap-2 text-sm text-destructive">
+            <svg class="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4m0 4h.01" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        </div>
+      {/if}
+
       <div class="flex justify-end gap-3 px-6 py-4 border-t border-border bg-muted/30">
         <Button variant="outline" onclick={closeDialog} disabled={saving}>
           취소
         </Button>
-        <Button onclick={handleSave} disabled={saving || !formPgConnectionId || !formMid}>
+        <Button onclick={handleSave} disabled={saving || formPgConnectionId === null || !formMid}>
           {#if saving}
             <div class="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2"></div>
           {/if}

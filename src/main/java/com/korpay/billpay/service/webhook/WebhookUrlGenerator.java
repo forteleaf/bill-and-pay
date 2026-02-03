@@ -3,8 +3,6 @@ package com.korpay.billpay.service.webhook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
-
 /**
  * Generates webhook URLs for PG provider configuration.
  * 
@@ -35,11 +33,11 @@ public class WebhookUrlGenerator {
      *
      * @param tenantId tenant identifier
      * @param pgCode PG provider code (e.g., "KORPAY")
-     * @param pgConnectionId PG connection UUID
+     * @param pgConnectionId PG connection ID
      * @param webhookSecret webhook secret for signature verification
      * @return fully qualified webhook URL
      */
-    public String generateNewUrl(String tenantId, String pgCode, UUID pgConnectionId, String webhookSecret) {
+    public String generateNewUrl(String tenantId, String pgCode, Long pgConnectionId, String webhookSecret) {
         StringBuilder url = new StringBuilder(webhookBaseUrl)
             .append("/webhook/")
             .append(tenantId)
@@ -64,11 +62,11 @@ public class WebhookUrlGenerator {
      * the pg_connections.tenant_id column. Use {@link #generateNewUrl} for new integrations.
      *
      * @param pgCode PG provider code (e.g., "KORPAY")
-     * @param pgConnectionId PG connection UUID
+     * @param pgConnectionId PG connection ID
      * @param webhookSecret webhook secret for signature verification
      * @return fully qualified webhook URL (legacy format)
      */
-    public String generateLegacyUrl(String pgCode, UUID pgConnectionId, String webhookSecret) {
+    public String generateLegacyUrl(String pgCode, Long pgConnectionId, String webhookSecret) {
         StringBuilder url = new StringBuilder(webhookBaseUrl)
             .append("/webhook/")
             .append(pgCode)

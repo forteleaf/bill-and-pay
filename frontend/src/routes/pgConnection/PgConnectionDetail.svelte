@@ -55,7 +55,7 @@
     error = null;
 
     try {
-      const response = await pgConnectionApi.getById(connectionId);
+      const response = await pgConnectionApi.getById(Number(connectionId));
       if (response.success && response.data) {
         connection = response.data;
         initEditFields();

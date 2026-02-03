@@ -10,8 +10,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -21,7 +19,7 @@ public class MerchantMappingService {
     private final MerchantPgMappingRepository merchantPgMappingRepository;
 
     @Cacheable(value = "merchantPgMappings", key = "#pgConnectionId + '_' + #pgMerchantNo")
-    public MerchantPgMapping findByPgCodeAndPgMerchantNo(UUID pgConnectionId, String pgMerchantNo) {
+    public MerchantPgMapping findByPgCodeAndPgMerchantNo(Long pgConnectionId, String pgMerchantNo) {
         log.debug("Finding merchant mapping for PG connection: {}, merchant no: {}", pgConnectionId, pgMerchantNo);
 
         return merchantPgMappingRepository.findByMidAndPgConnectionId(pgMerchantNo, pgConnectionId)
@@ -29,7 +27,7 @@ public class MerchantMappingService {
                 .orElseThrow(() -> {
                     log.warn("Merchant mapping not found for PG connection: {}, merchant no: {}", 
                             pgConnectionId, pgMerchantNo);
-                    return new MerchantMappingNotFoundException(pgConnectionId.toString(), pgMerchantNo);
+                    return new MerchantMappingNotFoundException(String.valueOf(pgConnectionId), pgMerchantNo);
                 });
     }
 }

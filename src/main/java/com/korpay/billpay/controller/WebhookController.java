@@ -18,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -36,7 +35,7 @@ public class WebhookController {
     public ResponseEntity<WebhookResponse> receiveWebhookWithTenant(
             @PathVariable String tenantId,
             @PathVariable String pgCode,
-            @RequestParam UUID pgConnectionId,
+            @RequestParam Long pgConnectionId,
             @RequestParam String webhookSecret,
             @RequestHeader Map<String, String> headers,
             @RequestBody String rawBody) {
@@ -67,7 +66,7 @@ public class WebhookController {
     @PostMapping("/{pgCode}")
     public ResponseEntity<WebhookResponse> receiveWebhookLegacy(
             @PathVariable String pgCode,
-            @RequestParam UUID pgConnectionId,
+            @RequestParam Long pgConnectionId,
             @RequestParam String webhookSecret,
             @RequestHeader Map<String, String> headers,
             @RequestBody String rawBody) {
@@ -100,7 +99,7 @@ public class WebhookController {
 
     private ResponseEntity<WebhookResponse> processWebhook(
             String pgCode,
-            UUID pgConnectionId,
+            Long pgConnectionId,
             String webhookSecret,
             String rawBody,
             Map<String, String> headers) {

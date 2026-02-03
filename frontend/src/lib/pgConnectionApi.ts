@@ -14,7 +14,7 @@ class PgConnectionApi {
     );
   }
 
-  async getById(id: string): Promise<ApiResponse<PgConnectionDto>> {
+  async getById(id: number): Promise<ApiResponse<PgConnectionDto>> {
     return apiClient.get<PgConnectionDto>(`/pg-connections/${id}`);
   }
 
@@ -26,15 +26,15 @@ class PgConnectionApi {
     return apiClient.post<PgConnectionDto>('/pg-connections', data);
   }
 
-  async update(id: string, data: PgConnectionUpdateRequest): Promise<ApiResponse<PgConnectionDto>> {
+  async update(id: number, data: PgConnectionUpdateRequest): Promise<ApiResponse<PgConnectionDto>> {
     return apiClient.put<PgConnectionDto>(`/pg-connections/${id}`, data);
   }
 
-  async updateStatus(id: string, status: PgConnectionStatus): Promise<ApiResponse<PgConnectionDto>> {
+  async updateStatus(id: number, status: PgConnectionStatus): Promise<ApiResponse<PgConnectionDto>> {
     return apiClient.patch<PgConnectionDto>(`/pg-connections/${id}/status?status=${status}`);
   }
 
-  async delete(id: string): Promise<ApiResponse<void>> {
+  async delete(id: number): Promise<ApiResponse<void>> {
     return apiClient.delete<void>(`/pg-connections/${id}`);
   }
 }

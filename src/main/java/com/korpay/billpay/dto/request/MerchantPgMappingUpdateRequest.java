@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -16,7 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MerchantPgMappingUpdateRequest {
 
-    private UUID pgConnectionId;
+    private Long pgConnectionId;
 
     @Size(max = 50, message = "MID는 50자를 초과할 수 없습니다")
     private String mid;

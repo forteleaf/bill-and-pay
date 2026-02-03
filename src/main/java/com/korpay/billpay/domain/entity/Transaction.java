@@ -40,7 +40,7 @@ public class Transaction {
     private MerchantPgMapping merchantPgMapping;
 
     @Column(name = "pg_connection_id", nullable = false)
-    private UUID pgConnectionId;
+    private Long pgConnectionId;
 
     @Type(LtreeType.class)
     @Column(name = "merchant_path", nullable = false, columnDefinition = "ltree")

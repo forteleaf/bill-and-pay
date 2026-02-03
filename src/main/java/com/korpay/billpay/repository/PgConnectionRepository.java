@@ -7,10 +7,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface PgConnectionRepository extends JpaRepository<PgConnection, UUID> {
+public interface PgConnectionRepository extends JpaRepository<PgConnection, Long> {
 
     Optional<PgConnection> findByPgCode(String pgCode);
 
@@ -18,7 +17,7 @@ public interface PgConnectionRepository extends JpaRepository<PgConnection, UUID
 
     boolean existsByPgCode(String pgCode);
 
-    Optional<PgConnection> findByIdAndTenantId(UUID id, String tenantId);
+    Optional<PgConnection> findByIdAndTenantId(Long id, String tenantId);
 
     List<PgConnection> findByTenantId(String tenantId);
 }

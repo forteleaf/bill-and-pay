@@ -19,8 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @Slf4j
 @RestController
 @RequestMapping("/v1/pg-connections")
@@ -50,7 +48,7 @@ public class PgConnectionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PgConnectionDto>> getConnection(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<PgConnectionDto>> getConnection(@PathVariable Long id) {
         PgConnectionDto dto = pgConnectionService.findById(id);
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
@@ -72,7 +70,7 @@ public class PgConnectionController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PgConnectionDto>> updateConnection(
-            @PathVariable UUID id,
+            @PathVariable Long id,
             @Valid @RequestBody PgConnectionUpdateRequest request) {
 
         PgConnectionDto dto = pgConnectionService.update(id, request);
@@ -82,7 +80,7 @@ public class PgConnectionController {
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<PgConnectionDto>> updateConnectionStatus(
-            @PathVariable UUID id,
+            @PathVariable Long id,
             @RequestParam PgConnectionStatus status) {
 
         PgConnectionDto dto = pgConnectionService.updateStatus(id, status);
@@ -91,7 +89,7 @@ public class PgConnectionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteConnection(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteConnection(@PathVariable Long id) {
         pgConnectionService.delete(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }

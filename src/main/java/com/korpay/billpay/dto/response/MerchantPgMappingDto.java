@@ -23,7 +23,7 @@ public class MerchantPgMappingDto {
     private UUID merchantId;
     private String merchantName;
     private String merchantCode;
-    private UUID pgConnectionId;
+    private Long pgConnectionId;
     private String pgCode;
     private String pgName;
     private String mid;

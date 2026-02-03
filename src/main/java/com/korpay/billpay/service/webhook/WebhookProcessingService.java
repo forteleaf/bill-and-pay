@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,7 +36,7 @@ public class WebhookProcessingService {
     @Transactional
     public WebhookResponse processWebhook(
             String pgCode,
-            UUID pgConnectionId,
+            Long pgConnectionId,
             String webhookSecret,
             String rawBody,
             Map<String, String> headers) {

@@ -68,6 +68,7 @@ public class MerchantPgMappingService {
         accessControlService.validateMerchantAccess(currentUser, merchant.getOrgPath());
 
         validateUniqueMid(request.getMid(), request.getPgConnectionId(), null);
+        validateUniqueMerchantPg(request.getMerchantId(), request.getPgConnectionId(), null);
 
         MerchantPgMapping mapping = MerchantPgMapping.builder()
                 .merchant(merchant)
@@ -92,7 +93,7 @@ public class MerchantPgMappingService {
         accessControlService.validateMerchantAccess(currentUser, mapping.getMerchant().getOrgPath());
 
         if (request.getMid() != null && !request.getMid().equals(mapping.getMid())) {
-            UUID pgConnectionId = request.getPgConnectionId() != null ? request.getPgConnectionId() : mapping.getPgConnectionId();
+            Long pgConnectionId = request.getPgConnectionId() != null ? request.getPgConnectionId() : mapping.getPgConnectionId();
             validateUniqueMid(request.getMid(), pgConnectionId, id);
         }
 
@@ -146,11 +147,20 @@ public class MerchantPgMappingService {
         }
     }
 
-    private void validateUniqueMid(String mid, UUID pgConnectionId, UUID excludeId) {
+    private void validateUniqueMid(String mid, Long pgConnectionId, UUID excludeId) {
         merchantPgMappingRepository.findByMidAndPgConnectionId(mid, pgConnectionId)
                 .ifPresent(existing -> {
                     if (excludeId == null || !existing.getId().equals(excludeId)) {
                         throw new ValidationException("동일한 PG에 이미 등록된 MID입니다: " + mid);
+                    }
+                });
+    }
+
+    private void validateUniqueMerchantPg(UUID merchantId, Long pgConnectionId, UUID excludeId) {
+        merchantPgMappingRepository.findByMerchantIdAndPgConnectionId(merchantId, pgConnectionId)
+                .ifPresent(existing -> {
+                    if (excludeId == null || !existing.getId().equals(excludeId)) {
+                        throw new ValidationException("해당 가맹점에 이미 동일 PG 매핑이 존재합니다");
                     }
                 });
     }

@@ -11,7 +11,7 @@ export const PG_CONNECTION_STATUS_LABELS: Record<PgConnectionStatus, string> = {
 };
 
 export interface PgConnectionDto {
-  id: string;
+  id: number;
   pgCode: string;
   pgName: string;
   merchantId: string;

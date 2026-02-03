@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -34,7 +33,7 @@ public class PgConnectionService {
                 .map(this::toDto);
     }
 
-    public PgConnectionDto findById(UUID id) {
+    public PgConnectionDto findById(Long id) {
         PgConnection entity = getEntityOrThrow(id);
         return toDto(entity);
     }
@@ -106,7 +105,7 @@ public class PgConnectionService {
     }
 
     @Transactional
-    public PgConnectionDto update(UUID id, PgConnectionUpdateRequest request) {
+    public PgConnectionDto update(Long id, PgConnectionUpdateRequest request) {
         PgConnection entity = getEntityOrThrow(id);
 
         if (request.getPgName() != null) {
@@ -159,7 +158,7 @@ public class PgConnectionService {
     }
 
     @Transactional
-    public PgConnectionDto updateStatus(UUID id, PgConnectionStatus status) {
+    public PgConnectionDto updateStatus(Long id, PgConnectionStatus status) {
         PgConnection entity = getEntityOrThrow(id);
         entity.setStatus(status);
 
@@ -170,18 +169,18 @@ public class PgConnectionService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(Long id) {
         PgConnection entity = getEntityOrThrow(id);
         pgConnectionRepository.delete(entity);
         log.info("Deleted PG connection: {} ({})", entity.getPgCode(), id);
     }
 
-    private PgConnection getEntityOrThrow(UUID id) {
+    private PgConnection getEntityOrThrow(Long id) {
         return pgConnectionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PG 연결을 찾을 수 없습니다: " + id));
     }
 
-    private void validateUniqueConstraints(String pgCode, UUID excludeId) {
+    private void validateUniqueConstraints(String pgCode, Long excludeId) {
         pgConnectionRepository.findByPgCode(pgCode)
                 .ifPresent(existing -> {
                     if (excludeId == null || !existing.getId().equals(excludeId)) {
