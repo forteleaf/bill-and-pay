@@ -33,6 +33,69 @@ npm run dev
 npm run build
 ```
 
+### 4. TEST
+
+생성된 테스트 데이터 요약
+
+| 테이블 | 건수 | 내용 |
+|--------|------|------|
+| business_entities | 12 | 사업자 정보 (법인 3, 개인 8, 비사업자 1) |
+| organizations | 10 | 5단계 계층 (총판 1, 대리점 2, 딜러 2, 판매점 2, 가맹 3) |
+| users | 7 | 테스트 사용자 (비밀번호: password123) |
+| merchants | 3 | 가맹점 |
+| merchant_pg_mappings | 3 | PG 매핑 |
+| terminals | 4 | 단말기 (CAT, POS, KIOSK, ONLINE) |
+| fee_configurations | 10 | 수수료 설정 (단계별) |
+| contacts | 6 | 담당자 |
+| settlement_accounts | 4 | 정산계좌 |
+| transactions | 5 | 거래 (승인 3, 취소 1, 부분취소 1) |
+| transaction_events | 7 | 이벤트 (승인 5, 취소 1, 부분취소 1) |
+| settlements | 10 | 정산 (Zero-Sum 검증 완료) |
+
+---
+계층 구조
+
+```
+코르페이 총판 (DIST001) - dist_001
+├── 서울대리점 (AGCY001) - dist_001.agcy_001
+│   ├── 강남딜러 (DEAL001) - dist_001.agcy_001.deal_001
+│   │   ├── 역삼판매점 (SELL001) - dist_001.agcy_001.deal_001.sell_001
+│   │   │   ├── 맛있는 커피숍 (VEND001) - MCH001
+│   │   │   └── 행복한 분식점 (VEND002) - MCH002
+│   │   └── 삼성판매점 (SELL002) - dist_001.agcy_001.deal_001.sell_002
+│   │       └── 프리미엄마트 (VEND003) - MCH003
+│   └── 서초딜러 (DEAL002)
+└── 부산대리점 (AGCY002)
+```
+---
+
+테스트 계정
+
+| 사용자 | 이메일 | 역할 |
+|--------|--------|------|
+| admin | admin@korpay.com | SUPER_ADMIN |
+| dist_admin | master@korpay-dist.com | DISTRIBUTOR_ADMIN |
+| seoul_admin | seoul@agency.com | AGENCY_ADMIN |
+| dealer1 | gangnam@dealer.com | DEALER |
+| seller1 | yeoksam@seller.com | SELLER |
+| merchant1 | coffee@merchant.com | MERCHANT |
+비밀번호: 모두 password123
+
+---
+
+사용법
+
+앱 시작 시 자동으로 마이그레이션됩니다:
+
+# Finch/Docker로 실행
+
+finch compose up -d
+
+# 또는 직접 실행
+
+./gradlew bootRun
+
+
 ## 프로젝트 구조
 
 ```
