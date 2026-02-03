@@ -535,14 +535,16 @@
           >
           <PopoverPrimitive.Root bind:open={bankPopoverOpen}>
             <PopoverPrimitive.Trigger>
-              <button
-                id="bank-select"
-                type="button"
-                class={cn(
-                  "flex h-10 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-                  !formBankCode && "text-muted-foreground"
-                )}
-              >
+               <button
+                 id="bank-select"
+                 type="button"
+                 class={cn(
+                   "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none select-none disabled:cursor-not-allowed disabled:opacity-50",
+                   "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                   "dark:bg-input/30 dark:hover:bg-input/50",
+                   !formBankCode && "text-muted-foreground"
+                 )}
+               >
                 <span class="truncate">
                   {formBankCode ? KOREAN_BANK_CODES[formBankCode] : "은행을 선택하세요"}
                 </span>
