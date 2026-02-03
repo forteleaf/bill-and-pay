@@ -319,9 +319,9 @@ $effect(() => {
 - ✅ PostgreSQL ltree 기반 5단계 조직 계층
 - ✅ 복식부기 정산 엔진 (Zero-Sum 검증, 부분취소 비례 계산)
 - ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
-- ✅ REST API 30개 엔드포인트 (조직/가맹점/거래/정산/대시보드/사업자/사용자/정산계좌/담당자)
-- ✅ Flyway 마이그레이션 (public 2개, tenant 19개)
-- ✅ JPA 엔티티 11개, Repository 11개
+- ✅ REST API 38개 엔드포인트 (조직/가맹점/거래/정산/대시보드/사업자/사용자/정산계좌/담당자/단말기)
+- ✅ Flyway 마이그레이션 (public 3개, tenant 21개)
+- ✅ JPA 엔티티 12개, Repository 12개
 - ✅ CORS 설정
 - ✅ JWT 인증 (Spring Security + JWT)
   - JwtTokenProvider (토큰 생성/검증)
@@ -337,6 +337,11 @@ $effect(() => {
   - UserService (CRUD, 비밀번호 변경, 접근 제어)
   - UserController (REST API 6개 엔드포인트)
   - UserCreateRequest, UserUpdateRequest, UserResponse DTOs
+- ✅ **단말기 관리** (Terminal Management)
+  - Terminal 엔티티 (CAT, POS, MOBILE, KIOSK, ONLINE 유형)
+  - TerminalController (REST API 8개 엔드포인트)
+  - TerminalService (CRUD, 필터링, 가맹점별 조회)
+  - V21 마이그레이션 (terminals 테이블)
 
 ### 프론트엔드 (Svelte 5)
 - ✅ Runes API ($state, $derived, $effect)
