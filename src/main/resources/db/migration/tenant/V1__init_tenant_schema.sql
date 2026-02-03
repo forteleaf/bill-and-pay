@@ -254,10 +254,10 @@ CREATE INDEX idx_transaction_events_pg_txn
   ON transaction_events(pg_connection_id, pg_transaction_id, created_at DESC)
   WHERE pg_transaction_id IS NOT NULL;
 
--- Create partitions (동적 생성 필요 - 향후 30일)
+-- Create partitions (과거 7일 ~ 향후 30일)
 DO $$
 DECLARE
-  start_date DATE := CURRENT_DATE;
+  start_date DATE := CURRENT_DATE - INTERVAL '7 days';
   end_date DATE := CURRENT_DATE + INTERVAL '30 days';
   partition_date DATE;
   partition_name TEXT;
