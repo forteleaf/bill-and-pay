@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Dialog as DialogPrimitive } from "bits-ui";
+  import { Dialog as DialogPrimitive, Popover as PopoverPrimitive } from "bits-ui";
   import { onMount } from "svelte";
   import { settlementAccountApi } from "../lib/settlementAccountApi";
   import {
@@ -53,9 +53,22 @@
   let accountToDelete = $state<SettlementAccountDto | null>(null);
   let deleting = $state(false);
 
+  // Bank combobox state
+  let bankSearch = $state("");
+  let bankPopoverOpen = $state(false);
+
   // Sorted bank codes for dropdown
   const sortedBankCodes = Object.entries(KOREAN_BANK_CODES).sort((a, b) =>
     a[1].localeCompare(b[1], "ko"),
+  );
+
+  // Filtered bank codes based on search
+  const filteredBankCodes = $derived(
+    bankSearch.trim()
+      ? sortedBankCodes.filter(([_, name]) =>
+          name.toLowerCase().includes(bankSearch.trim().toLowerCase())
+        )
+      : sortedBankCodes
   );
 
   onMount(() => {
@@ -520,16 +533,90 @@
           <Label for="bank-select" class="text-sm font-medium"
             >은행 <span class="text-destructive">*</span></Label
           >
-          <select
-            id="bank-select"
-            bind:value={formBankCode}
-            class="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-          >
-            <option value="">은행을 선택하세요</option>
-            {#each sortedBankCodes as [code, name]}
-              <option value={code}>{name}</option>
-            {/each}
-          </select>
+          <PopoverPrimitive.Root bind:open={bankPopoverOpen}>
+            <PopoverPrimitive.Trigger>
+              <button
+                id="bank-select"
+                type="button"
+                class={cn(
+                  "flex h-10 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                  !formBankCode && "text-muted-foreground"
+                )}
+              >
+                <span class="truncate">
+                  {formBankCode ? KOREAN_BANK_CODES[formBankCode] : "은행을 선택하세요"}
+                </span>
+                <svg
+                  class="h-4 w-4 shrink-0 opacity-50"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m7 15 5 5 5-5" />
+                  <path d="m7 9 5-5 5 5" />
+                </svg>
+              </button>
+            </PopoverPrimitive.Trigger>
+            <PopoverPrimitive.Content
+              class="z-50 w-[--bits-popover-anchor-width] rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+              align="start"
+              sideOffset={4}
+            >
+              <div class="p-2 border-b border-border">
+                <Input
+                  type="text"
+                  placeholder="은행 검색..."
+                  value={bankSearch}
+                  oninput={(e) => (bankSearch = e.currentTarget.value)}
+                  class="h-9"
+                  autofocus
+                />
+              </div>
+              <div class="max-h-[200px] overflow-y-auto p-1">
+                {#if filteredBankCodes.length === 0}
+                  <div class="py-6 text-center text-sm text-muted-foreground">
+                    검색 결과가 없습니다
+                  </div>
+                {:else}
+                  {#each filteredBankCodes as [code, name]}
+                    <button
+                      type="button"
+                      class={cn(
+                        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-muted",
+                        formBankCode === code && "bg-primary/10 text-primary font-medium"
+                      )}
+                      onclick={() => {
+                        formBankCode = code;
+                        bankSearch = "";
+                        bankPopoverOpen = false;
+                      }}
+                    >
+                      <svg
+                        class={cn(
+                          "h-4 w-4 shrink-0",
+                          formBankCode === code ? "opacity-100" : "opacity-0"
+                        )}
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>{name}</span>
+                    </button>
+                  {/each}
+                {/if}
+              </div>
+            </PopoverPrimitive.Content>
+          </PopoverPrimitive.Root>
         </div>
 
         <!-- Account Number -->
