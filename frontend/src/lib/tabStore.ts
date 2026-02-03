@@ -114,6 +114,49 @@ class TabStore {
     this.state.tabs.splice(toIndex, 0, movedTab);
     this.saveToStorage();
   }
+
+  /**
+   * 지정한 탭을 제외한 다른 닫을 수 있는 탭 모두 닫기
+   */
+  closeOtherTabs(keepTabId: string): void {
+    this.state.tabs = this.state.tabs.filter(
+      (t) => t.id === keepTabId || !t.closeable
+    );
+
+    // 유지한 탭으로 포커스 이동
+    if (this.state.tabs.some((t) => t.id === keepTabId)) {
+      this.state.activeTabId = keepTabId;
+    } else if (this.state.tabs.length > 0) {
+      this.state.activeTabId = this.state.tabs[this.state.tabs.length - 1].id;
+    } else {
+      this.state.activeTabId = '';
+    }
+
+    this.saveToStorage();
+  }
+
+  /**
+   * 닫을 수 있는 탭 모두 닫기
+   */
+  closeAllTabs(): void {
+    this.state.tabs = this.state.tabs.filter((t) => !t.closeable);
+
+    // 남은 탭 중 마지막 탭으로 포커스 이동
+    if (this.state.tabs.length > 0) {
+      this.state.activeTabId = this.state.tabs[this.state.tabs.length - 1].id;
+    } else {
+      this.state.activeTabId = '';
+    }
+
+    this.saveToStorage();
+  }
+
+  /**
+   * 닫을 수 있는 탭이 있는지 확인
+   */
+  hasCloseableTabs(): boolean {
+    return this.state.tabs.some((t) => t.closeable);
+  }
 }
 
 export const tabStore = new TabStore();
