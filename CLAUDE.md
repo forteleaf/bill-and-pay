@@ -310,6 +310,8 @@ $effect(() => {
 
 ### DATABASE
 
+- finch 로 설치
+- container name: postgres-postgres-1
 - postgres 18
 - host: localhost
 - port: 5432
