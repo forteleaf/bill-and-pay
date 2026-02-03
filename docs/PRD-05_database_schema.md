@@ -161,6 +161,9 @@ CREATE TABLE public.pg_connections (
     id              BIGSERIAL PRIMARY KEY,
     uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
 
+    -- 테넌트 정보 (Webhook URL에서 테넌트 식별용)
+    tenant_id       VARCHAR(50) NOT NULL,           -- 테넌트 식별자 (예: tenant_001)
+
     -- PG사 정보
     pg_code         VARCHAR(20) NOT NULL UNIQUE,
     pg_name         VARCHAR(50) NOT NULL,
@@ -172,7 +175,7 @@ CREATE TABLE public.pg_connections (
     api_secret_enc  BYTEA NOT NULL,
 
     -- Webhook
-    webhook_path    VARCHAR(100) NOT NULL UNIQUE,
+    webhook_path    VARCHAR(100) NOT NULL UNIQUE,   -- 레거시 경로 (deprecated)
     webhook_secret  VARCHAR(100),
 
     -- API
@@ -189,7 +192,16 @@ CREATE TABLE public.pg_connections (
 
     CONSTRAINT chk_pg_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'ERROR'))
 );
+
+-- 테넌트별 PG Connection 조회용 인덱스
+CREATE INDEX idx_pg_connections_tenant ON public.pg_connections (tenant_id);
+
+-- 테넌트 + ID 복합 조회용 인덱스
+CREATE INDEX idx_pg_connections_tenant_id ON public.pg_connections (id, tenant_id);
 ```
+
+> **Note**: `tenant_id` 컬럼은 Webhook URL 경로에서 테넌트를 식별하기 위해 사용됩니다.
+> 신규 Webhook URL 패턴: `POST /api/webhook/{tenantId}/{pgCode}?pgConnectionId=xxx&webhookSecret=yyy`
 
 ---
 

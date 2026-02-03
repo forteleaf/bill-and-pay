@@ -87,15 +87,17 @@ CREATE TABLE pg_connections (
 
 ### 3.2 지원 PG사 목록
 
-| PG사 | 코드 | Webhook 경로 | 비고 |
-|------|------|-------------|------|
-| 코페이 | KORPAY | /api/webhook/korpay | |
-| 나이스페이먼츠 | NICE | /api/webhook/nice | |
-| KG이니시스 | INICIS | /api/webhook/inicis | |
-| 토스페이먼츠 | TOSS | /api/webhook/toss | |
-| KSNET | KSNET | /api/webhook/ksnet | |
-| 세틀뱅크 | SETTLE | /api/webhook/settle | 가상계좌 |
-| 헥토파이낸셜 | HECTO | /api/webhook/hecto | |
+| PG사 | 코드 | Webhook 경로 (신규) | Webhook 경로 (레거시) | 비고 |
+|------|------|---------------------|----------------------|------|
+| 코페이 | KORPAY | /api/webhook/{tenantId}/korpay | /api/webhook/korpay | |
+| 나이스페이먼츠 | NICE | /api/webhook/{tenantId}/nice | /api/webhook/nice | |
+| KG이니시스 | INICIS | /api/webhook/{tenantId}/inicis | /api/webhook/inicis | |
+| 토스페이먼츠 | TOSS | /api/webhook/{tenantId}/toss | /api/webhook/toss | |
+| KSNET | KSNET | /api/webhook/{tenantId}/ksnet | /api/webhook/ksnet | |
+| 세틀뱅크 | SETTLE | /api/webhook/{tenantId}/settle | /api/webhook/settle | 가상계좌 |
+| 헥토파이낸셜 | HECTO | /api/webhook/{tenantId}/hecto | /api/webhook/hecto | |
+
+> **Note**: 신규 Webhook URL 패턴은 테넌트 식별을 URL 경로에 포함합니다. 레거시 경로는 backward compatibility를 위해 유지되지만, deprecation 로깅이 발생하며 향후 마이그레이션을 권장합니다.
 
 ### 3.3 API 엔드포인트 JSONB 구조
 
@@ -168,33 +170,130 @@ CREATE INDEX idx_pg_mapping_lookup
 
 ### 5.1 Webhook Controller
 
+#### 5.1.1 테넌트 인식 Webhook URL (권장)
+
 ```java
 @RestController
 @RequestMapping("/api/webhook")
 public class WebhookController {
 
-    private final WebhookProcessor webhookProcessor;
+    private final WebhookProcessingService webhookProcessingService;
+    private final TenantService tenantService;
+    private final PgConnectionRepository pgConnectionRepository;
 
     /**
-     * PG사별 Webhook 수신 엔드포인트
+     * 테넌트 인식 Webhook 수신 엔드포인트 (권장)
+     * URL 패턴: POST /api/webhook/{tenantId}/{pgCode}?pgConnectionId=xxx&webhookSecret=yyy
      */
-    @PostMapping("/{pgCode}")
-    public ResponseEntity<WebhookResponse> receiveWebhook(
+    @PostMapping("/{tenantId}/{pgCode}")
+    public ResponseEntity<WebhookResponse> receiveWebhookWithTenant(
+            @PathVariable String tenantId,
             @PathVariable String pgCode,
+            @RequestParam Long pgConnectionId,
+            @RequestParam String webhookSecret,
             @RequestHeader Map<String, String> headers,
             @RequestBody String rawBody) {
 
-        try {
-            WebhookResult result = webhookProcessor.process(pgCode, headers, rawBody);
-            return ResponseEntity.ok(result.toResponse());
-        } catch (WebhookValidationException e) {
-            log.warn("Webhook 검증 실패: pg={}, error={}", pgCode, e.getMessage());
-            return ResponseEntity.status(400).body(WebhookResponse.error(e.getMessage()));
-        } catch (Exception e) {
-            log.error("Webhook 처리 실패: pg={}", pgCode, e);
-            // PG사에게 재시도 유도를 위해 500 반환
-            return ResponseEntity.status(500).body(WebhookResponse.error("Internal error"));
+        // 1. 테넌트 존재 여부 검증
+        if (!tenantService.validateTenantExists(tenantId)) {
+            log.warn("Webhook 수신 실패: 존재하지 않는 테넌트 - tenantId={}", tenantId);
+            return ResponseEntity.badRequest()
+                .body(WebhookResponse.error("Invalid tenant"));
         }
+
+        // 2. 테넌트 컨텍스트 내에서 처리
+        return TenantContextHolder.runInTenant(tenantId, () -> {
+            // PG Connection 검증 (tenantId 일치 확인)
+            PgConnection pgConnection = pgConnectionRepository
+                .findByIdAndTenantId(pgConnectionId, tenantId)
+                .orElseThrow(() -> new WebhookValidationException("Invalid PG connection"));
+
+            // Webhook Secret 검증
+            if (!webhookSecret.equals(pgConnection.getWebhookSecret())) {
+                throw new WebhookValidationException("Invalid webhook secret");
+            }
+
+            // 기존 처리 로직 실행
+            WebhookResult result = webhookProcessingService.process(pgCode, headers, rawBody);
+            return ResponseEntity.ok(result.toResponse());
+        });
+    }
+}
+```
+
+#### 5.1.2 레거시 Webhook URL (Deprecated)
+
+기존 연동을 위해 유지되지만, 신규 연동은 테넌트 인식 URL 사용을 권장합니다.
+
+```java
+/**
+ * 레거시 Webhook 수신 엔드포인트 (Deprecated)
+ * URL 패턴: POST /api/webhook/{pgCode}?pgConnectionId=xxx&webhookSecret=yyy
+ * 
+ * @deprecated 테넌트 인식 엔드포인트 사용 권장: POST /api/webhook/{tenantId}/{pgCode}
+ */
+@Deprecated
+@PostMapping("/{pgCode}")
+public ResponseEntity<WebhookResponse> receiveWebhookLegacy(
+        @PathVariable String pgCode,
+        @RequestParam Long pgConnectionId,
+        @RequestParam String webhookSecret,
+        @RequestHeader Map<String, String> headers,
+        @RequestBody String rawBody) {
+
+    log.warn("DEPRECATION: 레거시 Webhook URL 사용됨 - pgCode={}, pgConnectionId={}. " +
+             "테넌트 인식 URL로 마이그레이션 권장: /api/webhook/{tenantId}/{pgCode}",
+             pgCode, pgConnectionId);
+
+    // PG Connection에서 tenantId 조회
+    PgConnection pgConnection = pgConnectionRepository.findById(pgConnectionId)
+        .orElseThrow(() -> new WebhookValidationException("Invalid PG connection"));
+
+    String tenantId = pgConnection.getTenantId();
+
+    // 테넌트 컨텍스트 내에서 처리
+    return TenantContextHolder.runInTenant(tenantId, () -> {
+        // Webhook Secret 검증 및 처리
+        WebhookResult result = webhookProcessingService.process(pgCode, headers, rawBody);
+        return ResponseEntity.ok(result.toResponse());
+    });
+}
+```
+
+#### 5.1.3 Webhook URL 생성 서비스
+
+PG 연동 설정 시 Webhook URL을 자동 생성하는 서비스:
+
+```java
+@Service
+public class WebhookUrlGenerator {
+
+    @Value("${app.webhook.base-url}")
+    private String webhookBaseUrl;  // 예: https://api.billpay.com
+
+    /**
+     * 테넌트 인식 Webhook URL 생성 (권장)
+     */
+    public String generateWebhookUrl(String tenantId, PgConnection pgConnection) {
+        return UriComponentsBuilder.fromUriString(webhookBaseUrl)
+            .path("/api/webhook/{tenantId}/{pgCode}")
+            .queryParam("pgConnectionId", pgConnection.getId())
+            .queryParam("webhookSecret", pgConnection.getWebhookSecret())
+            .buildAndExpand(tenantId, pgConnection.getPgCode())
+            .toUriString();
+    }
+
+    /**
+     * 레거시 Webhook URL 생성 (deprecated)
+     */
+    @Deprecated
+    public String generateLegacyWebhookUrl(PgConnection pgConnection) {
+        return UriComponentsBuilder.fromUriString(webhookBaseUrl)
+            .path("/api/webhook/{pgCode}")
+            .queryParam("pgConnectionId", pgConnection.getId())
+            .queryParam("webhookSecret", pgConnection.getWebhookSecret())
+            .buildAndExpand(pgConnection.getPgCode())
+            .toUriString();
     }
 }
 ```
@@ -855,3 +954,4 @@ ORDER BY notification_type, channel;
 |------|------|----------|
 | v1.0 | 2026-01-28 | 초안 작성 |
 | v2.0 | 2026-01-29 | KORPAY 연동 추가 - Webhook Adapter, 필드 매핑, MID/단말기 관계 설명 |
+| v3.0 | 2026-02-03 | 테넌트 인식 Webhook URL 구현 - URL 경로에 tenantId 포함, 레거시 URL deprecation |
