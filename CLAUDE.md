@@ -48,6 +48,10 @@
 - `transaction_events`: 모든 이벤트 이력 (불변, 파티셔닝)
 - `settlements`: 복식부기 정산 원장
 
+### 5. 저장양식
+
+- 전화번호, 사업자번호, 주민등록번호, 계좌번호 숫자만 저장한다.
+
 ## 문서 참조
 - [PRD-01: 아키텍처](docs/PRD-01_architecture.md)
 - [PRD-02: 조직 구조](docs/PRD-02_organization.md)

@@ -82,18 +82,6 @@
     formStatus = connection.status;
   }
 
-  function resetForm() {
-    formPgCode = '';
-    formPgName = '';
-    formApiBaseUrl = '';
-    formWebhookBaseUrl = '';
-    formMerchantId = '';
-    formApiKey = '';
-    formSecretKey = '';
-    formWebhookSecret = '';
-    formStatus = PgConnectionStatus.ACTIVE;
-  }
-
   function toggleEditMode() {
     editMode = !editMode;
     if (!editMode && connection) {

@@ -134,70 +134,72 @@
       weekdayFormat="short"
       locale="ko-KR"
       class="p-3"
-      let:months={calendarMonths}
-      let:weekdays={_calendarWeekdays}
     >
-      <RangeCalendar.Header class="relative flex w-full items-center justify-between pt-1">
-        <RangeCalendar.PrevButton
-          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-accent disabled:pointer-events-none"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
-        </RangeCalendar.PrevButton>
-        <RangeCalendar.Heading class="text-sm font-medium" let:headingValue>
-          {headingValue || '-'}
-        </RangeCalendar.Heading>
-        <RangeCalendar.NextButton
-          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-accent disabled:pointer-events-none"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </RangeCalendar.NextButton>
-      </RangeCalendar.Header>
+      {#snippet children({ months })}
+        <RangeCalendar.Header class="relative flex w-full items-center justify-between pt-1">
+          <RangeCalendar.PrevButton
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-accent disabled:pointer-events-none"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+          </RangeCalendar.PrevButton>
+          <RangeCalendar.Heading class="text-sm font-medium">
+            {#snippet children({ headingValue })}
+              {headingValue || '-'}
+            {/snippet}
+          </RangeCalendar.Heading>
+          <RangeCalendar.NextButton
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-accent disabled:pointer-events-none"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </RangeCalendar.NextButton>
+        </RangeCalendar.Header>
 
-      {#each calendarMonths as month}
-        <RangeCalendar.Grid class="mt-4 w-full border-collapse space-y-1">
-          <RangeCalendar.GridHead>
-            <RangeCalendar.GridRow class="flex">
-              {#each weekdays as weekday}
-                <RangeCalendar.HeadCell
-                  class="w-9 rounded-md text-[0.8rem] font-normal text-muted-foreground"
-                >
-                  {weekday}
-                </RangeCalendar.HeadCell>
-              {/each}
-            </RangeCalendar.GridRow>
-          </RangeCalendar.GridHead>
-          <RangeCalendar.GridBody>
-            {#each month.weeks as week}
-              <RangeCalendar.GridRow class="mt-2 flex w-full">
-                {#each week as day}
-                  <RangeCalendar.Cell
-                    date={day}
-                    month={month.value}
-                    class="relative h-9 w-9 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([data-selected])]:bg-accent [&:has([data-selection-start])]:rounded-l-md [&:has([data-selection-end])]:rounded-r-md [&:has([data-selected][data-outside-month])]:bg-accent/50"
+        {#each months as month}
+          <RangeCalendar.Grid class="mt-4 w-full border-collapse space-y-1">
+            <RangeCalendar.GridHead>
+              <RangeCalendar.GridRow class="flex">
+                {#each weekdays as weekday}
+                  <RangeCalendar.HeadCell
+                    class="w-9 rounded-md text-[0.8rem] font-normal text-muted-foreground"
                   >
-                    <RangeCalendar.Day
-                      class={cn(
-                        "inline-flex h-9 w-9 items-center justify-center rounded-md p-0 text-sm font-normal ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                        "data-[selected]:bg-primary data-[selected]:text-primary-foreground",
-                        "data-[selection-start]:bg-primary data-[selection-start]:text-primary-foreground data-[selection-start]:rounded-l-md",
-                        "data-[selection-end]:bg-primary data-[selection-end]:text-primary-foreground data-[selection-end]:rounded-r-md",
-                        "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:rounded-none",
-                        "data-[outside-month]:text-muted-foreground data-[outside-month]:opacity-50",
-                        "data-[today]:bg-accent data-[today]:text-accent-foreground"
-                      )}
-                    />
-                  </RangeCalendar.Cell>
+                    {weekday}
+                  </RangeCalendar.HeadCell>
                 {/each}
               </RangeCalendar.GridRow>
-            {/each}
-          </RangeCalendar.GridBody>
-        </RangeCalendar.Grid>
-      {/each}
+            </RangeCalendar.GridHead>
+            <RangeCalendar.GridBody>
+              {#each month.weeks as week}
+                <RangeCalendar.GridRow class="mt-2 flex w-full">
+                  {#each week as day}
+                    <RangeCalendar.Cell
+                      date={day}
+                      month={month.value}
+                      class="relative h-9 w-9 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([data-selected])]:bg-accent [&:has([data-selection-start])]:rounded-l-md [&:has([data-selection-end])]:rounded-r-md [&:has([data-selected][data-outside-month])]:bg-accent/50"
+                    >
+                      <RangeCalendar.Day
+                        class={cn(
+                          "inline-flex h-9 w-9 items-center justify-center rounded-md p-0 text-sm font-normal ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                          "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                          "data-[selected]:bg-primary data-[selected]:text-primary-foreground",
+                          "data-[selection-start]:bg-primary data-[selection-start]:text-primary-foreground data-[selection-start]:rounded-l-md",
+                          "data-[selection-end]:bg-primary data-[selection-end]:text-primary-foreground data-[selection-end]:rounded-r-md",
+                          "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:rounded-none",
+                          "data-[outside-month]:text-muted-foreground data-[outside-month]:opacity-50",
+                          "data-[today]:bg-accent data-[today]:text-accent-foreground"
+                        )}
+                      />
+                    </RangeCalendar.Cell>
+                  {/each}
+                </RangeCalendar.GridRow>
+              {/each}
+            </RangeCalendar.GridBody>
+          </RangeCalendar.Grid>
+        {/each}
+      {/snippet}
     </RangeCalendar.Root>
   </PopoverPrimitive.Content>
 </PopoverPrimitive.Root>

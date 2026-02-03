@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -89,6 +90,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("AUTHENTICATION_FAILED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String message = "데이터 무결성 오류가 발생했습니다";
+        String rootMessage = ex.getMostSpecificCause().getMessage();
+        
+        if (rootMessage != null) {
+            if (rootMessage.contains("merchant_pg_mappings_merchant_pg_unique")) {
+                message = "해당 가맹점에 이미 동일 PG 매핑이 존재합니다";
+            } else if (rootMessage.contains("duplicate key")) {
+                message = "중복된 데이터가 존재합니다";
+            }
+        }
+        
+        log.warn("Data integrity violation: {}", rootMessage);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("DATA_INTEGRITY_ERROR", message));
     }
 
     @ExceptionHandler(Exception.class)

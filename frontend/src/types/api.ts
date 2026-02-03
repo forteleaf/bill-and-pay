@@ -175,7 +175,7 @@ export interface CreateOrgRequest {
   name: string;
   orgType: OrgType;
   parentId?: string;
-  businessEntityId: string;
+  businessEntityId?: string;
   email?: string;
   phone?: string;
   address?: string;
