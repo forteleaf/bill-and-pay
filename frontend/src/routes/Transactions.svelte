@@ -10,6 +10,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
+  import { DateRangePicker } from '$lib/components/ui/date-range-picker';
   
   let transactions = $state<Transaction[]>([]);
   let loading = $state(true);
@@ -94,8 +95,11 @@
       }
       
       if (startDate && endDate) {
-        const startDateTime = `${startDate}T00:00:00+09:00`;
-        const endDateTime = `${endDate}T23:59:59+09:00`;
+        // Convert yyyy/MM/dd to yyyy-MM-dd for API
+        const startDateISO = startDate.replace(/\//g, '-');
+        const endDateISO = endDate.replace(/\//g, '-');
+        const startDateTime = `${startDateISO}T00:00:00+09:00`;
+        const endDateTime = `${endDateISO}T23:59:59+09:00`;
         
         if (dateType === 'CREATED') {
           params.append('startDate', startDateTime);
@@ -158,6 +162,14 @@
     loadTransactions();
   }
   
+  function setDateRange(days: number) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    startDate = format(start, 'yyyy/MM/dd');
+    endDate = format(end, 'yyyy/MM/dd');
+  }
+  
   onMount(() => {
     loadTransactions();
   });
@@ -204,22 +216,22 @@
           </select>
         </div>
         
-        <div class="space-y-2">
-          <Label for="startDate">시작일</Label>
-          <Input 
-            id="startDate"
-            type="date" 
-            bind:value={startDate}
-          />
-        </div>
-        
-        <div class="space-y-2">
-          <Label for="endDate">종료일</Label>
-          <Input 
-            id="endDate"
-            type="date" 
-            bind:value={endDate}
-          />
+        <div class="flex flex-row items-end gap-3">
+          <div class="space-y-2">
+            <Label>기간</Label>
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onchange={(start, end) => { startDate = start; endDate = end; }}
+              placeholder="기간 선택"
+              class="w-[280px]"
+            />
+          </div>
+          <div class="flex gap-1">
+            <Button variant="outline" size="sm" onclick={() => setDateRange(7)}>7일</Button>
+            <Button variant="outline" size="sm" onclick={() => setDateRange(30)}>30일</Button>
+            <Button variant="outline" size="sm" onclick={() => setDateRange(90)}>90일</Button>
+          </div>
         </div>
         
         <Button onclick={handleSearch}>

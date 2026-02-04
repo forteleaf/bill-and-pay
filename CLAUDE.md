@@ -95,6 +95,58 @@
 - CSS 변수 활용: `text-foreground`, `bg-muted`, `border-border`
 - 반응형: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
 
+### 날짜 범위 검색 패턴 (CRITICAL)
+날짜 범위 검색 UI는 반드시 아래 패턴을 따른다:
+
+#### ✅ 올바른 패턴: DateRangePicker + 빠른 선택 버튼
+```svelte
+<script lang="ts">
+  import { DateRangePicker } from '$lib/components/ui/date-range-picker';
+  import { format } from 'date-fns';
+
+  let startDate = $state('');
+  let endDate = $state('');
+
+  function setDateRange(days: number) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    startDate = format(start, 'yyyy/MM/dd');
+    endDate = format(end, 'yyyy/MM/dd');
+  }
+</script>
+
+<div class="flex flex-row items-end gap-3">
+  <div class="flex flex-col gap-1.5">
+    <Label>기간</Label>
+    <DateRangePicker
+      startDate={startDate}
+      endDate={endDate}
+      onchange={(start, end) => { startDate = start; endDate = end; }}
+      placeholder="기간 선택"
+      class="w-[280px]"
+    />
+  </div>
+  <div class="flex gap-1">
+    <Button variant="outline" size="sm" onclick={() => setDateRange(7)}>7일</Button>
+    <Button variant="outline" size="sm" onclick={() => setDateRange(30)}>30일</Button>
+    <Button variant="outline" size="sm" onclick={() => setDateRange(90)}>90일</Button>
+  </div>
+</div>
+```
+
+#### ❌ 잘못된 패턴: 네이티브 Input type="date"
+```svelte
+<!-- 사용 금지! UX 불량, 모바일 호환성 문제 -->
+<Input type="date" bind:value={startDate} />
+<Input type="date" bind:value={endDate} />
+```
+
+**핵심 요소**:
+- `DateRangePicker` 컴포넌트 사용 (bits-ui RangeCalendar 기반)
+- 빠른 선택 버튼 (7일, 30일, 90일) 필수 제공
+- 날짜 포맷: `yyyy/MM/dd` (API 전송 시 ISO 8601로 변환)
+
 ## ⚠️ 자주 하는 실수 (Common Mistakes)
 
 ### 1. $effect 무한 루프/무한 로딩 (CRITICAL)
