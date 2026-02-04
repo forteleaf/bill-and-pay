@@ -54,7 +54,7 @@ public class TransactionQueryService {
         } else if (status != null && startDate != null && endDate != null) {
             allTransactions = transactionRepository.findByStatusAndCreatedAtBetween(status, startDate, endDate);
         } else {
-            allTransactions = transactionRepository.findAll();
+            allTransactions = transactionRepository.findAllWithMerchant();
         }
         
         List<Transaction> accessibleTransactions = allTransactions.stream()

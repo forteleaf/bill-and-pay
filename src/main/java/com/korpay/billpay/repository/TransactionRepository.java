@@ -21,6 +21,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     Page<Transaction> findByMerchantId(UUID merchantId, Pageable pageable);
 
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.merchant JOIN FETCH t.paymentMethod LEFT JOIN FETCH t.cardCompany")
+    List<Transaction> findAllWithMerchant();
+
     @Query(value = "SELECT * FROM transactions WHERE merchant_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
     List<Transaction> findByMerchantPathDescendants(@Param("path") String path);
 
