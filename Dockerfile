@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk:25-jre-headless as builder
+FROM azul/zulu-openjdk-alpine:25-latest AS builder
 
 WORKDIR /app
 
@@ -8,11 +8,11 @@ COPY src ./src
 
 RUN ./gradlew clean bootJar --no-daemon
 
-FROM azul/zulu-openjdk:25-jre-headless
+FROM azul/zulu-openjdk-alpine:25-jre-headless-latest
 
 WORKDIR /app
 
-RUN addgroup --system spring && adduser --system spring --ingroup spring
+RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
 COPY --from=builder /app/build/libs/*.jar app.jar
