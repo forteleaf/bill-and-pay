@@ -167,7 +167,6 @@ CREATE TABLE transactions (
   merchant_id UUID NOT NULL REFERENCES merchants(id),
   merchant_pg_mapping_id UUID NOT NULL REFERENCES merchant_pg_mappings(id),
   pg_connection_id BIGINT NOT NULL,
-  merchant_path public.ltree NOT NULL,
   org_path public.ltree NOT NULL,
   payment_method_id UUID NOT NULL REFERENCES payment_methods(id),
   card_company_id UUID REFERENCES card_companies(id),
@@ -186,7 +185,6 @@ CREATE TABLE transactions (
   CONSTRAINT transactions_amount_check CHECK (amount > 0)
 );
 
-CREATE INDEX idx_transactions_merchant_path_gist ON transactions USING GIST(merchant_path);
 CREATE INDEX idx_transactions_org_path_gist ON transactions USING GIST(org_path);
 CREATE INDEX idx_transactions_merchant_id ON transactions(merchant_id);
 CREATE INDEX idx_transactions_pg_connection_id ON transactions(pg_connection_id);
@@ -217,7 +215,6 @@ CREATE TABLE transaction_events (
   merchant_id UUID NOT NULL,
   merchant_pg_mapping_id UUID NOT NULL,
   pg_connection_id BIGINT NOT NULL,
-  merchant_path public.ltree NOT NULL,
   org_path public.ltree NOT NULL,
   payment_method_id UUID NOT NULL,
   card_company_id UUID,
@@ -242,7 +239,6 @@ CREATE TABLE transaction_events (
   CONSTRAINT transaction_events_occurred_at_not_future CHECK (occurred_at <= CURRENT_TIMESTAMP)
 ) PARTITION BY RANGE (created_at);
 
-CREATE INDEX idx_transaction_events_merchant_path_gist ON transaction_events USING GIST(merchant_path);
 CREATE INDEX idx_transaction_events_org_path_gist ON transaction_events USING GIST(org_path);
 CREATE INDEX idx_transaction_events_transaction_id ON transaction_events(transaction_id, event_sequence);
 CREATE INDEX idx_transaction_events_merchant_id ON transaction_events(merchant_id, created_at DESC);
@@ -288,7 +284,7 @@ CREATE TABLE settlements (
   transaction_event_id UUID NOT NULL,
   transaction_id UUID NOT NULL,
   merchant_id UUID NOT NULL REFERENCES merchants(id),
-  merchant_path public.ltree NOT NULL,
+  org_path public.ltree NOT NULL,
   entity_id UUID NOT NULL,
   entity_type VARCHAR(20) NOT NULL,
   entity_path public.ltree NOT NULL,
@@ -316,7 +312,7 @@ CREATE TABLE settlements (
   CONSTRAINT settlements_settled_at_required CHECK ((status = 'COMPLETED' AND settled_at IS NOT NULL) OR status <> 'COMPLETED')
 );
 
-CREATE INDEX idx_settlements_merchant_path_gist ON settlements USING GIST(merchant_path);
+CREATE INDEX idx_settlements_org_path_gist ON settlements USING GIST(org_path);
 CREATE INDEX idx_settlements_entity_path_gist ON settlements USING GIST(entity_path);
 CREATE INDEX idx_settlements_transaction_id ON settlements(transaction_id);
 CREATE INDEX idx_settlements_entity_id ON settlements(entity_id, entity_type);

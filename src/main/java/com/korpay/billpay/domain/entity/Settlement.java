@@ -45,8 +45,8 @@ public class Settlement {
     private UUID merchantId;
 
     @Type(LtreeType.class)
-    @Column(name = "merchant_path", nullable = false, columnDefinition = "ltree")
-    private String merchantPath;
+    @Column(name = "org_path", nullable = false, columnDefinition = "ltree")
+    private String orgPath;
 
     @Column(name = "entity_id", nullable = false)
     private UUID entityId;

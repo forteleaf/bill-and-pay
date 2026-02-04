@@ -43,10 +43,6 @@ public class Transaction {
     private Long pgConnectionId;
 
     @Type(LtreeType.class)
-    @Column(name = "merchant_path", nullable = false, columnDefinition = "ltree")
-    private String merchantPath;
-
-    @Type(LtreeType.class)
     @Column(name = "org_path", nullable = false, columnDefinition = "ltree")
     private String orgPath;
 

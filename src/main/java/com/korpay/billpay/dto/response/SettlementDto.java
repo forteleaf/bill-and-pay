@@ -25,7 +25,7 @@ public class SettlementDto {
     private UUID transactionEventId;
     private UUID transactionId;
     private UUID merchantId;
-    private String merchantPath;
+    private String orgPath;
     private UUID entityId;
     private OrganizationType entityType;
     private String entityPath;
@@ -49,7 +49,7 @@ public class SettlementDto {
                 .transactionEventId(settlement.getTransactionEventId())
                 .transactionId(settlement.getTransactionId())
                 .merchantId(settlement.getMerchantId())
-                .merchantPath(settlement.getMerchantPath())
+                .orgPath(settlement.getOrgPath())
                 .entityId(settlement.getEntityId())
                 .entityType(settlement.getEntityType())
                 .entityPath(settlement.getEntityPath())

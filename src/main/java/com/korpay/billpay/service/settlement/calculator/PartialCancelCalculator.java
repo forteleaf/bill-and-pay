@@ -52,7 +52,7 @@ public class PartialCancelCalculator {
                     .transactionEventId(cancelEvent.getId())
                     .transactionId(cancelEvent.getTransactionId())
                     .merchantId(cancelEvent.getMerchantId())
-                    .merchantPath(cancelEvent.getMerchantPath())
+                    .orgPath(cancelEvent.getOrgPath())
                     .entityId(original.getEntityId())
                     .entityType(original.getEntityType())
                     .entityPath(original.getEntityPath())

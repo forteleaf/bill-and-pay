@@ -24,9 +24,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.merchant JOIN FETCH t.paymentMethod LEFT JOIN FETCH t.cardCompany")
     List<Transaction> findAllWithMerchant();
 
-    @Query(value = "SELECT * FROM transactions WHERE merchant_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
-    List<Transaction> findByMerchantPathDescendants(@Param("path") String path);
-
     @Query(value = "SELECT * FROM transactions WHERE org_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
     List<Transaction> findByOrgPathDescendants(@Param("path") String path);
 

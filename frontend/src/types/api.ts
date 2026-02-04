@@ -68,7 +68,6 @@ export interface Transaction {
   transactionId: string;
   merchantId: string;
   merchantName?: string;
-  merchantPath: string;
   orgPath: string;
   paymentMethodId: string;
   cardCompanyId?: string;
@@ -93,7 +92,7 @@ export interface Settlement {
   transactionEventId: string;
   transactionId: string;
   merchantId: string;
-  merchantPath: string;
+  orgPath: string;
   entityId: string;
   entityType: string;
   entityPath: string;
