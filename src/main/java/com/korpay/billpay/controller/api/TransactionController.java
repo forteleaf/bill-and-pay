@@ -46,6 +46,7 @@ public class TransactionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime approvedAtEnd,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime cancelledAtStart,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime cancelledAtEnd,
+            @RequestParam(required = false) String dateFilterType,
             @RequestParam(required = false) String transactionId,
             @RequestParam(required = false) Long pgConnectionId,
             @RequestParam(required = false) String approvalNumber,
@@ -64,7 +65,7 @@ public class TransactionController {
         Page<Transaction> transactionsPage = transactionQueryService.findAccessibleTransactions(
                 currentUser, merchantId, status, startDate, endDate,
                 approvedAtStart, approvedAtEnd, cancelledAtStart, cancelledAtEnd,
-                transactionId, pgConnectionId, approvalNumber, pageable);
+                dateFilterType, transactionId, pgConnectionId, approvalNumber, pageable);
         
         List<TransactionDto> dtos = transactionsPage.getContent().stream()
                 .map(TransactionDto::from)

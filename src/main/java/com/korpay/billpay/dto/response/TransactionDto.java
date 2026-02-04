@@ -20,6 +20,7 @@ public class TransactionDto {
     private UUID id;
     private String transactionId;
     private UUID merchantId;
+    private String merchantName;
     private String merchantPath;
     private String orgPath;
     private Long pgConnectionId;
@@ -42,6 +43,7 @@ public class TransactionDto {
                 .id(transaction.getId())
                 .transactionId(transaction.getTransactionId())
                 .merchantId(transaction.getMerchant().getId())
+                .merchantName(transaction.getMerchant().getName())
                 .merchantPath(transaction.getMerchantPath())
                 .orgPath(transaction.getOrgPath())
                 .pgConnectionId(transaction.getPgConnectionId())

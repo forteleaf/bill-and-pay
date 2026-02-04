@@ -41,6 +41,7 @@ public class TransactionQueryService {
             OffsetDateTime approvedAtEnd,
             OffsetDateTime cancelledAtStart,
             OffsetDateTime cancelledAtEnd,
+            String dateFilterType,
             String transactionId,
             Long pgConnectionId,
             String approvalNumber,
@@ -104,6 +105,22 @@ public class TransactionQueryService {
                     .filter(txn -> txn.getCancelledAt() != null && 
                             (txn.getCancelledAt().isBefore(cancelledAtEnd) || txn.getCancelledAt().isEqual(cancelledAtEnd)))
                     .collect(Collectors.toList());
+        }
+        
+        if (dateFilterType != null && !dateFilterType.isBlank()) {
+            switch (dateFilterType.toUpperCase()) {
+                case "APPROVED":
+                    accessibleTransactions = accessibleTransactions.stream()
+                            .filter(txn -> txn.getApprovedAt() != null)
+                            .collect(Collectors.toList());
+                    break;
+                case "CANCELLED":
+                    accessibleTransactions = accessibleTransactions.stream()
+                            .filter(txn -> txn.getCancelledAt() != null)
+                            .collect(Collectors.toList());
+                    break;
+                // CREATED is default - no additional filtering needed
+            }
         }
         
         if (transactionId != null && !transactionId.isBlank()) {

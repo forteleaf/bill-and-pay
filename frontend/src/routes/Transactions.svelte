@@ -94,6 +94,10 @@
         params.append('status', statusFilter);
       }
       
+      if (dateType !== 'CREATED') {
+        params.append('dateFilterType', dateType);
+      }
+      
       if (startDate && endDate) {
         // Convert yyyy/MM/dd to yyyy-MM-dd for API
         const startDateISO = startDate.replace(/\//g, '-');
@@ -301,32 +305,34 @@
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead class="w-[60px] text-center">No.</TableHead>
             <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('tid')}>
-              Transaction ID{getSortIcon('tid')}
+              거래ID{getSortIcon('tid')}
             </TableHead>
             <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('merchantId')}>
-              Merchant{getSortIcon('merchantId')}
+              가맹점{getSortIcon('merchantId')}
             </TableHead>
             <TableHead class="cursor-pointer hover:bg-muted/50 text-right" onclick={() => sortBy('amount')}>
-              Amount{getSortIcon('amount')}
+              금액{getSortIcon('amount')}
             </TableHead>
             <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('status')}>
-              Status{getSortIcon('status')}
+              상태{getSortIcon('status')}
             </TableHead>
             <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('approvedAt')}>
-              Approved At{getSortIcon('approvedAt')}
+              승인일시{getSortIcon('approvedAt')}
             </TableHead>
             <TableHead class="cursor-pointer hover:bg-muted/50" onclick={() => sortBy('createdAt')}>
-              Created At{getSortIcon('createdAt')}
+              거래일시{getSortIcon('createdAt')}
             </TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead>상세</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {#each displayTransactions as transaction}
+          {#each displayTransactions as transaction, index}
             <TableRow>
-              <TableCell class="font-mono text-sm text-primary">{transaction.tid}</TableCell>
-              <TableCell>{transaction.merchantId}</TableCell>
+              <TableCell class="text-center text-muted-foreground">{currentPage * pageSize + index + 1}</TableCell>
+              <TableCell class="font-mono text-sm text-primary">{transaction.transactionId || transaction.tid}</TableCell>
+              <TableCell>{transaction.merchantName || transaction.merchantId}</TableCell>
               <TableCell class="text-right font-semibold">{formatCurrency(transaction.amount)}</TableCell>
               <TableCell>
                 <Badge variant={getStatusVariant(transaction.status)}>
@@ -336,15 +342,15 @@
               <TableCell>{transaction.approvedAt ? format(new Date(transaction.approvedAt), 'yyyy-MM-dd HH:mm:ss') : '-'}</TableCell>
               <TableCell>{format(new Date(transaction.createdAt), 'yyyy-MM-dd HH:mm:ss')}</TableCell>
               <TableCell>
-                <Button variant="outline" size="sm">Details</Button>
+                <Button variant="outline" size="sm">상세</Button>
               </TableCell>
             </TableRow>
           {/each}
           
           {#if displayTransactions.length === 0}
             <TableRow>
-              <TableCell colspan={7} class="text-center py-12 text-muted-foreground">
-                No transactions found.
+              <TableCell colspan={8} class="text-center py-12 text-muted-foreground">
+                검색 결과가 없습니다.
               </TableCell>
             </TableRow>
           {/if}

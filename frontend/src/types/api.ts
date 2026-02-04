@@ -67,6 +67,7 @@ export interface Transaction {
   id: string;
   transactionId: string;
   merchantId: string;
+  merchantName?: string;
   merchantPath: string;
   orgPath: string;
   paymentMethodId: string;
