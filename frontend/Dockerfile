@@ -1,12 +1,23 @@
-FROM node:22-alpine
-
+FROM oven/bun:1-alpine AS deps
 WORKDIR /app
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile
 
-COPY package*.json ./
-RUN npm install
-
+FROM oven/bun:1-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN bun run build
 
+FROM nginx:alpine AS production
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+FROM oven/bun:1-alpine AS development
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 EXPOSE 5173
-
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["bun", "run", "dev", "--", "--host", "0.0.0.0"]

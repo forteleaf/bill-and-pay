@@ -42,6 +42,13 @@ public class TransactionController {
             @RequestParam(required = false) TransactionStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime approvedAtStart,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime approvedAtEnd,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime cancelledAtStart,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime cancelledAtEnd,
+            @RequestParam(required = false) String transactionId,
+            @RequestParam(required = false) Long pgConnectionId,
+            @RequestParam(required = false) String approvalNumber,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -55,7 +62,9 @@ public class TransactionController {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<Transaction> transactionsPage = transactionQueryService.findAccessibleTransactions(
-                currentUser, merchantId, status, startDate, endDate, pageable);
+                currentUser, merchantId, status, startDate, endDate,
+                approvedAtStart, approvedAtEnd, cancelledAtStart, cancelledAtEnd,
+                transactionId, pgConnectionId, approvalNumber, pageable);
         
         List<TransactionDto> dtos = transactionsPage.getContent().stream()
                 .map(TransactionDto::from)

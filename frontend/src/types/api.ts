@@ -71,6 +71,7 @@ export interface Transaction {
   orgPath: string;
   paymentMethodId: string;
   cardCompanyId?: string;
+  pgConnectionId?: number;
   amount: number;
   currency: string;
   status: string;

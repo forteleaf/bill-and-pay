@@ -9,7 +9,15 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(curl:*)",
-      "WebSearch"
+      "WebSearch",
+      "mcp__postgres__query",
+      "Bash(claude mcp remove:*)",
+      "Bash(claude mcp add --transport stdio postgres -- npx -y @modelcontextprotocol/server-postgres \"postgresql://postgres:postgres@localhost:5432/billpay\")",
+      "Bash(finch exec:*)",
+      "Bash(finch build:*)",
+      "WebFetch(domain:hub.docker.com)",
+      "WebFetch(domain:docs.azul.com)",
+      "Bash(finch images:*)"
     ],
     "deny": []
   }

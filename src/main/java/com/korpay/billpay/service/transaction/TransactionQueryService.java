@@ -37,6 +37,13 @@ public class TransactionQueryService {
             TransactionStatus status,
             OffsetDateTime startDate,
             OffsetDateTime endDate,
+            OffsetDateTime approvedAtStart,
+            OffsetDateTime approvedAtEnd,
+            OffsetDateTime cancelledAtStart,
+            OffsetDateTime cancelledAtEnd,
+            String transactionId,
+            Long pgConnectionId,
+            String approvalNumber,
             Pageable pageable) {
         
         List<Transaction> allTransactions;
@@ -71,8 +78,62 @@ public class TransactionQueryService {
                     .collect(Collectors.toList());
         }
         
+        if (approvedAtStart != null) {
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> txn.getApprovedAt() != null && 
+                            (txn.getApprovedAt().isAfter(approvedAtStart) || txn.getApprovedAt().isEqual(approvedAtStart)))
+                    .collect(Collectors.toList());
+        }
+        
+        if (approvedAtEnd != null) {
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> txn.getApprovedAt() != null && 
+                            (txn.getApprovedAt().isBefore(approvedAtEnd) || txn.getApprovedAt().isEqual(approvedAtEnd)))
+                    .collect(Collectors.toList());
+        }
+        
+        if (cancelledAtStart != null) {
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> txn.getCancelledAt() != null && 
+                            (txn.getCancelledAt().isAfter(cancelledAtStart) || txn.getCancelledAt().isEqual(cancelledAtStart)))
+                    .collect(Collectors.toList());
+        }
+        
+        if (cancelledAtEnd != null) {
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> txn.getCancelledAt() != null && 
+                            (txn.getCancelledAt().isBefore(cancelledAtEnd) || txn.getCancelledAt().isEqual(cancelledAtEnd)))
+                    .collect(Collectors.toList());
+        }
+        
+        if (transactionId != null && !transactionId.isBlank()) {
+            String searchTid = transactionId.trim().toLowerCase();
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> txn.getTransactionId() != null && 
+                            txn.getTransactionId().toLowerCase().contains(searchTid))
+                    .collect(Collectors.toList());
+        }
+        
+        if (pgConnectionId != null) {
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> pgConnectionId.equals(txn.getPgConnectionId()))
+                    .collect(Collectors.toList());
+        }
+        
+        if (approvalNumber != null && !approvalNumber.isBlank()) {
+            String searchApproval = approvalNumber.trim().toLowerCase();
+            accessibleTransactions = accessibleTransactions.stream()
+                    .filter(txn -> txn.getApprovalNumber() != null && 
+                            txn.getApprovalNumber().toLowerCase().contains(searchApproval))
+                    .collect(Collectors.toList());
+        }
+        
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), accessibleTransactions.size());
+        
+        if (start > accessibleTransactions.size()) {
+            return new PageImpl<>(List.of(), pageable, accessibleTransactions.size());
+        }
         
         List<Transaction> pageContent = accessibleTransactions.subList(start, end);
         

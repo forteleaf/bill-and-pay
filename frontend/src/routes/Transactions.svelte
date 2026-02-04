@@ -16,7 +16,13 @@
   let error = $state<string | null>(null);
   
   let statusFilter = $state<string>('ALL');
-  let searchQuery = $state('');
+  let dateType = $state<string>('CREATED');
+  let startDate = $state<string>('');
+  let endDate = $state<string>('');
+  let tidSearch = $state<string>('');
+  let approvalNumberSearch = $state<string>('');
+  let pgConnectionId = $state<string>('');
+  
   let currentPage = $state(0);
   let pageSize = $state(20);
   let totalCount = $state(0);
@@ -24,6 +30,8 @@
   
   let sortField = $state<string>('createdAt');
   let sortDirection = $state<'asc' | 'desc'>('desc');
+  
+  let showAdvancedFilters = $state(false);
   
   const displayTransactions = $derived(transactions);
   
@@ -85,6 +93,37 @@
         params.append('status', statusFilter);
       }
       
+      if (startDate && endDate) {
+        const startDateTime = `${startDate}T00:00:00+09:00`;
+        const endDateTime = `${endDate}T23:59:59+09:00`;
+        
+        if (dateType === 'CREATED') {
+          params.append('startDate', startDateTime);
+          params.append('endDate', endDateTime);
+        } else if (dateType === 'APPROVED') {
+          params.append('approvedAtStart', startDateTime);
+          params.append('approvedAtEnd', endDateTime);
+        } else if (dateType === 'CANCELLED') {
+          params.append('cancelledAtStart', startDateTime);
+          params.append('cancelledAtEnd', endDateTime);
+        } else if (dateType === 'ALL') {
+          params.append('startDate', startDateTime);
+          params.append('endDate', endDateTime);
+        }
+      }
+      
+      if (tidSearch.trim()) {
+        params.append('transactionId', tidSearch.trim());
+      }
+      
+      if (approvalNumberSearch.trim()) {
+        params.append('approvalNumber', approvalNumberSearch.trim());
+      }
+      
+      if (pgConnectionId.trim()) {
+        params.append('pgConnectionId', pgConnectionId.trim());
+      }
+      
       const response = await apiClient.get<PagedResponse<Transaction>>(`/transactions?${params}`);
       
       if (response.success && response.data) {
@@ -100,6 +139,23 @@
       loading = false;
       console.error(err);
     }
+  }
+  
+  function resetFilters() {
+    statusFilter = 'ALL';
+    dateType = 'CREATED';
+    startDate = '';
+    endDate = '';
+    tidSearch = '';
+    approvalNumberSearch = '';
+    pgConnectionId = '';
+    currentPage = 0;
+    loadTransactions();
+  }
+  
+  function handleSearch() {
+    currentPage = 0;
+    loadTransactions();
   }
   
   onMount(() => {
@@ -119,40 +175,108 @@
   </div>
   
   <Card>
-    <CardContent class="pt-6">
+    <CardContent class="pt-6 space-y-4">
       <div class="flex flex-wrap gap-4 items-end">
         <div class="space-y-2">
-          <Label for="status">Status</Label>
+          <Label for="status">상태</Label>
           <select 
             id="status" 
             bind:value={statusFilter}
             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <option value="ALL">All</option>
-            <option value="APPROVED">Approved</option>
-            <option value="CANCELED">Canceled</option>
-            <option value="PARTIAL_CANCELED">Partial Cancel</option>
+            <option value="ALL">전체</option>
+            <option value="APPROVED">승인</option>
+            <option value="CANCELLED">취소</option>
+            <option value="PARTIAL_CANCELLED">부분취소</option>
           </select>
         </div>
         
-        <div class="flex-1 min-w-[250px] space-y-2">
-          <Label for="search">Search</Label>
+        <div class="space-y-2">
+          <Label for="dateType">날짜 유형</Label>
+          <select 
+            id="dateType" 
+            bind:value={dateType}
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="CREATED">거래일자</option>
+            <option value="APPROVED">승인일자</option>
+            <option value="CANCELLED">취소일자</option>
+          </select>
+        </div>
+        
+        <div class="space-y-2">
+          <Label for="startDate">시작일</Label>
           <Input 
-            id="search"
-            type="text" 
-            placeholder="Search by transaction ID or merchant..." 
-            value={searchQuery}
-            oninput={(e) => searchQuery = e.currentTarget.value}
+            id="startDate"
+            type="date" 
+            bind:value={startDate}
           />
         </div>
         
-        <Button onclick={() => loadTransactions()}>
+        <div class="space-y-2">
+          <Label for="endDate">종료일</Label>
+          <Input 
+            id="endDate"
+            type="date" 
+            bind:value={endDate}
+          />
+        </div>
+        
+        <Button onclick={handleSearch}>
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          Refresh
+          조회
+        </Button>
+        
+        <Button variant="outline" onclick={resetFilters}>
+          초기화
         </Button>
       </div>
+      
+      <div class="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onclick={() => showAdvancedFilters = !showAdvancedFilters}
+        >
+          {showAdvancedFilters ? '▲ 상세검색 접기' : '▼ 상세검색 펼치기'}
+        </Button>
+      </div>
+      
+      {#if showAdvancedFilters}
+        <div class="flex flex-wrap gap-4 items-end border-t pt-4">
+          <div class="space-y-2">
+            <Label for="tidSearch">거래 TID</Label>
+            <Input 
+              id="tidSearch"
+              type="text" 
+              placeholder="TID 검색"
+              bind:value={tidSearch}
+            />
+          </div>
+          
+          <div class="space-y-2">
+            <Label for="approvalNumber">승인번호</Label>
+            <Input 
+              id="approvalNumber"
+              type="text" 
+              placeholder="승인번호 검색"
+              bind:value={approvalNumberSearch}
+            />
+          </div>
+          
+          <div class="space-y-2">
+            <Label for="pgConnectionId">PG ID</Label>
+            <Input 
+              id="pgConnectionId"
+              type="text" 
+              placeholder="PG 연결 ID"
+              bind:value={pgConnectionId}
+            />
+          </div>
+        </div>
+      {/if}
     </CardContent>
   </Card>
   

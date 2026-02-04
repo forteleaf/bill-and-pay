@@ -60,10 +60,32 @@
     error = null;
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      submitted = true;
+      const response = await fetch('http://localhost:8080/api/v1/public/demo-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyName: formData.companyName,
+          contactName: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          position: formData.position || null,
+          employeeCount: formData.employeeCount || null,
+          monthlyVolume: formData.monthlyVolume || null,
+          message: formData.message || null
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        submitted = true;
+      } else {
+        error = result.error?.message || '신청 중 오류가 발생했습니다.';
+      }
     } catch (err) {
-      error = '신청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      error = err instanceof Error ? err.message : '신청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     } finally {
       loading = false;
     }
@@ -173,6 +195,7 @@
                         bind:value={formData.companyName}
                         placeholder="(주)회사명"
                         disabled={loading}
+                        maxlength={100}
                       />
                     </div>
                     
@@ -184,6 +207,7 @@
                         bind:value={formData.name}
                         placeholder="홍길동"
                         disabled={loading}
+                        maxlength={50}
                       />
                     </div>
                   </div>
@@ -197,6 +221,7 @@
                         bind:value={formData.email}
                         placeholder="example@company.com"
                         disabled={loading}
+                        maxlength={100}
                       />
                     </div>
                     
@@ -209,6 +234,7 @@
                         oninput={handlePhoneInput}
                         placeholder="010-1234-5678"
                         disabled={loading}
+                        maxlength={13}
                       />
                     </div>
                   </div>
@@ -221,6 +247,7 @@
                       bind:value={formData.position}
                       placeholder="팀장"
                       disabled={loading}
+                      maxlength={50}
                     />
                   </div>
                   
@@ -264,6 +291,7 @@
                       placeholder="궁금한 점이나 요청사항을 입력해주세요."
                       disabled={loading}
                       rows="3"
+                      maxlength={500}
                       class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                     ></textarea>
                   </div>

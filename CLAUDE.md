@@ -412,7 +412,7 @@ $effect(() => {
 
 ## 실행 가이드
 
-### Finch로 전체 스택 실행
+### 개발 환경
 
 ```bash
 cp .env.example .env
@@ -424,7 +424,19 @@ finch compose up -d
 # PostgreSQL: localhost:5432
 ```
 
+### 운영 환경 (Nginx Reverse Proxy)
+
+```bash
+finch compose -f compose.prod.yaml up -d
+
+# 접속 (단일 포트)
+# All requests: http://localhost
+#   - /api/* → Backend (8080)
+#   - /* → Frontend (80)
+# PostgreSQL: localhost:5432
+```
+
 상세 내용은 다음 문서 참조:
-- [DOCKER_GUIDE.md](DOCKER_GUIDE.md) - Docker/Finch 실행 가이드
-- [API_INTEGRATION_GUIDE.md](API_INTEGRATION_GUIDE.md) - API 연동 가이드
-- [AUTH_TESTING_GUIDE.md](AUTH_TESTING_GUIDE.md) - JWT 인증 테스트 가이드
+- [DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) - Docker/Finch 실행 가이드
+- [API_INTEGRATION_GUIDE.md](docs/API_INTEGRATION_GUIDE.md) - API 연동 가이드
+- [AUTH_TESTING_GUIDE.md](docs/AUTH_TESTING_GUIDE.md) - JWT 인증 테스트 가이드
