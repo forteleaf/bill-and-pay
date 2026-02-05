@@ -373,102 +373,119 @@ $effect(() => {
 ## 구현 현황
 
 ### 백엔드 (Spring Boot)
+
+#### 핵심 통계
+| 항목 | 개수 |
+|------|------|
+| Controller | 16개 |
+| Entity | 20개 |
+| Repository | 20개 |
+| Service | 33개 |
+| DTO | 52개 |
+| Enum | 22개 |
+| Flyway 마이그레이션 | 6개 (public 3, tenant 3) |
+
+#### 아키텍처
 - ✅ 멀티테넌트 아키텍처 (ScopedValue, TenantRoutingDataSource)
 - ✅ PostgreSQL ltree 기반 5단계 조직 계층
 - ✅ 복식부기 정산 엔진 (Zero-Sum 검증, 부분취소 비례 계산)
-- ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
-- ✅ REST API 38개 엔드포인트 (조직/가맹점/거래/정산/대시보드/사업자/사용자/정산계좌/담당자/단말기)
-- ✅ Flyway 마이그레이션 (public 3개, tenant 21개)
-- ✅ JPA 엔티티 12개, Repository 12개
 - ✅ CORS 설정
 - ✅ JWT 인증 (Spring Security + JWT)
-  - JwtTokenProvider (토큰 생성/검증)
-  - JwtAuthenticationFilter (Bearer 토큰 처리)
-  - CustomUserDetailsService (사용자 조회)
-  - AuthService (로그인/리프레시)
-  - AuthController (인증 API 3개)
-- ✅ **사업자 정보 분리** (BusinessEntity)
-  - BusinessEntity 엔티티 (법인/개인/비사업자 구분)
-  - BusinessEntityController (CRUD + 검색 API 6개)
-  - 영업점(Organization)과 1:N 관계
-- ✅ **사용자 관리** (User Management)
-  - UserService (CRUD, 비밀번호 변경, 접근 제어)
-  - UserController (REST API 6개 엔드포인트)
-  - UserCreateRequest, UserUpdateRequest, UserResponse DTOs
-- ✅ **단말기 관리** (Terminal Management)
-  - Terminal 엔티티 (CAT, POS, MOBILE, KIOSK, ONLINE 유형)
-  - TerminalController (REST API 8개 엔드포인트)
-  - TerminalService (CRUD, 필터링, 가맹점별 조회)
-  - V21 마이그레이션 (terminals 테이블)
-- ✅ **수수료 설정 및 정산 엔진** (Fee Configuration & Settlement Engine)
-  - FeeConfiguration 엔티티 (fee_configurations 테이블 매핑)
-  - FeeConfigurationRepository (활성 수수료 조회)
-  - FeeConfigResolver (fee_configurations 테이블 기반 수수료율 조회)
-  - FeeCalculationService (계층별 마진 계산, Zero-Sum 준수)
-  - SettlementCreationService (이벤트 기반 정산 생성)
-  - WebhookProcessingService에서 Settlement 자동 생성 연동
-  - Zero-Sum 검증 완료 (이벤트 금액 = Settlement 합계)
+  - JwtTokenProvider, JwtAuthenticationFilter, CustomUserDetailsService
+  - AuthService, AuthController
+
+#### API Controllers (16개)
+| Controller | 기능 |
+|------------|------|
+| AuthController | 로그인, 토큰 리프레시, 로그아웃 |
+| BusinessEntityController | 사업자 정보 CRUD + 검색 |
+| ContactController | 담당자 관리 CRUD |
+| DashboardController | 대시보드 매출 지표 |
+| DemoRequestController | 데모 요청 관리 |
+| MerchantController | 가맹점 CRUD + 이동/거래/정산 조회 |
+| MerchantPgMappingController | 가맹점-PG 매핑 관리 |
+| OrganizationController | 영업점 계층 관리 |
+| PgConnectionController | PG 연결 설정 관리 |
+| PreferentialBusinessController | 우대 사업자 조회 |
+| SettlementAccountController | 정산 계좌 관리 |
+| SettlementController | 정산 내역 조회 |
+| TerminalController | 단말기 CRUD |
+| TransactionController | 거래 내역 조회 |
+| UserController | 사용자 CRUD + 비밀번호 변경 |
+| WebhookController | KORPAY 웹훅 처리 |
+
+#### Entities (20개)
+AuthUser, BusinessEntity, CardCompany, Contact, DemoRequest, FeeConfiguration, Merchant, MerchantOrgHistory, MerchantPgMapping, Organization, PaymentMethod, PgConnection, Settlement, SettlementAccount, SettlementBatch, Terminal, Transaction, TransactionEvent, User, WebhookLog
+
+#### 정산 엔진
+- ✅ FeeConfiguration 엔티티 (fee_configurations 테이블)
+- ✅ FeeConfigResolver (수수료율 조회)
+- ✅ FeeCalculationService (계층별 마진 계산)
+- ✅ SettlementCreationService (이벤트 기반 정산 생성)
+- ✅ ZeroSumValidator (검증)
+- ✅ PartialCancelCalculator (부분취소 비례 계산)
+- ✅ WebhookProcessingService (Settlement 자동 생성 연동)
+
+#### Webhook 처리
+- ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
+- ✅ KorpayWebhookAdapter, WebhookSignatureVerifier
+- ✅ WebhookLoggingService, WebhookRetryService
 
 ### 프론트엔드 (Svelte 5)
-- ✅ Runes API ($state, $derived, $effect)
-- ✅ 대시보드 (매출 지표, 캘린더, 상위 가맹점 랭킹) - API 연동 완료
-- ✅ 거래 내역 조회 (필터링, 정렬, 페이지네이션) - API 연동 완료
-- ✅ 정산 관리 (목록, 통계, 상태별 필터) - API 연동 완료
-- ✅ 에러 핸들링 및 로딩 상태 표시
-- ✅ 반응형 디자인
-- ✅ JWT 인증 통합
-  - Auth Store (localStorage 기반 토큰 관리)
-  - API 클라이언트 (토큰 자동 포함, 401 자동 리프레시)
-  - 로그인 화면 (Login.svelte)
-  - 로그아웃 기능 (Header.svelte)
-  - 인증 가드 (App.svelte)
-- ✅ **shadcn-svelte UI 시스템** (전면 적용 완료)
-  - Tailwind CSS v4 기반 유틸리티 클래스
-  - 모든 컴포넌트에서 scoped `<style>` 제거, Tailwind 유틸리티만 사용
-  - UI 컴포넌트 (`$lib/components/ui`):
-    - Button (default, destructive, outline, secondary, ghost, link 변형)
-    - Card, CardHeader, CardTitle, CardContent, CardFooter
-    - Badge (default, secondary, destructive, outline, success, warning 변형)
-    - Input, Label
-    - Table, TableHeader, TableBody, TableRow, TableHead, TableCell
-    - Separator
-  - CSS 변수 기반 테마 (`app.css`):
-    - 라이트 모드: background, foreground, primary, secondary, muted, accent, destructive
-    - 사이드바 전용: sidebar-background, sidebar-foreground, sidebar-primary, sidebar-accent, sidebar-border
-  - cn() 유틸리티 (clsx + tailwind-merge)
-  - bits-ui: Collapsible, DropdownMenu
-- ✅ **영업점 관리** (Branch Management)
-  - 영업점 목록 조회 (BranchList.svelte)
-  - 영업점 등록 위자드 (BranchRegistration.svelte)
-  - 영업점 상세/수정 (BranchDetail.svelte)
-  - 사업자 정보 검색/선택 기능 연동
-- ✅ **사용자 관리** (User Management)
-  - 사용자 목록 (UserList.svelte) - 필터링, 페이지네이션
-  - 사용자 상세/수정 (UserDetail.svelte) - 비밀번호 변경 포함
-  - 사용자 등록 (UserRegistration.svelte)
-  - userApi.ts, user.ts 타입 정의
-- ✅ **정산계좌 관리** (Settlement Account)
-  - SettlementAccountManager.svelte - 재사용 가능한 CRUD 컴포넌트
-  - settlementAccountApi.ts, settlementAccount.ts 타입 정의
-  - MerchantDetail, BranchDetail에 통합
-- ✅ **담당자 관리** (Contact Management)
-  - ContactManager.svelte - 재사용 가능한 CRUD 컴포넌트
-  - contactApi.ts - Contact API 클라이언트
-  - MerchantList에 담당자/연락처 컬럼 추가
+
+#### 핵심 통계
+| 항목 | 개수 |
+|------|------|
+| 라우트/페이지 | 28개 |
+| 비즈니스 컴포넌트 | 20개 |
+| UI 컴포넌트 | 95개 (19개 카테고리) |
+| API 클라이언트 | 12개 |
+| 타입 정의 | 8개 |
+
+#### UI 시스템 (shadcn-svelte)
+- ✅ Tailwind CSS v4 기반 유틸리티 클래스
+- ✅ 19개 UI 컴포넌트 카테고리:
+  - Alert, Badge, Button, Calendar, Card
+  - ContextMenu, DatePicker, DateRangePicker, Input, Label
+  - Popover, Select, Separator, Sheet, Sidebar
+  - Skeleton, Sonner (toast), Table, Tooltip
+- ✅ cn() 유틸리티 (clsx + tailwind-merge)
+- ✅ bits-ui 기반 컴포넌트
+
+#### 인증
+- ✅ Auth Store (localStorage 기반 토큰 관리)
+- ✅ API 클라이언트 (토큰 자동 포함, 401 자동 리프레시)
+- ✅ 로그인 화면, 인증 가드
+
+#### 페이지 (28개)
+| 카테고리 | 페이지 |
+|----------|--------|
+| 메인 | Dashboard, Landing, Login |
+| 거래/정산 | Transactions, Settlements, SettlementSummary, SettlementBatches |
+| 가맹점 | MerchantList, MerchantDetail, MerchantRegistration, MerchantTransactions, MerchantSettlements, MerchantManagement |
+| 영업점 | BranchList, BranchDetail, BranchRegistration, BranchOrganization, BranchSettlement |
+| 단말기 | TerminalList, TerminalDetail |
+| 사용자 | UserList, UserDetail, UserRegistration |
+| PG연결 | PgConnectionList, PgConnectionDetail |
+| 기타 | Organizations, DemoRequest, PreferentialBusinessInquiry |
+
+#### 비즈니스 컴포넌트 (20개)
+ConfirmModal, ContactManager, Header, Layout, MerchantPgMappingManager, NewHeader, NewLayout, NewSidebar, OrgFlowNode, OrgForm, OrgTree, OrgTreeNode, OrganizationPickerDialog, OrganizationSettlementDetailModal, ParentSelector, SettlementAccountManager, SettlementDetailModal, Sidebar, StatusBar, TabBar
+
+#### API 클라이언트 (12개)
+api.ts, authStore.ts, branchApi.ts, contactApi.ts, merchantApi.ts, merchantPgMappingApi.ts, pgConnectionApi.ts, settlementAccountApi.ts, settlementApi.ts, terminalApi.ts, transactionApi.ts, userApi.ts
 
 ### 인프라 (Docker)
 - ✅ PostgreSQL 18 + ltree 확장
 - ✅ Spring Boot 멀티스테이지 빌드
 - ✅ Svelte Vite 개발 서버
-- ✅ compose.yaml 통합 환경
-- ✅ 환경변수 관리 (.env)
+- ✅ compose.yaml (로컬), compose.nixos.yaml (NixOS), compose.prod.yaml (운영)
+- ✅ 환경변수 관리 (.env, .env.production)
 
 ### 미구현 항목
 - ⏳ 통합 테스트 (JUnit + MockMvc)
-- ⏳ Seed 데이터 (Flyway)
 - ⏳ 로깅 및 모니터링 (Logback, Micrometer)
 - ⏳ 2FA (TOTP)
-- ⏳ 사용자 관리 사이드바 연동
 
 ## 실행 가이드
 
