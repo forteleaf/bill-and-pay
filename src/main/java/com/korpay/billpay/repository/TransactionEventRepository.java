@@ -24,7 +24,7 @@ public interface TransactionEventRepository extends JpaRepository<TransactionEve
             OffsetDateTime endDate
     );
 
-    @Query(value = "SELECT * FROM transaction_events WHERE org_path <@ CAST(:path AS public.ltree) AND created_at BETWEEN :startDate AND :endDate", nativeQuery = true)
+    @Query(value = "SELECT * FROM transaction_events WHERE org_path <@ CAST(:path AS ltree) AND created_at BETWEEN :startDate AND :endDate", nativeQuery = true)
     List<TransactionEvent> findByOrgPathDescendantsAndDateRange(
             @Param("path") String path,
             @Param("startDate") OffsetDateTime startDate,

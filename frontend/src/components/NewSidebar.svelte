@@ -92,7 +92,7 @@
           id: "branch-settlement",
           title: "영업점 정산내역",
           icon: "📈",
-          component: "ComingSoon",
+          component: "BranchSettlement",
         },
         {
           id: "merchant-settlement",

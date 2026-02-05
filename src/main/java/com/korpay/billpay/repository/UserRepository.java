@@ -19,6 +19,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     List<User> findByOrganizationId(UUID organizationId);
 
-    @Query(value = "SELECT * FROM users WHERE org_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
+    @Query(value = "SELECT * FROM users WHERE org_path <@ CAST(:path AS ltree)", nativeQuery = true)
     List<User> findByOrgPathDescendants(@Param("path") String path);
 }

@@ -206,3 +206,76 @@ export interface PreferentialBusinessResponse {
   firstHalf2025Grade: string;
   secondHalf2025Grade: string;
 }
+
+export interface OrganizationSettlementSummary {
+  organizationId: string;
+  orgCode: string;
+  orgName: string;
+  orgType: string;
+  orgPath: string;
+  level: number;
+  businessEntityId?: string;
+  representativeName?: string;
+  mainPhone?: string;
+  merchantCount: number;
+  approvalAmount: number;
+  approvalCount: number;
+  cancelAmount: number;
+  cancelCount: number;
+  netPaymentAmount: number;
+  totalTransactionCount: number;
+  merchantFeeAmount: number;
+  orgFeeAmount: number;
+  avgFeeRate: number;
+  primaryStatus?: string;
+  completedCount: number;
+  pendingCount: number;
+  failedCount: number;
+  currency: string;
+}
+
+export interface MerchantSettlement {
+  merchantId: string;
+  merchantCode: string;
+  merchantName: string;
+  transactionDate: string;
+  branchName: string;
+  approvalAmount: number;
+  approvalCount: number;
+  cancelAmount: number;
+  cancelCount: number;
+  netPaymentAmount: number;
+  feeAmount: number;
+  feeRate: number;
+}
+
+export interface HierarchyFee {
+  entityType: string;
+  entityName: string;
+  entityCode: string;
+  feeRate: number;
+  feeAmount: number;
+  netAmount: number;
+}
+
+export interface SettlementCalculation {
+  settlementFeeRate: number;
+  grossAmount: number;
+  supplyAmount: number;
+  vatAmount: number;
+  finalAmount: number;
+  childOrgFeeAmount: number;
+  merchantPayoutAmount: number;
+}
+
+export interface OrganizationSettlementDetail {
+  organizationId: string;
+  orgCode: string;
+  orgName: string;
+  orgType: string;
+  orgPath: string;
+  summary: OrganizationSettlementSummary;
+  merchantSettlements: MerchantSettlement[];
+  hierarchyFees: HierarchyFee[];
+  calculation: SettlementCalculation;
+}

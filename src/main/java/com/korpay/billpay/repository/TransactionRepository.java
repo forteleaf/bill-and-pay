@@ -24,7 +24,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.merchant JOIN FETCH t.paymentMethod LEFT JOIN FETCH t.cardCompany")
     List<Transaction> findAllWithMerchant();
 
-    @Query(value = "SELECT * FROM transactions WHERE org_path <@ CAST(:path AS public.ltree)", nativeQuery = true)
+    @Query(value = "SELECT * FROM transactions WHERE org_path <@ CAST(:path AS ltree)", nativeQuery = true)
     List<Transaction> findByOrgPathDescendants(@Param("path") String path);
 
     List<Transaction> findByStatusAndCreatedAtBetween(
@@ -40,7 +40,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query(value = """
         SELECT COALESCE(SUM(t.amount), 0)
         FROM transactions t
-        WHERE t.org_path <@ CAST(:orgPath AS public.ltree)
+        WHERE t.org_path <@ CAST(:orgPath AS ltree)
         AND CAST(t.status AS TEXT) = CAST(:status AS TEXT)
         AND t.created_at BETWEEN CAST(:startDate AS TIMESTAMP WITH TIME ZONE) AND CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         """, nativeQuery = true)
@@ -54,7 +54,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query(value = """
         SELECT COUNT(*)
         FROM transactions t
-        WHERE t.org_path <@ CAST(:orgPath AS public.ltree)
+        WHERE t.org_path <@ CAST(:orgPath AS ltree)
         AND t.created_at BETWEEN CAST(:startDate AS TIMESTAMP WITH TIME ZONE) AND CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         """, nativeQuery = true)
     Long countByOrgPathStartingWithAndCreatedAtBetween(
@@ -71,7 +71,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             COUNT(t.id) as transactionCount
         FROM transactions t
         INNER JOIN merchants m ON t.merchant_id = m.id
-        WHERE t.org_path <@ CAST(:orgPath AS public.ltree)
+        WHERE t.org_path <@ CAST(:orgPath AS ltree)
         AND t.status = 'APPROVED'
         AND t.created_at BETWEEN CAST(:startDate AS TIMESTAMP WITH TIME ZONE) AND CAST(:endDate AS TIMESTAMP WITH TIME ZONE)
         GROUP BY m.id, m.name

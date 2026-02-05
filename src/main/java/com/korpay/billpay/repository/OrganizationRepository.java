@@ -22,10 +22,10 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     Optional<Organization> findByOrgCode(String orgCode);
 
-    @Query(value = "SELECT * FROM organizations WHERE path <@ CAST(:path AS public.ltree)", nativeQuery = true)
+    @Query(value = "SELECT * FROM organizations WHERE path <@ CAST(:path AS ltree)", nativeQuery = true)
     List<Organization> findDescendants(@Param("path") String path);
 
-    @Query(value = "SELECT * FROM organizations WHERE CAST(:path AS public.ltree) <@ path", nativeQuery = true)
+    @Query(value = "SELECT * FROM organizations WHERE CAST(:path AS ltree) <@ path", nativeQuery = true)
     List<Organization> findAncestors(@Param("path") String path);
 
     @Query(value = "SELECT * FROM organizations WHERE path ~ CAST(:lquery AS lquery)", nativeQuery = true)

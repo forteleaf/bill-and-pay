@@ -6,6 +6,8 @@ import com.korpay.billpay.domain.enums.OrganizationType;
 import com.korpay.billpay.domain.enums.SettlementBatchStatus;
 import com.korpay.billpay.domain.enums.SettlementStatus;
 import com.korpay.billpay.dto.response.ApiResponse;
+import com.korpay.billpay.dto.response.OrganizationSettlementDetailDto;
+import com.korpay.billpay.dto.response.OrganizationSettlementSummaryDto;
 import com.korpay.billpay.dto.response.PagedResponse;
 import com.korpay.billpay.dto.response.SettlementBatchDto;
 import com.korpay.billpay.dto.response.SettlementDto;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -106,6 +109,39 @@ public class SettlementController {
         
         PagedResponse<SettlementBatchDto> result = settlementQueryService.findBatches(
                 startDate, endDate, status, page, size);
+        
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/by-organization")
+    public ResponseEntity<ApiResponse<List<OrganizationSettlementSummaryDto>>> getSettlementsByOrganization(
+            @RequestParam(required = false) OrganizationType orgType,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        List<OrganizationSettlementSummaryDto> result = settlementQueryService.getSettlementsByOrganization(
+                currentUser, orgType, search, startDate, endDate);
+        
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/organization/{organizationId}/details")
+    public ResponseEntity<ApiResponse<OrganizationSettlementDetailDto>> getOrganizationSettlementDetail(
+            @PathVariable UUID organizationId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate) {
+        
+        User currentUser = userContextHolder.getCurrentUser();
+        
+        OrganizationSettlementDetailDto result = settlementQueryService.getOrganizationSettlementDetail(
+                currentUser, organizationId, startDate, endDate);
+        
+        if (result == null) {
+            return ResponseEntity.notFound().build();
+        }
         
         return ResponseEntity.ok(ApiResponse.success(result));
     }

@@ -24,10 +24,11 @@
   import MerchantDetail from "../routes/merchant/MerchantDetail.svelte";
   import TerminalList from "../routes/terminal/TerminalList.svelte";
   import TerminalDetail from "../routes/terminal/TerminalDetail.svelte";
-  import PgConnectionList from "../routes/pgConnection/PgConnectionList.svelte";
-  import PgConnectionDetail from "../routes/pgConnection/PgConnectionDetail.svelte";
+import PgConnectionList from "../routes/pgConnection/PgConnectionList.svelte";
+import PgConnectionDetail from "../routes/pgConnection/PgConnectionDetail.svelte";
+import BranchSettlement from "../routes/settlement/BranchSettlement.svelte";
 
-  import type { Component } from "svelte";
+import type { Component } from "svelte";
 
   const componentMap: Record<string, Component<any> | null> = {
     Dashboard: Dashboard,
@@ -49,6 +50,7 @@
     TerminalDetail: TerminalDetail,
     PgConnectionList: PgConnectionList,
     PgConnectionDetail: PgConnectionDetail,
+    BranchSettlement: BranchSettlement,
     ComingSoon: null,
   };
 
