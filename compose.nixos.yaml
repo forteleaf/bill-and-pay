@@ -7,6 +7,7 @@ services:
     network_mode: "host"
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
       SPRING_DATASOURCE_PUBLIC_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/billpay
       SPRING_DATASOURCE_PUBLIC_USERNAME: billpay
       SPRING_DATASOURCE_PUBLIC_PASSWORD: ${DB_PASSWORD}
@@ -25,7 +26,7 @@ services:
       dockerfile: Dockerfile
       target: production
       args:
-        VITE_API_BASE_URL: https://bnp.cardbin.net/api
+        VITE_API_BASE_URL: https://bnp.cardbin.net/api/v1
     container_name: billpay-frontend
     ports:
       - "3010:80"
