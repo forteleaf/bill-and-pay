@@ -2,10 +2,11 @@
 
 ## 인증 헤더
 
-모든 API 요청에는 다음 헤더가 필요합니다:
+모든 API 요청(인증 API 제외)에는 다음 헤더가 필요합니다:
 
 ```
 X-Tenant-ID: tenant_001
+Authorization: Bearer {access_token}
 ```
 
 ## API 기본 정보
@@ -38,6 +39,14 @@ X-Tenant-ID: tenant_001
 ```
 
 ## 엔드포인트 목록
+
+### 인증 API
+
+| 메서드 | 경로 | 설명 | 연동 상태 |
+|--------|------|------|-----------|
+| POST | `/auth/login` | 로그인 (JWT 토큰 발급) | ✅ 연동 완료 |
+| POST | `/auth/refresh` | 토큰 갱신 | ✅ 연동 완료 |
+| POST | `/auth/logout` | 로그아웃 | ✅ 연동 완료 |
 
 ### 대시보드 API
 
@@ -76,6 +85,49 @@ X-Tenant-ID: tenant_001
 | GET | `/business-entities/search/name?name=xxx` | 상호명으로 검색 | ✅ 연동 완료 |
 | POST | `/business-entities` | 사업자 등록 | ✅ 연동 완료 |
 | PUT | `/business-entities/{id}` | 사업자 수정 | ✅ 연동 완료 |
+
+### 사용자 API
+
+| 메서드 | 경로 | 설명 | 연동 상태 |
+|--------|------|------|-----------|
+| GET | `/users` | 사용자 목록 조회 | ✅ 연동 완료 |
+| GET | `/users/{id}` | 사용자 상세 조회 | ✅ 연동 완료 |
+| POST | `/users` | 사용자 생성 | ✅ 연동 완료 |
+| PUT | `/users/{id}` | 사용자 수정 | ✅ 연동 완료 |
+| PUT | `/users/{id}/password` | 비밀번호 변경 | ✅ 연동 완료 |
+| DELETE | `/users/{id}` | 사용자 삭제 | ✅ 연동 완료 |
+
+### 정산계좌 API
+
+| 메서드 | 경로 | 설명 | 연동 상태 |
+|--------|------|------|-----------|
+| GET | `/settlement-accounts?entityType={type}&entityId={id}` | 정산계좌 목록 조회 | ✅ 연동 완료 |
+| GET | `/settlement-accounts/{id}` | 정산계좌 상세 조회 | ✅ 연동 완료 |
+| POST | `/settlement-accounts` | 정산계좌 등록 | ✅ 연동 완료 |
+| PUT | `/settlement-accounts/{id}` | 정산계좌 수정 | ✅ 연동 완료 |
+| DELETE | `/settlement-accounts/{id}` | 정산계좌 삭제 | ✅ 연동 완료 |
+
+### 담당자 API
+
+| 메서드 | 경로 | 설명 | 연동 상태 |
+|--------|------|------|-----------|
+| GET | `/contacts?entityType={type}&entityId={id}` | 담당자 목록 조회 | ✅ 연동 완료 |
+| GET | `/contacts/{id}` | 담당자 상세 조회 | ✅ 연동 완료 |
+| POST | `/contacts` | 담당자 등록 | ✅ 연동 완료 |
+| PUT | `/contacts/{id}` | 담당자 수정 | ✅ 연동 완료 |
+| DELETE | `/contacts/{id}` | 담당자 삭제 | ✅ 연동 완료 |
+
+### 단말기 API
+
+| 메서드 | 경로 | 설명 | 연동 상태 |
+|--------|------|------|-----------|
+| GET | `/terminals` | 단말기 목록 조회 | 🔧 백엔드만 |
+| GET | `/terminals/{id}` | 단말기 상세 조회 | 🔧 백엔드만 |
+| GET | `/terminals/merchant/{merchantId}` | 가맹점별 단말기 조회 | 🔧 백엔드만 |
+| POST | `/terminals` | 단말기 등록 | 🔧 백엔드만 |
+| PUT | `/terminals/{id}` | 단말기 수정 | 🔧 백엔드만 |
+| PUT | `/terminals/{id}/status` | 단말기 상태 변경 | 🔧 백엔드만 |
+| DELETE | `/terminals/{id}` | 단말기 삭제 | 🔧 백엔드만 |
 
 ### 거래 API
 
@@ -269,7 +321,8 @@ curl -X GET "http://localhost:8080/api/v1/settlements?page=0&size=10&status=PEND
 **요청**:
 ```bash
 curl -X GET http://localhost:8080/api/v1/settlements/summary \
-  -H "X-Tenant-ID: tenant_001"
+  -H "X-Tenant-ID: tenant_001" \
+  -H "Authorization: Bearer {token}"
 ```
 
 **응답**:
@@ -284,6 +337,60 @@ curl -X GET http://localhost:8080/api/v1/settlements/summary \
 }
 ```
 
+### POST /auth/login
+
+**설명**: 사용자 로그인 (JWT 토큰 발급)
+
+**요청**:
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: tenant_001" \
+  -d '{
+    "username": "admin",
+    "password": "password123"
+  }'
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600
+  }
+}
+```
+
+### POST /auth/refresh
+
+**설명**: 액세스 토큰 갱신
+
+**요청**:
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: tenant_001" \
+  -d '{
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+  }'
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600
+  }
+}
+```
+
 ## 에러 코드
 
 | 코드 | 메시지 | 설명 |
@@ -294,6 +401,9 @@ curl -X GET http://localhost:8080/api/v1/settlements/summary \
 | `ACCESS_DENIED` | 접근 권한이 없습니다 | ltree 계층 권한 위반 |
 | `VALIDATION_ERROR` | 유효성 검증 실패 | 입력값 검증 오류 |
 | `ZERO_SUM_VIOLATION` | Zero-Sum 검증 실패 | 정산 금액 합계 불일치 |
+| `INVALID_CREDENTIALS` | 인증 정보가 올바르지 않습니다 | 로그인 실패 |
+| `TOKEN_EXPIRED` | 토큰이 만료되었습니다 | JWT 토큰 만료 |
+| `INVALID_TOKEN` | 유효하지 않은 토큰입니다 | JWT 검증 실패 |
 
 ## 페이지네이션 응답 형식
 

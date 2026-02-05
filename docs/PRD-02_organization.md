@@ -324,100 +324,158 @@ public class OrganizationAccessValidator {
 
 ## 8. 데이터베이스 스키마
 
-### 8.1 organizations 테이블
+### 8.1 organizations 테이블 (테넌트별)
 
 ```sql
 CREATE TABLE organizations (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 계층 정보
-    path            LTREE NOT NULL,
-    depth           SMALLINT NOT NULL,
-    org_type        VARCHAR(20) NOT NULL,
-
-    -- 기본 정보
-    code            VARCHAR(20) NOT NULL UNIQUE,  -- 조직 코드
-    name            VARCHAR(100) NOT NULL,
-    business_no     VARCHAR(20),
-    representative  VARCHAR(50),
-
-    -- 연락처
-    phone           VARCHAR(20),
-    email           VARCHAR(255),
-    address         TEXT,
-
-    -- 상위 조직
-    parent_id       BIGINT REFERENCES organizations(id),
-    root_id         BIGINT REFERENCES organizations(id),  -- 대리점 ID
-
-    -- 수수료 정책
-    fee_policy      JSONB NOT NULL DEFAULT '{}',
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by      BIGINT NOT NULL,
-
-    CONSTRAINT chk_org_type CHECK (
-        org_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')
-    ),
-    CONSTRAINT chk_depth CHECK (depth BETWEEN 1 AND 5),
-    CONSTRAINT chk_status CHECK (
-        status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED')
-    )
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  org_code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(200) NOT NULL,
+  org_type VARCHAR(20) NOT NULL,
+  path public.ltree NOT NULL UNIQUE,
+  parent_id UUID REFERENCES organizations(id),
+  level INTEGER NOT NULL,
+  
+  -- 사업자 정보 (레거시 호환)
+  business_number VARCHAR(20),
+  business_name VARCHAR(200),
+  representative_name VARCHAR(100),
+  
+  -- 연락처
+  email VARCHAR(255),
+  phone VARCHAR(20),
+  address TEXT,
+  
+  -- 상태 및 설정
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  config JSONB,
+  
+  -- 사업자 엔티티 참조 (새 구조)
+  business_entity_id UUID REFERENCES business_entities(id),
+  
+  -- 감사
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  
+  CONSTRAINT organizations_type_check CHECK (
+    org_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')
+  ),
+  CONSTRAINT organizations_level_check CHECK (level >= 1 AND level <= 5),
+  CONSTRAINT organizations_status_check CHECK (
+    status IN ('ACTIVE', 'SUSPENDED', 'DELETED')
+  ),
+  CONSTRAINT organizations_distributor_level CHECK (
+    (org_type = 'DISTRIBUTOR' AND level = 1) OR org_type <> 'DISTRIBUTOR'
+  ),
+  CONSTRAINT organizations_parent_required CHECK (
+    (level = 1 AND parent_id IS NULL) OR (level > 1 AND parent_id IS NOT NULL)
+  ),
+  CONSTRAINT organizations_path_level_consistency CHECK (public.nlevel(path) = level)
 );
 
 -- 인덱스
-CREATE INDEX idx_org_path_gist ON organizations USING GIST (path);
-CREATE INDEX idx_org_parent ON organizations (parent_id);
-CREATE INDEX idx_org_root ON organizations (root_id);
-CREATE INDEX idx_org_type ON organizations (org_type);
-CREATE INDEX idx_org_status ON organizations (status);
+CREATE INDEX idx_organizations_path_gist ON organizations USING GIST(path);
+CREATE INDEX idx_organizations_level ON organizations(level);
+CREATE INDEX idx_organizations_org_type ON organizations(org_type);
+CREATE INDEX idx_organizations_status ON organizations(status) WHERE status = 'ACTIVE';
 ```
 
-### 8.2 users 테이블
+**주요 변경사항 (v2.0)**:
+- `id`: BIGSERIAL → UUID (uuidv7)
+- `depth` → `level`: 컬럼명 변경
+- `root_id`, `fee_policy`, `created_by` 컬럼 제거
+- `business_entity_id` FK 추가 (사업자 정보 분리)
+- `config` JSONB 추가
+- 제약조건 추가: distributor_level, parent_required, path_level_consistency
+
+### 8.2 business_entities 테이블 (신규)
+
+조직과 사업자 정보가 분리되었습니다. 동일 사업자번호가 여러 조직 유형으로 등록될 수 있습니다.
 
 ```sql
+CREATE TABLE business_entities (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  business_type VARCHAR(20) NOT NULL,      -- CORPORATION, INDIVIDUAL, NON_BUSINESS
+  business_number VARCHAR(12),              -- 사업자등록번호 (숫자만)
+  corporate_number VARCHAR(14),             -- 법인등록번호 (법인만)
+  business_name VARCHAR(200) NOT NULL,
+  representative_name VARCHAR(100) NOT NULL,
+  open_date DATE,
+  business_address TEXT,
+  actual_address TEXT,
+  business_category VARCHAR(100),
+  business_sub_category VARCHAR(100),
+  main_phone VARCHAR(20),
+  manager_name VARCHAR(100),
+  manager_phone VARCHAR(20),
+  email VARCHAR(255),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT business_entities_type_check CHECK (
+    business_type IN ('CORPORATION', 'INDIVIDUAL', 'NON_BUSINESS')
+  )
+);
+```
+
+**사업자 유형**:
+
+| 유형 | 코드 | 설명 |
+|------|------|------|
+| 법인사업자 | CORPORATION | 법인등록번호 필수 |
+| 개인사업자 | INDIVIDUAL | 사업자번호 필수 |
+| 비사업자 | NON_BUSINESS | 사업자번호 없음 |
+
+### 8.3 users 테이블 (테넌트별)
+
+```sql
+CREATE TYPE user_status AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING');
+
 CREATE TABLE users (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 인증 정보
-    email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255),
-
-    -- 소속
-    org_id          BIGINT REFERENCES organizations(id),
-    role            VARCHAR(20) NOT NULL,
-
-    -- 프로필
-    name            VARCHAR(50) NOT NULL,
-    phone           VARCHAR(20),
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
-    mfa_enabled     BOOLEAN NOT NULL DEFAULT FALSE,
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_login_at   TIMESTAMPTZ,
-
-    CONSTRAINT chk_role CHECK (role IN ('MASTER_ADMIN', 'ORG_ADMIN', 'USER')),
-    CONSTRAINT chk_user_status CHECK (
-        status IN ('PENDING', 'ACTIVE', 'SUSPENDED', 'TERMINATED')
-    )
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  username VARCHAR(100) NOT NULL UNIQUE,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  
+  -- 소속 조직
+  org_id UUID NOT NULL REFERENCES organizations(id),
+  org_path public.ltree NOT NULL,
+  
+  -- 프로필
+  full_name VARCHAR(200) NOT NULL,
+  phone VARCHAR(20),
+  role VARCHAR(50) NOT NULL,
+  permissions JSONB DEFAULT '[]',
+  
+  -- 2FA
+  two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  two_factor_secret VARCHAR(255),
+  
+  -- 감사
+  last_login_at TIMESTAMPTZ,
+  password_changed_at TIMESTAMPTZ,
+  status user_status NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_user_org ON users (org_id);
-CREATE INDEX idx_user_email ON users (email);
-CREATE INDEX idx_user_status ON users (status);
+CREATE INDEX idx_users_org_path_gist ON users USING GIST(org_path);
+CREATE INDEX idx_users_org_id ON users(org_id);
+CREATE INDEX idx_users_status ON users(status) WHERE status = 'ACTIVE';
+CREATE INDEX idx_users_email ON users(email);
 ```
+
+**주요 변경사항 (v2.0)**:
+- `id`: BIGSERIAL → UUID (uuidv7)
+- `org_path` ltree 컬럼 추가 (조직 경로 직접 저장)
+- `username` 컬럼 추가
+- `full_name` 컬럼 추가 (`name` → `full_name`)
+- `permissions` JSONB 추가
+- `two_factor_enabled`, `two_factor_secret` 추가
+- `email_verified` 컬럼 제거
+- `user_status` ENUM 타입 사용
 
 ---
 
@@ -426,3 +484,4 @@ CREATE INDEX idx_user_status ON users (status);
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
 | v1.0 | 2026-01-28 | 초안 작성 |
+| v2.0 | 2026-02-05 | 실제 마이그레이션 기준 스키마 업데이트 (organizations, users, business_entities 추가) |

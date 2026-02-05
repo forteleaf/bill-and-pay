@@ -75,48 +75,66 @@ Bill&Pay 시스템의 핵심인 원장(Ledger) 설계와 복식부기 기반 정
 
 ```sql
 CREATE TABLE transactions (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- PG 거래 정보
-    pg_code         VARCHAR(20) NOT NULL,
-    pg_tid          VARCHAR(100) NOT NULL,        -- 최초 승인 TID
-    pg_merchant_no  VARCHAR(50) NOT NULL,
-
-    -- Bill&Pay 매핑
-    merchant_id     BIGINT NOT NULL,
-    merchant_path   LTREE NOT NULL,
-
-    -- 거래 정보
-    order_id        VARCHAR(40),
-    original_amount BIGINT NOT NULL,              -- 원거래 금액 (불변)
-    current_amount  BIGINT NOT NULL,              -- 현재 유효 금액 (취소 반영)
-    payment_method  VARCHAR(20) NOT NULL,
-
-    -- 카드 정보
-    card_code       VARCHAR(10),
-    card_type       VARCHAR(10),
-    card_no_masked  VARCHAR(20),
-    approval_no     VARCHAR(20),
-    installment     SMALLINT DEFAULT 0,
-
-    -- 상태 (최종 상태)
-    status          VARCHAR(20) NOT NULL,
-    event_count     SMALLINT NOT NULL DEFAULT 1,  -- 이벤트 개수
-
-    -- 시간
-    transacted_at   TIMESTAMPTZ NOT NULL,         -- 최초 승인 시간
-    last_event_at   TIMESTAMPTZ NOT NULL,         -- 마지막 이벤트 시간
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT uq_pg_tid UNIQUE (pg_code, pg_tid),
-    CONSTRAINT chk_status CHECK (
-        status IN ('APPROVED', 'CANCELED', 'PARTIAL_CANCELED')
-    ),
-    CONSTRAINT chk_current_amount CHECK (current_amount >= 0)
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  transaction_id VARCHAR(100) NOT NULL UNIQUE,
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  merchant_pg_mapping_id UUID NOT NULL REFERENCES merchant_pg_mappings(id),
+  pg_connection_id BIGINT NOT NULL,
+  org_path public.ltree NOT NULL,
+  
+  -- 결제수단/카드사 참조
+  payment_method_id UUID NOT NULL REFERENCES payment_methods(id),
+  card_company_id UUID REFERENCES card_companies(id),
+  
+  -- 금액
+  amount BIGINT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+  
+  -- 상태
+  status VARCHAR(20) NOT NULL,
+  
+  -- PG 응답 정보
+  pg_transaction_id VARCHAR(200),
+  approval_number VARCHAR(50),
+  approved_at TIMESTAMPTZ,
+  cancelled_at TIMESTAMPTZ,
+  cat_id VARCHAR(50),
+  
+  -- 메타데이터
+  metadata JSONB,
+  
+  -- 감사
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  
+  CONSTRAINT transactions_status_check CHECK (
+    status IN ('PENDING', 'APPROVED', 'CANCELLED', 'PARTIAL_CANCELLED', 'FAILED')
+  ),
+  CONSTRAINT transactions_amount_check CHECK (amount > 0)
 );
+
+-- 인덱스
+CREATE INDEX idx_transactions_org_path_gist ON transactions USING GIST(org_path);
+CREATE INDEX idx_transactions_merchant_id ON transactions(merchant_id);
+CREATE INDEX idx_transactions_pg_connection_id ON transactions(pg_connection_id);
+CREATE INDEX idx_transactions_status ON transactions(status);
+CREATE INDEX idx_transactions_cat_id ON transactions(cat_id);
+
+-- PG별 거래고유번호 유니크 인덱스
+CREATE UNIQUE INDEX idx_transactions_pg_txn_unique
+  ON transactions(pg_connection_id, pg_transaction_id)
+  WHERE pg_transaction_id IS NOT NULL;
 ```
+
+**주요 변경사항 (v2.0)**:
+- `id`: BIGSERIAL → UUID
+- `transaction_id`: 내부 거래번호 (유니크)
+- `merchant_pg_mapping_id`, `pg_connection_id` 참조 추가
+- `payment_method_id`, `card_company_id` FK 참조로 변경
+- `org_path`: 가맹점 경로 복사본 (조회 최적화)
+- `pg_transaction_id`: PG 측 거래 ID
+- `cat_id`: 단말기 ID
+- `metadata`: 추가 정보 JSONB
 
 ### 3.3 상태 정의
 
@@ -140,44 +158,80 @@ CREATE TABLE transactions (
 
 ```sql
 CREATE TABLE transaction_events (
-    id              BIGSERIAL,
-    uuid            UUID NOT NULL DEFAULT uuidv7(),
-
-    -- 거래 참조
-    transaction_id  BIGINT NOT NULL REFERENCES transactions(id),
-
-    -- 이벤트 정보
-    event_type      VARCHAR(20) NOT NULL,
-    event_seq       SMALLINT NOT NULL,            -- 순서 (1, 2, 3...)
-
-    -- 금액 (부호 포함)
-    amount          BIGINT NOT NULL,              -- +승인, -취소
-
-    -- PG 응답 정보
-    pg_tid          VARCHAR(100),                 -- 취소 시 별도 TID
-    pg_response     JSONB,                        -- PG 원본 응답
-
-    -- 시간
-    event_at        TIMESTAMPTZ NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- 복합 PK (파티셔닝용)
-    PRIMARY KEY (id, created_at),
-
-    CONSTRAINT uq_txn_event_seq UNIQUE (transaction_id, event_seq),
-    CONSTRAINT chk_event_type CHECK (
-        event_type IN ('APPROVED', 'CANCELED', 'PARTIAL_CANCELED')
-    )
+  id UUID NOT NULL DEFAULT uuidv7(),
+  event_type VARCHAR(20) NOT NULL,
+  event_sequence INTEGER NOT NULL,
+  
+  -- 거래/가맹점 참조
+  transaction_id UUID NOT NULL,
+  merchant_id UUID NOT NULL,
+  merchant_pg_mapping_id UUID NOT NULL,
+  pg_connection_id BIGINT NOT NULL,
+  org_path public.ltree NOT NULL,
+  
+  -- 결제수단/카드사 참조
+  payment_method_id UUID NOT NULL,
+  card_company_id UUID,
+  
+  -- 금액 (부호 포함)
+  amount BIGINT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+  
+  -- 상태 변경
+  previous_status VARCHAR(20),
+  new_status VARCHAR(20) NOT NULL,
+  
+  -- PG 응답 정보
+  pg_transaction_id VARCHAR(200),
+  approval_number VARCHAR(50),
+  cat_id VARCHAR(50),
+  metadata JSONB,
+  
+  -- 시간
+  occurred_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  
+  -- 복합 PK (파티셔닝용)
+  CONSTRAINT transaction_events_pk PRIMARY KEY (id, created_at),
+  
+  -- 제약조건
+  CONSTRAINT transaction_events_event_type_check CHECK (
+    event_type IN ('APPROVAL', 'CANCEL', 'PARTIAL_CANCEL', 'REFUND')
+  ),
+  CONSTRAINT transaction_events_amount_check CHECK (amount != 0),
+  CONSTRAINT transaction_events_sequence_positive CHECK (event_sequence > 0),
+  CONSTRAINT transaction_events_amount_sign_matches_type CHECK (
+    (event_type = 'APPROVAL' AND amount > 0) OR
+    (event_type IN ('CANCEL', 'PARTIAL_CANCEL', 'REFUND') AND amount < 0)
+  ),
+  CONSTRAINT transaction_events_occurred_at_not_future CHECK (occurred_at <= CURRENT_TIMESTAMP)
 ) PARTITION BY RANGE (created_at);
+
+-- 인덱스
+CREATE INDEX idx_transaction_events_org_path_gist ON transaction_events USING GIST(org_path);
+CREATE INDEX idx_transaction_events_transaction_id ON transaction_events(transaction_id, event_sequence);
+CREATE INDEX idx_transaction_events_merchant_id ON transaction_events(merchant_id, created_at DESC);
+CREATE INDEX idx_transaction_events_event_type ON transaction_events(event_type, created_at DESC);
+CREATE INDEX idx_transaction_events_occurred_at ON transaction_events(occurred_at DESC);
 ```
+
+**주요 변경사항 (v2.0)**:
+- `id`: BIGSERIAL → UUID
+- `event_seq` → `event_sequence`: 컬럼명 변경
+- `merchant_id`, `merchant_pg_mapping_id`, `pg_connection_id`, `org_path` 추가 (비정규화)
+- `payment_method_id`, `card_company_id` FK 참조 추가
+- `previous_status`, `new_status` 상태 변경 추적
+- `occurred_at`: 이벤트 실제 발생 시점
+- 제약조건 추가: amount 부호 검증, occurred_at 미래 검증
 
 ### 4.3 이벤트 유형
 
 | 이벤트 | 코드 | amount 부호 | 설명 |
 |--------|------|------------|------|
-| 승인 | APPROVED | + (양수) | 최초 결제 승인 |
-| 전액취소 | CANCELED | - (음수) | 전액 취소 (원금 전액) |
-| 부분취소 | PARTIAL_CANCELED | - (음수) | 일부 금액 취소 |
+| 승인 | APPROVAL | + (양수) | 최초 결제 승인 |
+| 전액취소 | CANCEL | - (음수) | 전액 취소 (원금 전액) |
+| 부분취소 | PARTIAL_CANCEL | - (음수) | 일부 금액 취소 |
+| 환불 | REFUND | - (음수) | 환불 처리 |
 
 ### 4.4 이벤트 시퀀스 예시
 
@@ -209,43 +263,77 @@ CREATE TABLE transaction_events (
 
 ```sql
 CREATE TABLE settlements (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7(),
-
-    -- 이벤트 참조 (정산의 소스)
-    transaction_event_id BIGINT NOT NULL,
-    transaction_event_at TIMESTAMPTZ NOT NULL,
-
-    -- 거래 참조 (조회 편의용)
-    transaction_id  BIGINT NOT NULL,
-
-    -- 수취인
-    entity_type     VARCHAR(20) NOT NULL,
-    entity_id       BIGINT NOT NULL,
-    entity_path     LTREE,
-
-    -- 금액
-    entry_type      VARCHAR(10) NOT NULL,
-    amount          BIGINT NOT NULL,              -- 항상 양수
-    fee_rate        DECIMAL(5,4),
-    description     VARCHAR(100),
-
-    -- 정산 상태
-    settlement_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    settlement_date   DATE,
-    settled_at        TIMESTAMPTZ,
-
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_entry_type CHECK (entry_type IN ('CREDIT', 'DEBIT')),
-    CONSTRAINT chk_entity_type CHECK (
-        entity_type IN ('MERCHANT', 'ORGANIZATION', 'MASTER')
-    ),
-    CONSTRAINT chk_settlement_status CHECK (
-        settlement_status IN ('PENDING', 'CONFIRMED', 'PAID', 'HELD')
-    )
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  settlement_batch_id UUID,
+  
+  -- 이벤트/거래 참조
+  transaction_event_id UUID NOT NULL,
+  transaction_id UUID NOT NULL,
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  org_path public.ltree NOT NULL,
+  
+  -- 수취인
+  entity_id UUID NOT NULL,
+  entity_type VARCHAR(20) NOT NULL,
+  entity_path public.ltree NOT NULL,
+  
+  -- 금액 (부호 포함)
+  entry_type VARCHAR(10) NOT NULL,
+  amount BIGINT NOT NULL,                         -- CREDIT: +, DEBIT: -
+  fee_amount BIGINT NOT NULL DEFAULT 0,
+  net_amount BIGINT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+  
+  -- 수수료 설정
+  fee_rate NUMERIC(10,6),
+  fee_config JSONB,
+  
+  -- 정산 상태
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  settled_at TIMESTAMPTZ,
+  metadata JSONB,
+  
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  
+  CONSTRAINT settlements_entity_type_check CHECK (
+    entity_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')
+  ),
+  CONSTRAINT settlements_entry_type_check CHECK (entry_type IN ('CREDIT', 'DEBIT')),
+  CONSTRAINT settlements_status_check CHECK (
+    status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')
+  ),
+  CONSTRAINT settlements_amount_sign_check CHECK (
+    (entry_type = 'CREDIT' AND amount > 0) OR (entry_type = 'DEBIT' AND amount < 0)
+  ),
+  CONSTRAINT settlements_fee_amount_non_negative CHECK (fee_amount >= 0),
+  CONSTRAINT settlements_net_amount_calculation CHECK (
+    (entry_type = 'CREDIT' AND net_amount = amount - fee_amount) OR
+    (entry_type = 'DEBIT' AND net_amount = amount + fee_amount)
+  ),
+  CONSTRAINT settlements_settled_at_required CHECK (
+    (status = 'COMPLETED' AND settled_at IS NOT NULL) OR status <> 'COMPLETED'
+  )
 );
+
+-- 인덱스
+CREATE INDEX idx_settlements_org_path_gist ON settlements USING GIST(org_path);
+CREATE INDEX idx_settlements_entity_path_gist ON settlements USING GIST(entity_path);
+CREATE INDEX idx_settlements_transaction_id ON settlements(transaction_id);
+CREATE INDEX idx_settlements_entity_id ON settlements(entity_id, entity_type);
+CREATE INDEX idx_settlements_status ON settlements(status);
+CREATE INDEX idx_settlements_batch_id ON settlements(settlement_batch_id) WHERE settlement_batch_id IS NOT NULL;
 ```
+
+**주요 변경사항 (v2.0)**:
+- `id`: BIGSERIAL → UUID
+- `settlement_batch_id`: 정산 배치 참조 추가
+- `entity_type`: MERCHANT/ORGANIZATION/MASTER → DISTRIBUTOR/AGENCY/DEALER/SELLER/VENDOR
+- `amount`: 양수 → 부호 포함 (CREDIT: +, DEBIT: -)
+- `fee_amount`, `net_amount` 추가
+- `fee_config` JSONB 추가
+- `settlement_status` → `status`
+- 제약조건 추가: amount 부호 검증, net_amount 계산 검증
 
 ### 5.3 Entry Type 규칙
 
@@ -836,3 +924,4 @@ GROUP BY DATE(e.event_at), s.entity_type, s.entity_id;
 |------|------|----------|
 | v1.0 | 2026-01-28 | 초안 작성 |
 | v2.0 | 2026-01-28 | 하이브리드 이벤트 소싱 방식으로 변경 |
+| v3.0 | 2026-02-05 | 실제 마이그레이션 기준 스키마 업데이트 (transactions, transaction_events, settlements) |

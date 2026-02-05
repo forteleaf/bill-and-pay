@@ -15,27 +15,33 @@ PostgreSQL Database: billpay
 │
 ├── public (공통 스키마)
 │   ├── tenants                 -- 테넌트(총판) 목록
-│   ├── system_configs          -- 시스템 설정
-│   ├── payment_methods         -- 결제 수단 마스터
-│   ├── card_companies          -- 카드사 마스터
+│   ├── pg_connections          -- PG사 연동 설정
 │   ├── holidays                -- 공휴일 (영업일 계산용)
-│   └── pg_connections          -- PG사 연동 설정
+│   ├── organizations           -- 조직 구조 (공용)
+│   ├── users                   -- 인증 사용자 (공용)
+│   └── demo_requests           -- 데모 요청
 │
 ├── tenant_001 (총판A 스키마)
-│   ├── organizations           -- 조직 구조
-│   ├── users                   -- 사용자
+│   ├── organizations           -- 조직 구조 (테넌트별)
 │   ├── business_entities       -- 사업자 정보
-│   ├── contacts                -- 담당자 정보 (사업자/가맹점 공용)
-│   ├── businesses              -- 사업자 (1:N 가맹점)
-│   ├── fee_policies            -- 수수료 정책 (공유 가능)
 │   ├── merchants               -- 가맹점
 │   ├── merchant_pg_mappings    -- 가맹점-PG 매핑
+│   ├── payment_methods         -- 결제 수단 마스터
+│   ├── card_companies          -- 카드사 마스터
 │   ├── transactions            -- 거래 현재 상태
 │   ├── transaction_events      -- 거래 이벤트 이력 (파티셔닝)
 │   ├── settlements             -- 정산 원장 (이벤트 기준)
-│   ├── notification_settings   -- 알림 설정
+│   ├── settlement_batches      -- 정산 배치
+│   ├── fee_configurations      -- 수수료 설정
+│   ├── contacts                -- 담당자 정보
+│   ├── settlement_accounts     -- 정산계좌 정보
+│   ├── terminals               -- 단말기 관리
+│   ├── users                   -- 사용자 (테넌트별)
+│   ├── api_keys                -- API 키 관리
+│   ├── webhook_logs            -- 웹훅 로그
 │   ├── audit_logs              -- 감사 로그
-│   └── ...
+│   ├── settlement_reports      -- 정산 리포트
+│   └── merchant_org_history    -- 가맹점 이관 이력
 │
 ├── tenant_002 (총판B 스키마)
 │   └── ... (동일 구조)
@@ -48,375 +54,286 @@ PostgreSQL Database: billpay
 
 ## 3. 공통 스키마 (public)
 
-### 3.1 tenants - 테넌트 목록
+### 3.1 UUID v7 생성 함수
+
+```sql
+CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid AS $$
+DECLARE
+  unix_ts_ms BIGINT;
+  uuid_bytes BYTEA;
+BEGIN
+  unix_ts_ms = FLOOR(EXTRACT(EPOCH FROM clock_timestamp()) * 1000);
+  uuid_bytes =
+    substring(int8send(unix_ts_ms) from 3 for 6) ||
+    substring(int4send(((random() * 65535)::int & 4095) | 28672) from 3 for 2) ||
+    gen_random_bytes(8);
+  RETURN encode(uuid_bytes, 'hex')::uuid;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+```
+
+### 3.2 tenants - 테넌트 목록
 
 ```sql
 CREATE TABLE public.tenants (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 테넌트 정보
-    code            VARCHAR(20) NOT NULL UNIQUE,  -- tenant_001
-    name            VARCHAR(100) NOT NULL,
-    business_no     VARCHAR(20),
-    representative  VARCHAR(50),
-
-    -- 스키마 정보
-    schema_name     VARCHAR(50) NOT NULL UNIQUE,  -- tenant_001
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_tenant_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED'))
-);
-```
-
-### 3.2 system_configs - 시스템 설정
-
-```sql
-CREATE TABLE public.system_configs (
-    id              BIGSERIAL PRIMARY KEY,
-    config_key      VARCHAR(100) NOT NULL UNIQUE,
-    config_value    JSONB NOT NULL,
-    description     TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  schema_name VARCHAR(63) NOT NULL UNIQUE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(20),
+  config JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT tenants_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED'))
 );
 
--- 초기 데이터
-INSERT INTO public.system_configs (config_key, config_value, description) VALUES
-('fee_calculation', '{"rounding": "FLOOR", "decimal_places": 0}', '수수료 계산 규칙'),
-('settlement_default_cycle', '"D+1"', '기본 정산 주기'),
-('webhook_timeout_ms', '5000', 'Webhook 타임아웃'),
-('max_retry_count', '3', '최대 재시도 횟수');
+CREATE INDEX idx_tenants_status ON public.tenants(status) WHERE status = 'ACTIVE';
+CREATE INDEX idx_tenants_schema_name ON public.tenants(schema_name);
 ```
 
-### 3.3 payment_methods - 결제 수단
-
-```sql
-CREATE TABLE public.payment_methods (
-    id              SERIAL PRIMARY KEY,
-    code            VARCHAR(20) NOT NULL UNIQUE,
-    name            VARCHAR(50) NOT NULL,
-    category        VARCHAR(20) NOT NULL,         -- CARD, TRANSFER, VIRTUAL
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    display_order   SMALLINT NOT NULL DEFAULT 0
-);
-
--- 초기 데이터
-INSERT INTO public.payment_methods (code, name, category, display_order) VALUES
-('CREDIT', '신용카드', 'CARD', 1),
-('DEBIT', '체크카드', 'CARD', 2),
-('OVERSEAS', '해외카드', 'CARD', 3),
-('TRANSFER', '계좌이체', 'TRANSFER', 4),
-('VIRTUAL', '가상계좌', 'VIRTUAL', 5);
-```
-
-### 3.4 card_companies - 카드사
-
-```sql
-CREATE TABLE public.card_companies (
-    id              SERIAL PRIMARY KEY,
-    code            VARCHAR(10) NOT NULL UNIQUE,  -- BC, KB, SS, HD, ...
-    name            VARCHAR(50) NOT NULL,
-    full_name       VARCHAR(100),
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE
-);
-
--- 초기 데이터
-INSERT INTO public.card_companies (code, name, full_name) VALUES
-('BC', 'BC카드', '비씨카드'),
-('KB', '국민카드', 'KB국민카드'),
-('SS', '삼성카드', '삼성카드'),
-('SH', '신한카드', '신한카드'),
-('HD', '현대카드', '현대카드'),
-('LT', '롯데카드', '롯데카드'),
-('HN', '하나카드', '하나카드'),
-('WR', '우리카드', '우리카드'),
-('NH', '농협카드', 'NH농협카드'),
-```
-
-### 3.5 holidays - 공휴일
-
-```sql
-CREATE TABLE public.holidays (
-    id              SERIAL PRIMARY KEY,
-    holiday_date    DATE NOT NULL UNIQUE,
-    name            VARCHAR(50) NOT NULL,
-    is_substitute   BOOLEAN NOT NULL DEFAULT FALSE,  -- 대체공휴일 여부
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_holiday_date ON public.holidays (holiday_date);
-```
-
-### 3.6 pg_connections - PG사 연동
+### 3.3 pg_connections - PG사 연동
 
 ```sql
 CREATE TABLE public.pg_connections (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 테넌트 정보 (Webhook URL에서 테넌트 식별용)
-    tenant_id       VARCHAR(50) NOT NULL,           -- 테넌트 식별자 (예: tenant_001)
-
-    -- PG사 정보
-    pg_code         VARCHAR(20) NOT NULL UNIQUE,
-    pg_name         VARCHAR(50) NOT NULL,
-    pg_api_version  VARCHAR(20),
-
-    -- 연동 인증 (암호화)
-    merchant_id     VARCHAR(100) NOT NULL,
-    api_key_enc     BYTEA NOT NULL,
-    api_secret_enc  BYTEA NOT NULL,
-
-    -- Webhook
-    webhook_path    VARCHAR(100) NOT NULL UNIQUE,   -- 레거시 경로 (deprecated)
-    webhook_secret  VARCHAR(100),
-
-    -- API
-    api_base_url    VARCHAR(200),
-    api_endpoints   JSONB DEFAULT '{}',
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    last_sync_at    TIMESTAMPTZ,
-    last_error      TEXT,
-
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_pg_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'ERROR'))
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  pg_code VARCHAR(20) NOT NULL UNIQUE,
+  pg_name VARCHAR(100) NOT NULL,
+  api_base_url VARCHAR(500) NOT NULL,
+  webhook_base_url VARCHAR(500),
+  tenant_id VARCHAR(50) REFERENCES public.tenants(id) ON DELETE SET NULL,
+  credentials JSONB NOT NULL,
+  config JSONB,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT pg_connections_status_check CHECK (status IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE'))
 );
 
--- 테넌트별 PG Connection 조회용 인덱스
-CREATE INDEX idx_pg_connections_tenant ON public.pg_connections (tenant_id);
-
--- 테넌트 + ID 복합 조회용 인덱스
-CREATE INDEX idx_pg_connections_tenant_id ON public.pg_connections (id, tenant_id);
+CREATE INDEX idx_pg_connections_code ON public.pg_connections(pg_code);
+CREATE INDEX idx_pg_connections_status ON public.pg_connections(status) WHERE status = 'ACTIVE';
+CREATE INDEX idx_pg_connections_tenant_id ON public.pg_connections(tenant_id) WHERE tenant_id IS NOT NULL;
 ```
 
-> **Note**: `tenant_id` 컬럼은 Webhook URL 경로에서 테넌트를 식별하기 위해 사용됩니다.
-> 신규 Webhook URL 패턴: `POST /api/webhook/{tenantId}/{pgCode}?pgConnectionId=xxx&webhookSecret=yyy`
+**credentials JSONB 구조 예시**:
+```json
+{
+  "api_key": "encrypted_key",
+  "api_secret": "encrypted_secret",
+  "merchant_id": "KORPAY_MID",
+  "webhook_secret": "webhook_verification_key"
+}
+```
+
+### 3.4 holidays - 공휴일
+
+```sql
+CREATE TABLE public.holidays (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  holiday_date DATE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  country_code VARCHAR(2) NOT NULL DEFAULT 'KR',
+  is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT holidays_date_country_unique UNIQUE (holiday_date, country_code)
+);
+
+CREATE INDEX idx_holidays_date ON public.holidays(holiday_date);
+CREATE INDEX idx_holidays_country ON public.holidays(country_code, holiday_date);
+```
+
+### 3.5 organizations - 조직 (공용)
+
+```sql
+CREATE TABLE public.organizations (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  org_code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(200) NOT NULL,
+  org_type VARCHAR(20) NOT NULL,
+  path ltree NOT NULL UNIQUE,
+  parent_id UUID REFERENCES public.organizations(id),
+  level INTEGER NOT NULL,
+  business_number VARCHAR(20),
+  business_name VARCHAR(200),
+  representative_name VARCHAR(100),
+  email VARCHAR(255),
+  phone VARCHAR(20),
+  address TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  config JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT organizations_type_check CHECK (org_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')),
+  CONSTRAINT organizations_level_check CHECK (level >= 1 AND level <= 5),
+  CONSTRAINT organizations_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED'))
+);
+
+CREATE INDEX idx_organizations_path_gist ON public.organizations USING GIST(path);
+CREATE INDEX idx_organizations_level ON public.organizations(level);
+CREATE INDEX idx_organizations_org_type ON public.organizations(org_type);
+CREATE INDEX idx_organizations_org_code ON public.organizations(org_code);
+CREATE INDEX idx_organizations_parent_id ON public.organizations(parent_id) WHERE parent_id IS NOT NULL;
+CREATE INDEX idx_organizations_status ON public.organizations(status) WHERE status = 'ACTIVE';
+```
+
+### 3.6 users - 인증 사용자 (공용)
+
+```sql
+CREATE TABLE public.users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES public.tenants(id),
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT users_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED'))
+);
+
+CREATE INDEX idx_users_tenant_id ON public.users(tenant_id);
+CREATE INDEX idx_users_username ON public.users(username);
+```
+
+### 3.7 demo_requests - 데모 요청
+
+```sql
+CREATE TABLE public.demo_requests (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  company_name VARCHAR(200) NOT NULL,
+  contact_name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  company_size VARCHAR(50),
+  industry VARCHAR(100),
+  message TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  processed_at TIMESTAMPTZ,
+  processed_by VARCHAR(100),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT demo_requests_status_check CHECK (status IN ('PENDING', 'CONTACTED', 'DEMO_SCHEDULED', 'COMPLETED', 'REJECTED'))
+);
+
+CREATE INDEX idx_demo_requests_status ON public.demo_requests(status);
+CREATE INDEX idx_demo_requests_email ON public.demo_requests(email);
+CREATE INDEX idx_demo_requests_created_at ON public.demo_requests(created_at DESC);
+```
 
 ---
 
 ## 4. 테넌트 스키마 (tenant_xxx)
 
-### 4.1 organizations - 조직
+### 4.1 ENUM Types
+
+```sql
+CREATE TYPE account_status AS ENUM ('ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION');
+CREATE TYPE contact_entity_type AS ENUM ('BUSINESS_ENTITY', 'MERCHANT');
+CREATE TYPE contact_role AS ENUM ('PRIMARY', 'SECONDARY', 'SETTLEMENT', 'TECHNICAL');
+CREATE TYPE user_status AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING');
+```
+
+### 4.2 organizations - 조직 (테넌트별)
 
 ```sql
 CREATE TABLE organizations (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 계층 정보
-    path            LTREE NOT NULL,
-    depth           SMALLINT NOT NULL,
-    org_type        VARCHAR(20) NOT NULL,
-
-    -- 기본 정보
-    code            VARCHAR(20) NOT NULL UNIQUE,
-    name            VARCHAR(100) NOT NULL,
-    business_no     VARCHAR(20),
-    representative  VARCHAR(50),
-
-    -- 연락처
-    phone           VARCHAR(20),
-    email           VARCHAR(255),
-    address         TEXT,
-
-    -- 상위 조직
-    parent_id       BIGINT REFERENCES organizations(id),
-    root_id         BIGINT REFERENCES organizations(id),
-
-    -- 수수료 정책
-    fee_policy      JSONB NOT NULL DEFAULT '{}',
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by      BIGINT NOT NULL,
-
-    CONSTRAINT chk_org_type CHECK (
-        org_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')
-    ),
-    CONSTRAINT chk_depth CHECK (depth BETWEEN 1 AND 5),
-    CONSTRAINT chk_org_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED'))
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  org_code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(200) NOT NULL,
+  org_type VARCHAR(20) NOT NULL,
+  path public.ltree NOT NULL UNIQUE,
+  parent_id UUID REFERENCES organizations(id),
+  level INTEGER NOT NULL,
+  business_number VARCHAR(20),
+  business_name VARCHAR(200),
+  representative_name VARCHAR(100),
+  email VARCHAR(255),
+  phone VARCHAR(20),
+  address TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  config JSONB,
+  business_entity_id UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT organizations_type_check CHECK (org_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')),
+  CONSTRAINT organizations_level_check CHECK (level >= 1 AND level <= 5),
+  CONSTRAINT organizations_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),
+  CONSTRAINT organizations_distributor_level CHECK ((org_type = 'DISTRIBUTOR' AND level = 1) OR org_type <> 'DISTRIBUTOR'),
+  CONSTRAINT organizations_parent_required CHECK ((level = 1 AND parent_id IS NULL) OR (level > 1 AND parent_id IS NOT NULL)),
+  CONSTRAINT organizations_path_level_consistency CHECK (public.nlevel(path) = level)
 );
 
--- 인덱스
-CREATE INDEX idx_org_path_gist ON organizations USING GIST (path);
-CREATE INDEX idx_org_parent ON organizations (parent_id);
-CREATE INDEX idx_org_root ON organizations (root_id);
-CREATE INDEX idx_org_type ON organizations (org_type);
-CREATE INDEX idx_org_status ON organizations (status);
+CREATE INDEX idx_organizations_path_gist ON organizations USING GIST(path);
+CREATE INDEX idx_organizations_level ON organizations(level);
+CREATE INDEX idx_organizations_org_type ON organizations(org_type);
+CREATE INDEX idx_organizations_status ON organizations(status) WHERE status = 'ACTIVE';
 ```
 
-### 4.2 users - 사용자
+### 4.3 business_entities - 사업자 정보
 
-```sql
-CREATE TABLE users (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 인증
-    email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255),
-
-    -- 소속
-    org_id          BIGINT REFERENCES organizations(id),
-    role            VARCHAR(20) NOT NULL,
-
-    -- 프로필
-    name            VARCHAR(50) NOT NULL,
-    phone           VARCHAR(20),
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
-    mfa_enabled     BOOLEAN NOT NULL DEFAULT FALSE,
-    mfa_secret_enc  BYTEA,
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_login_at   TIMESTAMPTZ,
-    password_changed_at TIMESTAMPTZ,
-
-    CONSTRAINT chk_role CHECK (role IN ('MASTER_ADMIN', 'ORG_ADMIN', 'USER')),
-    CONSTRAINT chk_user_status CHECK (status IN ('PENDING', 'ACTIVE', 'SUSPENDED', 'TERMINATED'))
-);
-
-CREATE INDEX idx_user_org ON users (org_id);
-CREATE INDEX idx_user_email ON users (email);
-CREATE INDEX idx_user_status ON users (status);
-```
-
-### 4.3 business_entities - 사업자 정보 (분리)
-
-**조직(organizations)과 사업자 정보 분리**. 동일 사업자번호가 여러 조직 유형(DISTRIBUTOR, DEALER 등)으로 등록될 수 있음.
+**조직(organizations)과 사업자 정보 분리**. 동일 사업자번호가 여러 조직 유형으로 등록될 수 있음.
 
 ```sql
 CREATE TABLE business_entities (
-    id              UUID PRIMARY KEY DEFAULT uuidv7(),
-
-    -- 사업자 유형
-    business_type   VARCHAR(20) NOT NULL,         -- CORPORATION, INDIVIDUAL, NON_BUSINESS
-
-    -- 사업자등록 정보
-    business_number VARCHAR(12),                  -- 000-00-00000 (비사업자는 NULL)
-    corporate_number VARCHAR(14),                 -- 000000-0000000 (법인만 필수)
-
-    -- 상호 정보
-    business_name   VARCHAR(200) NOT NULL,        -- 상호명
-    representative_name VARCHAR(100) NOT NULL,    -- 대표자명
-    open_date       DATE,                         -- 개업연월일
-
-    -- 주소
-    business_address TEXT,                        -- 사업장 소재지
-    actual_address  TEXT,                         -- 실사업장 소재지
-
-    -- 업종/업태
-    business_category VARCHAR(100),               -- 업태
-    business_sub_category VARCHAR(100),           -- 업종
-
-    -- 연락처
-    main_phone      VARCHAR(20),                  -- 대표번호
-    manager_name    VARCHAR(100),                 -- 담당자명
-    manager_phone   VARCHAR(20),                  -- 담당자 연락처
-    email           VARCHAR(255),
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at      TIMESTAMPTZ,                  -- 소프트 삭제
-
-    CONSTRAINT chk_business_entity_type CHECK (
-        business_type IN ('CORPORATION', 'INDIVIDUAL', 'NON_BUSINESS')
-    ),
-    -- 사업자번호 유일성 (NULL 제외)
-    CONSTRAINT uq_business_entity_number UNIQUE NULLS NOT DISTINCT (business_number),
-    -- 비사업자는 사업자번호 불가, 사업자는 사업자번호 필수
-    CONSTRAINT chk_business_number_rule CHECK (
-        (business_type = 'NON_BUSINESS' AND business_number IS NULL) OR
-        (business_type != 'NON_BUSINESS' AND business_number IS NOT NULL)
-    ),
-    -- 법인사업자는 법인등록번호 필수
-    CONSTRAINT chk_corporate_number_rule CHECK (
-        (business_type = 'CORPORATION' AND corporate_number IS NOT NULL) OR
-        (business_type != 'CORPORATION')
-    )
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  business_type VARCHAR(20) NOT NULL,
+  business_number VARCHAR(12),
+  corporate_number VARCHAR(14),
+  business_name VARCHAR(200) NOT NULL,
+  representative_name VARCHAR(100) NOT NULL,
+  open_date DATE,
+  business_address TEXT,
+  actual_address TEXT,
+  business_category VARCHAR(100),
+  business_sub_category VARCHAR(100),
+  main_phone VARCHAR(20),
+  manager_name VARCHAR(100),
+  manager_phone VARCHAR(20),
+  email VARCHAR(255),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT business_entities_type_check CHECK (business_type IN ('CORPORATION', 'INDIVIDUAL', 'NON_BUSINESS'))
 );
 
--- 인덱스
-CREATE INDEX idx_business_entity_number ON business_entities (business_number) WHERE business_number IS NOT NULL;
-CREATE INDEX idx_business_entity_type ON business_entities (business_type);
-CREATE INDEX idx_business_entity_name ON business_entities (business_name);
+-- FK for organizations.business_entity_id
+ALTER TABLE organizations ADD CONSTRAINT organizations_business_entity_fk
+  FOREIGN KEY (business_entity_id) REFERENCES business_entities(id);
 ```
 
-**organizations 테이블에 FK 추가**:
+**business_type 유형**:
 
-```sql
-ALTER TABLE organizations 
-    ADD COLUMN business_entity_id UUID REFERENCES business_entities(id);
-
-CREATE INDEX idx_org_business_entity ON organizations (business_entity_id) WHERE business_entity_id IS NOT NULL;
-```
+| 유형 | 코드 | 설명 |
+|------|------|------|
+| 법인사업자 | CORPORATION | 법인등록번호 필수 |
+| 개인사업자 | INDIVIDUAL | 사업자번호 필수 |
+| 비사업자 | NON_BUSINESS | 사업자번호 없음 |
 
 ### 4.4 contacts - 담당자 정보
 
-**담당자 정보 통합 관리**. 사업자(BusinessEntity) 및 가맹점(Merchant)의 담당자를 별도 테이블에서 관리하여 중복을 방지하고, 한 엔티티에 여러 담당자(주담당자, 부담당자, 정산담당 등)를 등록할 수 있음.
-
 ```sql
--- 담당자 역할 유형
-CREATE TYPE contact_role AS ENUM ('PRIMARY', 'SECONDARY', 'SETTLEMENT', 'TECHNICAL');
-
--- 담당자 소속 엔티티 유형
-CREATE TYPE contact_entity_type AS ENUM ('BUSINESS_ENTITY', 'MERCHANT');
-
 CREATE TABLE contacts (
-    id              UUID PRIMARY KEY DEFAULT uuidv7(),
-    
-    -- 담당자 정보
-    name            VARCHAR(100) NOT NULL,        -- 담당자 이름
-    phone           VARCHAR(20),                  -- 연락처
-    email           VARCHAR(255),                 -- 이메일
-    
-    -- 역할 및 소속
-    role            contact_role NOT NULL DEFAULT 'PRIMARY',  -- 역할
-    entity_type     contact_entity_type NOT NULL, -- 소속 엔티티 유형
-    entity_id       UUID NOT NULL,                -- 소속 엔티티 ID
-    is_primary      BOOLEAN NOT NULL DEFAULT false, -- 주 담당자 여부
-    
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at      TIMESTAMPTZ                   -- 소프트 삭제
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
+  email VARCHAR(255),
+  role contact_role NOT NULL DEFAULT 'PRIMARY',
+  entity_type contact_entity_type NOT NULL,
+  entity_id UUID NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
--- 인덱스
-CREATE INDEX idx_contacts_entity ON contacts(entity_type, entity_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_contacts_role ON contacts(role) WHERE deleted_at IS NULL;
-
--- 엔티티당 주담당자 1명 제한
-CREATE UNIQUE INDEX idx_contacts_primary_unique ON contacts(entity_type, entity_id) 
-    WHERE is_primary = true AND deleted_at IS NULL;
-
--- 코멘트
-COMMENT ON TABLE contacts IS '담당자 정보 (사업자/가맹점 공용)';
-COMMENT ON COLUMN contacts.role IS 'PRIMARY(주담당자), SECONDARY(부담당자), SETTLEMENT(정산담당), TECHNICAL(기술담당)';
-COMMENT ON COLUMN contacts.is_primary IS '주 담당자 여부 (엔티티당 1명만 가능)';
+CREATE INDEX idx_contacts_entity ON contacts(entity_type, entity_id);
+CREATE INDEX idx_contacts_primary ON contacts(entity_type, entity_id, is_primary) WHERE is_primary = TRUE;
 ```
 
-**역할(Role) 유형**:
+**담당자 역할(Role)**:
 
 | Role | 한글명 | 설명 |
 |------|--------|------|
@@ -425,61 +342,32 @@ COMMENT ON COLUMN contacts.is_primary IS '주 담당자 여부 (엔티티당 1�
 | SETTLEMENT | 정산담당 | 정산/결제 관련 담당자 |
 | TECHNICAL | 기술담당 | 기술 지원 담당자 |
 
-**관계**:
-- 1 BusinessEntity : N Contacts (사업자 다수 담당자)
-- 1 Merchant : N Contacts (가맹점 다수 담당자)
-- 엔티티당 `is_primary=true`인 담당자는 1명만 허용
-
----
-
 ### 4.5 settlement_accounts - 정산계좌 정보
 
-**정산계좌 정보 통합 관리**. 사업자(BusinessEntity) 및 가맹점(Merchant)의 정산계좌를 별도 테이블에서 관리하여, 한 엔티티에 여러 계좌(주계좌, 부계좌 등)를 등록할 수 있음.
-
 ```sql
--- 계좌 상태 유형
-CREATE TYPE account_status AS ENUM ('ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION');
-
 CREATE TABLE settlement_accounts (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
-    -- 계좌 정보
-    bank_code       VARCHAR(10) NOT NULL,         -- 은행코드 (004, 088 등)
-    bank_name       VARCHAR(50) NOT NULL,         -- 은행명
-    account_number  VARCHAR(50) NOT NULL,         -- 계좌번호
-    account_holder  VARCHAR(100) NOT NULL,        -- 예금주
-    
-    -- 소속 엔티티
-    entity_type     contact_entity_type NOT NULL, -- 기존 enum 재사용 (BUSINESS_ENTITY/MERCHANT)
-    entity_id       UUID NOT NULL,                -- 소속 엔티티 ID
-    is_primary      BOOLEAN NOT NULL DEFAULT false, -- 주 계좌 여부
-    
-    -- 상태
-    status          account_status NOT NULL DEFAULT 'PENDING_VERIFICATION',
-    verified_at     TIMESTAMPTZ,                  -- 계좌 검증 일시
-    memo            TEXT,                         -- 메모
-    
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at      TIMESTAMPTZ                   -- 소프트 삭제
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  bank_code VARCHAR(10) NOT NULL,
+  bank_name VARCHAR(50) NOT NULL,
+  account_number VARCHAR(50) NOT NULL,
+  account_holder VARCHAR(100) NOT NULL,
+  entity_type contact_entity_type NOT NULL,
+  entity_id UUID NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+  status account_status NOT NULL DEFAULT 'PENDING_VERIFICATION',
+  verified_at TIMESTAMPTZ,
+  memo TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
 );
 
--- 인덱스
-CREATE INDEX idx_settlement_accounts_entity ON settlement_accounts(entity_type, entity_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_settlement_accounts_status ON settlement_accounts(status) WHERE deleted_at IS NULL;
-
--- 엔티티당 주계좌 1개 제한
-CREATE UNIQUE INDEX idx_settlement_accounts_primary ON settlement_accounts(entity_type, entity_id) 
-    WHERE is_primary = true AND deleted_at IS NULL;
-
--- 코멘트
-COMMENT ON TABLE settlement_accounts IS '정산계좌 정보 (사업자/가맹점 공용)';
-COMMENT ON COLUMN settlement_accounts.status IS 'ACTIVE(사용중), INACTIVE(미사용), PENDING_VERIFICATION(검증대기)';
-COMMENT ON COLUMN settlement_accounts.is_primary IS '주 계좌 여부 (엔티티당 1개만 가능)';
+CREATE INDEX idx_settlement_accounts_entity ON settlement_accounts(entity_type, entity_id);
+CREATE INDEX idx_settlement_accounts_primary ON settlement_accounts(entity_type, entity_id, is_primary)
+  WHERE is_primary = TRUE AND deleted_at IS NULL;
 ```
 
-**상태(Status) 유형**:
+**계좌 상태(Status)**:
 
 | Status | 한글명 | 설명 |
 |--------|--------|------|
@@ -498,681 +386,620 @@ COMMENT ON COLUMN settlement_accounts.is_primary IS '주 계좌 여부 (엔티�
 | 081 | 하나은행 |
 | 003 | IBK기업은행 |
 
-**관계**:
-- 1 BusinessEntity : N SettlementAccounts (사업자 다수 계좌)
-- 1 Merchant : N SettlementAccounts (가맹점 다수 계좌)
-- 엔티티당 `is_primary=true`인 주계좌는 1개만 허용
-- `contact_entity_type` enum 재사용 (BUSINESS_ENTITY, MERCHANT)
-
----
-
-### 4.6 businesses - 사업자 (레거시, 가맹점용)
-
-**1 사업자 : N 가맹점 관계**. 동일 사업자가 수수료 체계가 다른 여러 가맹점을 가질 수 있음.
-
-```sql
-CREATE TABLE businesses (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 사업자 유형: CORPORATE(법인), INDIVIDUAL(일반), NON_BUSINESS(비사업자)
-    business_type   VARCHAR(20) NOT NULL,
-
-    -- 사업자 정보
-    business_no     VARCHAR(20),                  -- 사업자번호 (비사업자는 NULL)
-    business_name   VARCHAR(100) NOT NULL,        -- 상호명
-    representative  VARCHAR(50) NOT NULL,         -- 대표자명
-
-    -- 업종/업태
-    business_category VARCHAR(50),                -- 업종
-    business_item   VARCHAR(100),                 -- 업태
-
-    -- 연락처
-    phone           VARCHAR(20),
-    email           VARCHAR(255),
-    address         TEXT,
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by      BIGINT NOT NULL,
-
-    CONSTRAINT chk_business_type CHECK (
-        business_type IN ('CORPORATE', 'INDIVIDUAL', 'NON_BUSINESS')
-    ),
-    CONSTRAINT chk_business_status CHECK (
-        status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED')
-    ),
-    -- 사업자인 경우 사업자번호 필수
-    CONSTRAINT chk_business_no_required CHECK (
-        (business_type = 'NON_BUSINESS') OR (business_no IS NOT NULL)
-    ),
-    -- 사업자번호 유일성 (NULL 제외)
-    CONSTRAINT uq_business_no UNIQUE (business_no)
-);
-
--- 인덱스
-CREATE INDEX idx_business_type ON businesses (business_type);
-CREATE INDEX idx_business_status ON businesses (status);
-CREATE INDEX idx_business_business_no ON businesses (business_no) WHERE business_no IS NOT NULL;
-```
-
-### 4.7 fee_policies - 수수료 정책
-
-**수수료 정책 공유 및 버전 관리**. 여러 가맹점이 동일한 수수료 정책을 참조할 수 있음.
-
-```sql
-CREATE TABLE fee_policies (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 정책 기본 정보
-    code            VARCHAR(50) NOT NULL,         -- 정책 코드 (예: STANDARD_2026_01)
-    name            VARCHAR(100) NOT NULL,        -- 정책명
-    description     TEXT,
-
-    -- 버전 관리
-    version         INTEGER NOT NULL DEFAULT 1,
-    effective_from  DATE NOT NULL,                -- 적용 시작일
-    effective_to    DATE,                         -- 적용 종료일 (NULL = 현재 유효)
-
-    -- 수수료율 정의 (결제수단 × 카드등급)
-    rates           JSONB NOT NULL,
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by      BIGINT NOT NULL,
-
-    CONSTRAINT chk_fee_policy_status CHECK (
-        status IN ('DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED')
-    ),
-    CONSTRAINT chk_effective_dates CHECK (
-        effective_to IS NULL OR effective_to >= effective_from
-    ),
-    -- 동일 코드 내 버전 유일성
-    CONSTRAINT uq_policy_code_version UNIQUE (code, version)
-);
-
--- 인덱스
-CREATE INDEX idx_fee_policy_code ON fee_policies (code);
-CREATE INDEX idx_fee_policy_status ON fee_policies (status);
-CREATE INDEX idx_fee_policy_effective ON fee_policies (effective_from, effective_to);
-CREATE INDEX idx_fee_policy_rates ON fee_policies USING gin (rates);
-```
-
-**rates JSONB 구조 예시**:
-
-```json
-{
-  "credit_card": {
-    "micro": { "rate": 1.5, "type": "percentage" },
-    "small1": { "rate": 2.0, "type": "percentage" },
-    "small2": { "rate": 2.3, "type": "percentage" },
-    "small3": { "rate": 2.5, "type": "percentage" },
-    "normal": { "rate": 3.0, "type": "percentage" }
-  },
-  "debit_card": {
-    "micro": { "rate": 1.0, "type": "percentage" },
-    "small1": { "rate": 1.5, "type": "percentage" },
-    "small2": { "rate": 1.8, "type": "percentage" },
-    "small3": { "rate": 2.0, "type": "percentage" },
-    "normal": { "rate": 2.5, "type": "percentage" }
-  },
-  "bank_transfer": {
-    "default": { "amount": 300, "type": "fixed" }
-  },
-  "virtual_account": {
-    "default": { "amount": 200, "type": "fixed" }
-  }
-}
-```
-
-### 4.8 merchants - 가맹점
-
-**가맹점은 수수료 체계의 단위**. 동일 사업자라도 수수료 체계가 다르면 별도 가맹점으로 분리.
+### 4.6 merchants - 가맹점
 
 ```sql
 CREATE TABLE merchants (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- 소속 조직
-    org_id          BIGINT NOT NULL REFERENCES organizations(id),
-    org_path        LTREE NOT NULL,
-
-    -- 사업자 참조 (1 사업자 : N 가맹점)
-    business_id     BIGINT NOT NULL REFERENCES businesses(id),
-
-    -- 기본 정보
-    code            VARCHAR(20) NOT NULL UNIQUE,
-    name            VARCHAR(100) NOT NULL,        -- 가맹점명 (상호와 다를 수 있음)
-
-    -- 카드사 우대 등급
-    card_grade      VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
-
-    -- 수수료 정책 참조 (N 가맹점 : 1 정책, 정책 공유 가능)
-    fee_policy_id   BIGINT NOT NULL REFERENCES fee_policies(id),
-
-    -- 정산 설정
-    settlement_cycle VARCHAR(10) NOT NULL DEFAULT 'D+1',
-    bank_code       VARCHAR(10),
-    account_no_enc  BYTEA,                        -- 암호화된 계좌번호
-    account_holder  VARCHAR(50),
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    -- 감사
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by      BIGINT NOT NULL,
-
-    CONSTRAINT chk_card_grade CHECK (
-        card_grade IN ('MICRO', 'SMALL1', 'SMALL2', 'SMALL3', 'NORMAL')
-    ),
-    CONSTRAINT chk_merchant_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TERMINATED'))
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  merchant_code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(200) NOT NULL,
+  org_id UUID NOT NULL REFERENCES organizations(id),
+  org_path public.ltree NOT NULL,
+  business_number VARCHAR(20),
+  business_type VARCHAR(50),
+  contact_name VARCHAR(100),
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(20),
+  address TEXT,
+  config JSONB,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT merchants_status_check CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED'))
 );
 
--- 인덱스
-CREATE INDEX idx_merchant_org ON merchants (org_id);
-CREATE INDEX idx_merchant_org_path ON merchants USING GIST (org_path);
-CREATE INDEX idx_merchant_business ON merchants (business_id);
-CREATE INDEX idx_merchant_fee_policy ON merchants (fee_policy_id);
-CREATE INDEX idx_merchant_status ON merchants (status);
+CREATE INDEX idx_merchants_org_path_gist ON merchants USING GIST(org_path);
+CREATE INDEX idx_merchants_org_id ON merchants(org_id);
+CREATE INDEX idx_merchants_status ON merchants(status) WHERE status = 'ACTIVE';
 ```
 
-### 4.9 merchant_pg_mappings - 가맹점 PG 매핑
-
-**KORPAY 연동 시**: MID(pg_merchant_no)와 단말기번호(terminal_id)는 1:1 매핑 관계.
-MID는 온라인승인 계정으로도 사용됨.
+### 4.7 merchant_pg_mappings - 가맹점 PG 매핑
 
 ```sql
 CREATE TABLE merchant_pg_mappings (
-    id              BIGSERIAL PRIMARY KEY,
-    merchant_id     BIGINT NOT NULL REFERENCES merchants(id),
-    pg_connection_id BIGINT NOT NULL,             -- public.pg_connections 참조
-
-    -- PG사 가맹점 정보 (KORPAY: mid)
-    pg_merchant_no  VARCHAR(50) NOT NULL,         -- KORPAY MID (온라인승인 계정)
-    pg_merchant_key VARCHAR(100),                 -- 가맹점 인증키
-
-    -- 단말기 정보 (KORPAY: catId, MID와 1:1 매핑)
-    terminal_id     VARCHAR(50),                  -- 단말기 번호 (예: 1046347583)
-    terminal_type   VARCHAR(20),                  -- POS, CAT, ONLINE, MOBILE
-
-    -- 상태
-    status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- KORPAY: MID와 terminal_id 1:1 관계 보장
-    CONSTRAINT uq_pg_merchant UNIQUE (pg_connection_id, pg_merchant_no),
-    CONSTRAINT uq_pg_terminal UNIQUE (pg_connection_id, terminal_id),
-    CONSTRAINT chk_terminal_type CHECK (terminal_type IN ('POS', 'CAT', 'ONLINE', 'MOBILE'))
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  pg_connection_id BIGINT NOT NULL,
+  mid VARCHAR(50) NOT NULL,
+  terminal_id VARCHAR(50),
+  cat_id VARCHAR(50),
+  config JSONB,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT merchant_pg_mappings_status_check CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  CONSTRAINT merchant_pg_mappings_mid_pg_unique UNIQUE (mid, pg_connection_id)
 );
 
-CREATE INDEX idx_pg_mapping_lookup ON merchant_pg_mappings (pg_connection_id, pg_merchant_no)
-    WHERE status = 'ACTIVE';
-CREATE INDEX idx_pg_mapping_terminal ON merchant_pg_mappings (pg_connection_id, terminal_id)
-    WHERE status = 'ACTIVE';
-CREATE INDEX idx_pg_mapping_merchant ON merchant_pg_mappings (merchant_id);
+CREATE INDEX idx_merchant_pg_mappings_merchant_id ON merchant_pg_mappings(merchant_id);
+CREATE INDEX idx_merchant_pg_mappings_pg_connection_id ON merchant_pg_mappings(pg_connection_id);
 ```
 
-### 4.10 transactions - 거래 현재 상태
+### 4.8 payment_methods - 결제 수단
 
-**하이브리드 방식**: 현재 상태를 저장하여 빠른 조회 제공 (이력은 transaction_events에서 관리)
+```sql
+CREATE TABLE payment_methods (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  method_code VARCHAR(20) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  category VARCHAR(20) NOT NULL,
+  config JSONB,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT payment_methods_category_check CHECK (category IN ('CARD', 'BANK', 'VIRTUAL', 'OTHER')),
+  CONSTRAINT payment_methods_status_check CHECK (status IN ('ACTIVE', 'INACTIVE'))
+);
+```
+
+**기본 데이터**:
+
+| method_code | name | category |
+|-------------|------|----------|
+| CREDIT | 신용카드 | CARD |
+| DEBIT | 체크카드 | CARD |
+| OVERSEAS | 해외카드 | CARD |
+| TRANSFER | 계좌이체 | BANK |
+| VIRTUAL | 가상계좌 | VIRTUAL |
+
+### 4.9 card_companies - 카드사
+
+```sql
+CREATE TABLE card_companies (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  company_code VARCHAR(10) NOT NULL UNIQUE,
+  company_name VARCHAR(100) NOT NULL,
+  config JSONB,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT card_companies_status_check CHECK (status IN ('ACTIVE', 'INACTIVE'))
+);
+```
+
+**기본 데이터**:
+
+| company_code | company_name |
+|--------------|--------------|
+| BC | BC카드 |
+| KB | KB국민카드 |
+| SS | 삼성카드 |
+| SH | 신한카드 |
+| HD | 현대카드 |
+| LT | 롯데카드 |
+| HN | 하나카드 |
+| WR | 우리카드 |
+| NH | NH농협카드 |
+
+### 4.10 terminals - 단말기
+
+```sql
+CREATE TABLE terminals (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  cat_id VARCHAR(50) NOT NULL UNIQUE,
+  terminal_type VARCHAR(20) NOT NULL,
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  organization_id UUID REFERENCES organizations(id),
+  serial_number VARCHAR(100),
+  model VARCHAR(100),
+  manufacturer VARCHAR(100),
+  install_address TEXT,
+  install_date DATE,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  config JSONB,
+  last_transaction_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT terminals_type_check CHECK (terminal_type IN ('CAT', 'POS', 'MOBILE', 'KIOSK', 'ONLINE')),
+  CONSTRAINT terminals_status_check CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'TERMINATED'))
+);
+
+CREATE INDEX idx_terminals_merchant_id ON terminals(merchant_id);
+CREATE INDEX idx_terminals_organization_id ON terminals(organization_id) WHERE organization_id IS NOT NULL;
+CREATE INDEX idx_terminals_status ON terminals(status) WHERE status = 'ACTIVE';
+CREATE INDEX idx_terminals_cat_id ON terminals(cat_id);
+```
+
+**단말기 유형**:
+
+| terminal_type | 설명 |
+|---------------|------|
+| CAT | 신용카드 조회기 |
+| POS | 포스 단말기 |
+| MOBILE | 모바일 단말기 |
+| KIOSK | 키오스크 |
+| ONLINE | 온라인 |
+
+### 4.11 transactions - 거래 현재 상태
 
 ```sql
 CREATE TABLE transactions (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    -- PG 거래 정보
-    pg_code         VARCHAR(20) NOT NULL,
-    pg_tid          VARCHAR(100) NOT NULL,        -- 최초 승인 TID (KORPAY: tid)
-    pg_merchant_no  VARCHAR(50) NOT NULL,         -- PG 가맹점 번호 (KORPAY: mid)
-    terminal_id     VARCHAR(20),                  -- 단말기 ID (KORPAY: catId, MID와 1:1 매핑)
-    channel_type    VARCHAR(10),                  -- 거래 채널 (KORPAY: connCd, 0003:단말기, 0005:온라인)
-    van_tid         VARCHAR(50),                  -- VAN 거래고유번호 (KORPAY: ediNo)
-
-    -- Bill&Pay 매핑
-    merchant_id     BIGINT NOT NULL,
-    merchant_path   LTREE NOT NULL,
-
-    -- 거래 정보
-    order_id        VARCHAR(40),                  -- 주문번호 (KORPAY: ordNo)
-    original_amount BIGINT NOT NULL,              -- 원거래 금액 (불변, KORPAY: amt)
-    current_amount  BIGINT NOT NULL,              -- 현재 유효 금액 (취소 반영)
-    payment_method  VARCHAR(20) NOT NULL,         -- 결제수단 (KORPAY: payMethod)
-    goods_name      VARCHAR(200),                 -- 상품명 (KORPAY: goodsName)
-
-    -- 카드 정보
-    card_code       VARCHAR(10),                  -- 카드사 코드
-    card_type       VARCHAR(10),                  -- 카드 유형 (신용/체크)
-    card_no_masked  VARCHAR(20),                  -- 마스킹된 카드번호 (KORPAY: cardNo)
-    approval_no     VARCHAR(20),                  -- 승인번호 (KORPAY: appNo)
-    installment     SMALLINT DEFAULT 0,           -- 할부개월 (KORPAY: quota)
-    issuer_code     VARCHAR(10),                  -- 발급사 코드 (KORPAY: appCardCd)
-    acquirer_code   VARCHAR(10),                  -- 매입사 코드 (KORPAY: acqCardCd)
-    card_company_name VARCHAR(50),                -- 카드사명 (KORPAY: fnNm)
-
-    -- 구매자 정보
-    buyer_name      VARCHAR(100),                 -- 구매자명 (KORPAY: ordNm)
-    buyer_id        VARCHAR(100),                 -- 구매자 ID (KORPAY: buyerId)
-
-    -- 상태 (최종 상태)
-    status          VARCHAR(20) NOT NULL,
-    event_count     SMALLINT NOT NULL DEFAULT 1,  -- 이벤트 개수
-
-    -- 시간
-    transacted_at   TIMESTAMPTZ NOT NULL,         -- 최초 승인 시간 (KORPAY: appDtm)
-    last_event_at   TIMESTAMPTZ NOT NULL,         -- 마지막 이벤트 시간
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT uq_pg_tid UNIQUE (pg_code, pg_tid),
-    CONSTRAINT chk_status CHECK (
-        status IN ('APPROVED', 'CANCELED', 'PARTIAL_CANCELED')
-    ),
-    CONSTRAINT chk_channel_type CHECK (channel_type IN ('0003', '0005')),
-    CONSTRAINT chk_current_amount CHECK (current_amount >= 0)
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  transaction_id VARCHAR(100) NOT NULL UNIQUE,
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  merchant_pg_mapping_id UUID NOT NULL REFERENCES merchant_pg_mappings(id),
+  pg_connection_id BIGINT NOT NULL,
+  org_path public.ltree NOT NULL,
+  payment_method_id UUID NOT NULL REFERENCES payment_methods(id),
+  card_company_id UUID REFERENCES card_companies(id),
+  amount BIGINT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+  status VARCHAR(20) NOT NULL,
+  pg_transaction_id VARCHAR(200),
+  approval_number VARCHAR(50),
+  approved_at TIMESTAMPTZ,
+  cancelled_at TIMESTAMPTZ,
+  cat_id VARCHAR(50),
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT transactions_status_check CHECK (status IN ('PENDING', 'APPROVED', 'CANCELLED', 'PARTIAL_CANCELLED', 'FAILED')),
+  CONSTRAINT transactions_amount_check CHECK (amount > 0)
 );
 
--- 인덱스
-CREATE INDEX idx_txn_merchant ON transactions (merchant_id);
-CREATE INDEX idx_txn_merchant_path ON transactions USING GIST (merchant_path);
-CREATE INDEX idx_txn_pg_lookup ON transactions (pg_code, pg_merchant_no);
-CREATE INDEX idx_txn_status ON transactions (status);
-CREATE INDEX idx_txn_transacted ON transactions (transacted_at);
+CREATE INDEX idx_transactions_org_path_gist ON transactions USING GIST(org_path);
+CREATE INDEX idx_transactions_merchant_id ON transactions(merchant_id);
+CREATE INDEX idx_transactions_pg_connection_id ON transactions(pg_connection_id);
+CREATE INDEX idx_transactions_status ON transactions(status);
+CREATE INDEX idx_transactions_created_status ON transactions(created_at DESC, status);
+CREATE INDEX idx_transactions_merchant_status_created ON transactions(merchant_id, status, created_at DESC);
+CREATE INDEX idx_transactions_cat_id ON transactions(cat_id);
+
+-- PG별 거래고유번호 유니크 인덱스
+CREATE UNIQUE INDEX idx_transactions_pg_txn_unique
+  ON transactions(pg_connection_id, pg_transaction_id)
+  WHERE pg_transaction_id IS NOT NULL;
+
+-- Covering 인덱스 (Index-Only Scan)
+CREATE INDEX idx_transactions_pg_txn_lookup
+  ON transactions(pg_connection_id, pg_transaction_id)
+  INCLUDE (id, status, amount, merchant_id)
+  WHERE pg_transaction_id IS NOT NULL;
 ```
 
-### 4.11 transaction_events - 거래 이벤트 이력 (파티셔닝)
+**거래 상태**:
 
-**모든 거래 이벤트(승인/취소/부분취소)를 개별 레코드로 저장. 정산은 이 테이블 기준으로 처리.**
+| status | 설명 |
+|--------|------|
+| PENDING | 대기 |
+| APPROVED | 승인 |
+| CANCELLED | 전액취소 |
+| PARTIAL_CANCELLED | 부분취소 |
+| FAILED | 실패 |
+
+### 4.12 transaction_events - 거래 이벤트 이력 (파티셔닝)
 
 ```sql
 CREATE TABLE transaction_events (
-    id              BIGSERIAL,
-    uuid            UUID NOT NULL DEFAULT uuidv7(),
-
-    -- 거래 참조
-    transaction_id  BIGINT NOT NULL REFERENCES transactions(id),
-
-    -- 이벤트 정보
-    event_type      VARCHAR(20) NOT NULL,         -- APPROVED, CANCELED, PARTIAL_CANCELED
-    event_seq       SMALLINT NOT NULL,            -- 순서 (1, 2, 3...)
-
-    -- 금액 (부호 포함)
-    amount          BIGINT NOT NULL,              -- +승인, -취소 (KORPAY: amt)
-    remain_amount   BIGINT,                       -- 잔액 (부분취소 시, KORPAY: remainAmt)
-
-    -- PG 응답 정보
-    pg_tid          VARCHAR(100),                 -- 이벤트 TID (KORPAY: tid)
-    pg_otid         VARCHAR(100),                 -- 원거래 TID (취소 시, KORPAY: otid)
-    pg_response     JSONB,                        -- PG 원본 응답 전체
-
-    -- 취소 정보
-    is_cancel       BOOLEAN NOT NULL DEFAULT FALSE, -- 취소 여부 (KORPAY: cancelYN='Y')
-    cancel_at       TIMESTAMPTZ,                  -- 취소일시 (KORPAY: ccDnt)
-
-    -- 시간
-    event_at        TIMESTAMPTZ NOT NULL,         -- 이벤트 발생시간 (KORPAY: appDtm 또는 ccDnt)
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- 복합 PK (파티셔닝용)
-    PRIMARY KEY (id, created_at),
-
-    CONSTRAINT uq_txn_event_seq UNIQUE (transaction_id, event_seq),
-    CONSTRAINT chk_event_type CHECK (
-        event_type IN ('APPROVED', 'CANCELED', 'PARTIAL_CANCELED')
-    )
+  id UUID NOT NULL DEFAULT uuidv7(),
+  event_type VARCHAR(20) NOT NULL,
+  event_sequence INTEGER NOT NULL,
+  transaction_id UUID NOT NULL,
+  merchant_id UUID NOT NULL,
+  merchant_pg_mapping_id UUID NOT NULL,
+  pg_connection_id BIGINT NOT NULL,
+  org_path public.ltree NOT NULL,
+  payment_method_id UUID NOT NULL,
+  card_company_id UUID,
+  amount BIGINT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+  previous_status VARCHAR(20),
+  new_status VARCHAR(20) NOT NULL,
+  pg_transaction_id VARCHAR(200),
+  approval_number VARCHAR(50),
+  cat_id VARCHAR(50),
+  metadata JSONB,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT transaction_events_pk PRIMARY KEY (id, created_at),
+  CONSTRAINT transaction_events_event_type_check CHECK (event_type IN ('APPROVAL', 'CANCEL', 'PARTIAL_CANCEL', 'REFUND')),
+  CONSTRAINT transaction_events_amount_check CHECK (amount != 0),
+  CONSTRAINT transaction_events_sequence_positive CHECK (event_sequence > 0),
+  CONSTRAINT transaction_events_amount_sign_matches_type CHECK (
+    (event_type = 'APPROVAL' AND amount > 0) OR
+    (event_type IN ('CANCEL', 'PARTIAL_CANCEL', 'REFUND') AND amount < 0)
+  ),
+  CONSTRAINT transaction_events_occurred_at_not_future CHECK (occurred_at <= CURRENT_TIMESTAMP)
 ) PARTITION BY RANGE (created_at);
 
--- 인덱스
-CREATE INDEX idx_evt_transaction ON transaction_events (transaction_id);
-CREATE INDEX idx_evt_type ON transaction_events (event_type);
-CREATE INDEX idx_evt_event_at ON transaction_events (event_at);
-CREATE INDEX idx_evt_uuid ON transaction_events (uuid);
+CREATE INDEX idx_transaction_events_org_path_gist ON transaction_events USING GIST(org_path);
+CREATE INDEX idx_transaction_events_transaction_id ON transaction_events(transaction_id, event_sequence);
+CREATE INDEX idx_transaction_events_merchant_id ON transaction_events(merchant_id, created_at DESC);
+CREATE INDEX idx_transaction_events_event_type ON transaction_events(event_type, created_at DESC);
+CREATE INDEX idx_transaction_events_pg_connection_id ON transaction_events(pg_connection_id, created_at DESC);
+CREATE INDEX idx_transaction_events_cat_id ON transaction_events(cat_id, created_at DESC);
+CREATE INDEX idx_transaction_events_occurred_at ON transaction_events(occurred_at DESC);
+CREATE INDEX idx_transaction_events_pg_txn
+  ON transaction_events(pg_connection_id, pg_transaction_id, created_at DESC)
+  WHERE pg_transaction_id IS NOT NULL;
 
--- 파티션 생성 예시 (2026년 1월)
-CREATE TABLE transaction_events_2026_01_28 PARTITION OF transaction_events
-    FOR VALUES FROM ('2026-01-28') TO ('2026-01-29');
-CREATE TABLE transaction_events_2026_01_29 PARTITION OF transaction_events
-    FOR VALUES FROM ('2026-01-29') TO ('2026-01-30');
--- ... 계속
+-- 일별 파티션 자동 생성 (과거 7일 ~ 향후 30일)
 ```
 
-### 4.12 settlements - 정산 원장 (이벤트 기준)
+**이벤트 유형**:
 
-**각 transaction_event에 대한 정산을 기록. 복식부기 원칙 적용.**
+| event_type | amount 부호 | 설명 |
+|------------|-------------|------|
+| APPROVAL | + (양수) | 최초 결제 승인 |
+| CANCEL | - (음수) | 전액 취소 |
+| PARTIAL_CANCEL | - (음수) | 부분 취소 |
+| REFUND | - (음수) | 환불 |
+
+### 4.13 settlements - 정산 원장 (복식부기)
 
 ```sql
 CREATE TABLE settlements (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7(),
-
-    -- 이벤트 참조 (정산의 소스)
-    transaction_event_id BIGINT NOT NULL,
-    transaction_event_at TIMESTAMPTZ NOT NULL,    -- 파티션 조인용
-
-    -- 거래 참조 (조회 편의용)
-    transaction_id  BIGINT NOT NULL,
-
-    -- 수취인
-    entity_type     VARCHAR(20) NOT NULL,
-    entity_id       BIGINT NOT NULL,
-    entity_path     LTREE,
-
-    -- 금액
-    entry_type      VARCHAR(10) NOT NULL,         -- CREDIT (승인), DEBIT (취소)
-    amount          BIGINT NOT NULL,              -- 항상 양수
-    fee_rate        DECIMAL(5,4),
-    description     VARCHAR(100),
-
-    -- 정산 상태
-    settlement_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    settlement_date   DATE,
-    settled_at        TIMESTAMPTZ,
-
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_entry_type CHECK (entry_type IN ('CREDIT', 'DEBIT')),
-    CONSTRAINT chk_entity_type CHECK (entity_type IN ('MERCHANT', 'ORGANIZATION', 'MASTER')),
-    CONSTRAINT chk_settlement_status CHECK (
-        settlement_status IN ('PENDING', 'CONFIRMED', 'PAID', 'HELD')
-    )
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  settlement_batch_id UUID,
+  transaction_event_id UUID NOT NULL,
+  transaction_id UUID NOT NULL,
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  org_path public.ltree NOT NULL,
+  entity_id UUID NOT NULL,
+  entity_type VARCHAR(20) NOT NULL,
+  entity_path public.ltree NOT NULL,
+  entry_type VARCHAR(10) NOT NULL,
+  amount BIGINT NOT NULL,
+  fee_amount BIGINT NOT NULL DEFAULT 0,
+  net_amount BIGINT NOT NULL,
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW',
+  fee_rate NUMERIC(10,6),
+  fee_config JSONB,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  settled_at TIMESTAMPTZ,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT settlements_entity_type_check CHECK (entity_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')),
+  CONSTRAINT settlements_entry_type_check CHECK (entry_type IN ('CREDIT', 'DEBIT')),
+  CONSTRAINT settlements_status_check CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')),
+  CONSTRAINT settlements_amount_sign_check CHECK ((entry_type = 'CREDIT' AND amount > 0) OR (entry_type = 'DEBIT' AND amount < 0)),
+  CONSTRAINT settlements_fee_amount_non_negative CHECK (fee_amount >= 0),
+  CONSTRAINT settlements_net_amount_calculation CHECK (
+    (entry_type = 'CREDIT' AND net_amount = amount - fee_amount) OR
+    (entry_type = 'DEBIT' AND net_amount = amount + fee_amount)
+  ),
+  CONSTRAINT settlements_settled_at_required CHECK ((status = 'COMPLETED' AND settled_at IS NOT NULL) OR status <> 'COMPLETED')
 );
 
--- 인덱스
-CREATE INDEX idx_stl_event ON settlements (transaction_event_id, transaction_event_at);
-CREATE INDEX idx_stl_transaction ON settlements (transaction_id);
-CREATE INDEX idx_stl_entity ON settlements (entity_type, entity_id);
-CREATE INDEX idx_stl_entity_path ON settlements USING GIST (entity_path);
-CREATE INDEX idx_stl_status ON settlements (settlement_status);
-CREATE INDEX idx_stl_date ON settlements (settlement_date);
+CREATE INDEX idx_settlements_org_path_gist ON settlements USING GIST(org_path);
+CREATE INDEX idx_settlements_entity_path_gist ON settlements USING GIST(entity_path);
+CREATE INDEX idx_settlements_transaction_id ON settlements(transaction_id);
+CREATE INDEX idx_settlements_entity_id ON settlements(entity_id, entity_type);
+CREATE INDEX idx_settlements_status ON settlements(status);
+CREATE INDEX idx_settlements_batch_id ON settlements(settlement_batch_id) WHERE settlement_batch_id IS NOT NULL;
 ```
 
-### 4.13 unmapped_transactions - 미매핑 거래
+**정산 규칙**:
+- `entry_type = 'CREDIT'`: 승인 시 정산 (+), `amount > 0`
+- `entry_type = 'DEBIT'`: 취소 시 정산 (-), `amount < 0`
+- `net_amount`: CREDIT 시 `amount - fee_amount`, DEBIT 시 `amount + fee_amount`
+
+### 4.14 settlement_batches - 정산 배치
 
 ```sql
-CREATE TABLE unmapped_transactions (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7() UNIQUE,
-
-    pg_connection_id BIGINT NOT NULL,
-    pg_tid          VARCHAR(100) NOT NULL,
-    pg_merchant_no  VARCHAR(50) NOT NULL,
-
-    raw_data        JSONB NOT NULL,
-    amount          BIGINT NOT NULL,
-    transacted_at   TIMESTAMPTZ NOT NULL,
-
-    status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    mapped_merchant_id BIGINT REFERENCES merchants(id),
-    processed_by    BIGINT REFERENCES users(id),
-    processed_at    TIMESTAMPTZ,
-    process_note    TEXT,
-
-    received_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_unmapped_status CHECK (status IN ('PENDING', 'MAPPED', 'IGNORED', 'EXPIRED'))
+CREATE TABLE settlement_batches (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  batch_number VARCHAR(100) NOT NULL UNIQUE,
+  settlement_date DATE NOT NULL,
+  period_start TIMESTAMPTZ NOT NULL,
+  period_end TIMESTAMPTZ NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  total_transactions INTEGER NOT NULL DEFAULT 0,
+  total_amount BIGINT NOT NULL DEFAULT 0,
+  total_fee_amount BIGINT NOT NULL DEFAULT 0,
+  processed_at TIMESTAMPTZ,
+  approved_at TIMESTAMPTZ,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT settlement_batches_status_check CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')),
+  CONSTRAINT settlement_batches_period_order CHECK (period_start < period_end),
+  CONSTRAINT settlement_batches_transactions_non_negative CHECK (total_transactions >= 0),
+  CONSTRAINT settlement_batches_processed_at_required CHECK (
+    (status IN ('COMPLETED', 'FAILED') AND processed_at IS NOT NULL) OR
+    status NOT IN ('COMPLETED', 'FAILED')
+  )
 );
 
-CREATE INDEX idx_unmapped_status ON unmapped_transactions (status);
-CREATE INDEX idx_unmapped_pg ON unmapped_transactions (pg_connection_id, pg_merchant_no);
+ALTER TABLE settlements ADD CONSTRAINT settlements_batch_fk
+  FOREIGN KEY (settlement_batch_id) REFERENCES settlement_batches(id);
 ```
 
-### 4.14 notification_settings - 알림 설정
+### 4.15 fee_configurations - 수수료 설정
 
 ```sql
-CREATE TABLE notification_settings (
-    id              BIGSERIAL PRIMARY KEY,
-
-    target_type     VARCHAR(20) NOT NULL,
-    target_id       BIGINT,
-
-    -- 총판용
-    pg_error_enabled        BOOLEAN DEFAULT TRUE,
-    unmapped_txn_enabled    BOOLEAN DEFAULT TRUE,
-    batch_error_enabled     BOOLEAN DEFAULT TRUE,
-    daily_report_enabled    BOOLEAN DEFAULT TRUE,
-
-    -- 대리점용
-    payment_success_enabled BOOLEAN DEFAULT TRUE,
-    payment_cancel_enabled  BOOLEAN DEFAULT TRUE,
-    settlement_enabled      BOOLEAN DEFAULT TRUE,
-
-    -- 채널
-    push_enabled    BOOLEAN DEFAULT TRUE,
-    email_enabled   BOOLEAN DEFAULT FALSE,
-    sms_enabled     BOOLEAN DEFAULT FALSE,
-
-    -- Webhook
-    webhook_url     VARCHAR(500),
-    webhook_secret  VARCHAR(100),
-    webhook_enabled BOOLEAN DEFAULT FALSE,
-
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT uq_notification_target UNIQUE (target_type, target_id),
-    CONSTRAINT chk_target_type CHECK (target_type IN ('MASTER', 'ORGANIZATION'))
+CREATE TABLE fee_configurations (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  entity_id UUID NOT NULL,
+  entity_type VARCHAR(20) NOT NULL,
+  entity_path public.ltree NOT NULL,
+  payment_method_id UUID REFERENCES payment_methods(id),
+  card_company_id UUID REFERENCES card_companies(id),
+  fee_type VARCHAR(20) NOT NULL,
+  fee_rate NUMERIC(10,6),
+  fixed_fee BIGINT,
+  tier_config JSONB,
+  min_fee BIGINT,
+  max_fee BIGINT,
+  priority INTEGER NOT NULL DEFAULT 0,
+  valid_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  valid_until TIMESTAMPTZ,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fee_configurations_entity_type_check CHECK (entity_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')),
+  CONSTRAINT fee_configurations_fee_type_check CHECK (fee_type IN ('PERCENTAGE', 'FIXED', 'TIERED', 'PERCENTAGE_PLUS_FIXED')),
+  CONSTRAINT fee_configurations_status_check CHECK (status IN ('ACTIVE', 'INACTIVE', 'EXPIRED')),
+  CONSTRAINT fee_configurations_rate_range CHECK (fee_rate IS NULL OR (fee_rate >= 0 AND fee_rate <= 1)),
+  CONSTRAINT fee_configurations_min_max_fee CHECK (min_fee IS NULL OR max_fee IS NULL OR min_fee <= max_fee),
+  CONSTRAINT fee_configurations_valid_period CHECK (valid_until IS NULL OR valid_from <= valid_until),
+  CONSTRAINT fee_configurations_has_fee_definition CHECK (
+    (fee_type = 'PERCENTAGE' AND fee_rate IS NOT NULL) OR
+    (fee_type = 'FIXED' AND fixed_fee IS NOT NULL) OR
+    (fee_type = 'TIERED' AND tier_config IS NOT NULL) OR
+    (fee_type = 'PERCENTAGE_PLUS_FIXED' AND fee_rate IS NOT NULL AND fixed_fee IS NOT NULL)
+  )
 );
+
+CREATE INDEX idx_fee_configurations_entity_path_gist ON fee_configurations USING GIST(entity_path);
+CREATE INDEX idx_fee_configurations_entity ON fee_configurations(entity_id, entity_type);
+CREATE INDEX idx_fee_configurations_status ON fee_configurations(status) WHERE status = 'ACTIVE';
 ```
 
-### 4.15 audit_logs - 감사 로그
+**수수료 유형**:
+
+| fee_type | 설명 | 필수 필드 |
+|----------|------|-----------|
+| PERCENTAGE | 정률 수수료 | fee_rate |
+| FIXED | 정액 수수료 | fixed_fee |
+| TIERED | 구간별 수수료 | tier_config |
+| PERCENTAGE_PLUS_FIXED | 정률 + 정액 | fee_rate, fixed_fee |
+
+### 4.16 users - 사용자 (테넌트별)
+
+```sql
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  username VARCHAR(100) NOT NULL UNIQUE,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  org_id UUID NOT NULL REFERENCES organizations(id),
+  org_path public.ltree NOT NULL,
+  full_name VARCHAR(200) NOT NULL,
+  phone VARCHAR(20),
+  role VARCHAR(50) NOT NULL,
+  permissions JSONB DEFAULT '[]',
+  two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  two_factor_secret VARCHAR(255),
+  last_login_at TIMESTAMPTZ,
+  password_changed_at TIMESTAMPTZ,
+  status user_status NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_users_org_path_gist ON users USING GIST(org_path);
+CREATE INDEX idx_users_org_id ON users(org_id);
+CREATE INDEX idx_users_status ON users(status) WHERE status = 'ACTIVE';
+CREATE INDEX idx_users_email ON users(email);
+```
+
+### 4.17 api_keys - API 키 관리
+
+```sql
+CREATE TABLE api_keys (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  key_name VARCHAR(200) NOT NULL,
+  key_hash VARCHAR(255) NOT NULL UNIQUE,
+  key_prefix VARCHAR(20) NOT NULL,
+  user_id UUID,
+  org_id UUID NOT NULL,
+  org_path public.ltree NOT NULL,
+  scopes JSONB NOT NULL,
+  rate_limit_per_minute INTEGER,
+  rate_limit_per_hour INTEGER,
+  last_used_at TIMESTAMPTZ,
+  usage_count BIGINT NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT api_keys_status_check CHECK (status IN ('ACTIVE', 'REVOKED', 'EXPIRED')),
+  CONSTRAINT api_keys_prefix_pattern CHECK (key_prefix ~ '^bp_(live|test)_[a-zA-Z0-9]{4}$'),
+  CONSTRAINT api_keys_rate_limits_positive CHECK (
+    (rate_limit_per_minute IS NULL OR rate_limit_per_minute > 0) AND
+    (rate_limit_per_hour IS NULL OR rate_limit_per_hour > 0)
+  )
+);
+
+CREATE INDEX idx_api_keys_org_path_gist ON api_keys USING GIST(org_path);
+CREATE INDEX idx_api_keys_key_prefix ON api_keys(key_prefix);
+CREATE INDEX idx_api_keys_status ON api_keys(status) WHERE status = 'ACTIVE';
+```
+
+### 4.18 webhook_logs - 웹훅 로그
+
+```sql
+CREATE TABLE webhook_logs (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  pg_connection_id BIGINT NOT NULL,
+  event_type VARCHAR(50) NOT NULL,
+  payload JSONB NOT NULL,
+  headers JSONB,
+  status VARCHAR(20) NOT NULL DEFAULT 'RECEIVED',
+  processed_at TIMESTAMPTZ,
+  transaction_id UUID,
+  transaction_event_id UUID,
+  error_message TEXT,
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  signature VARCHAR(500),
+  signature_verified BOOLEAN,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT webhook_logs_status_check CHECK (status IN ('RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'IGNORED')),
+  CONSTRAINT webhook_logs_retry_count_non_negative CHECK (retry_count >= 0),
+  CONSTRAINT webhook_logs_processed_at_required CHECK (
+    (status IN ('PROCESSED', 'FAILED', 'IGNORED') AND processed_at IS NOT NULL) OR
+    status NOT IN ('PROCESSED', 'FAILED', 'IGNORED')
+  )
+);
+
+CREATE INDEX idx_webhook_logs_pg_connection ON webhook_logs(pg_connection_id, received_at DESC);
+CREATE INDEX idx_webhook_logs_status ON webhook_logs(status, received_at DESC);
+CREATE INDEX idx_webhook_logs_transaction ON webhook_logs(transaction_id) WHERE transaction_id IS NOT NULL;
+```
+
+### 4.19 audit_logs - 감사 로그
 
 ```sql
 CREATE TABLE audit_logs (
-    id              BIGSERIAL PRIMARY KEY,
-    uuid            UUID NOT NULL DEFAULT uuidv7(),
-
-    -- 행위자
-    user_id         BIGINT,
-    user_email      VARCHAR(255),
-    ip_address      INET,
-    user_agent      TEXT,
-
-    -- 대상
-    entity_type     VARCHAR(50) NOT NULL,
-    entity_id       BIGINT,
-
-    -- 행위
-    action          VARCHAR(50) NOT NULL,
-    action_detail   TEXT,
-
-    -- 변경 내용
-    old_values      JSONB,
-    new_values      JSONB,
-
-    -- 시간
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_action CHECK (
-        action IN ('CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'EXPORT', 'APPROVE', 'REJECT')
-    )
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  user_id UUID,
+  username VARCHAR(100),
+  action VARCHAR(50) NOT NULL,
+  entity_type VARCHAR(100) NOT NULL,
+  entity_id UUID NOT NULL,
+  old_values JSONB,
+  new_values JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  request_id VARCHAR(100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT audit_logs_action_check CHECK (action IN ('CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'APPROVE', 'REJECT', 'EXPORT'))
 );
 
-CREATE INDEX idx_audit_user ON audit_logs (user_id);
-CREATE INDEX idx_audit_entity ON audit_logs (entity_type, entity_id);
-CREATE INDEX idx_audit_action ON audit_logs (action);
-CREATE INDEX idx_audit_created ON audit_logs (created_at);
+CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+CREATE INDEX idx_audit_logs_user ON audit_logs(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX idx_audit_logs_created ON audit_logs(created_at DESC);
+```
 
--- 파티셔닝 고려 (대량 데이터 시)
+### 4.20 settlement_reports - 정산 리포트
+
+```sql
+CREATE TABLE settlement_reports (
+  id UUID PRIMARY KEY DEFAULT uuidv7(),
+  report_type VARCHAR(50) NOT NULL,
+  entity_id UUID NOT NULL,
+  entity_type VARCHAR(20) NOT NULL,
+  entity_path public.ltree NOT NULL,
+  period_start TIMESTAMPTZ NOT NULL,
+  period_end TIMESTAMPTZ NOT NULL,
+  report_data JSONB NOT NULL,
+  file_path VARCHAR(500),
+  file_size BIGINT,
+  status VARCHAR(20) NOT NULL DEFAULT 'GENERATED',
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  generated_by UUID,
+  CONSTRAINT settlement_reports_entity_type_check CHECK (entity_type IN ('DISTRIBUTOR', 'AGENCY', 'DEALER', 'SELLER', 'VENDOR')),
+  CONSTRAINT settlement_reports_report_type_check CHECK (report_type IN ('DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM', 'RECONCILIATION')),
+  CONSTRAINT settlement_reports_status_check CHECK (status IN ('GENERATED', 'EXPORTED', 'DELIVERED', 'FAILED'))
+);
+
+CREATE INDEX idx_settlement_reports_entity_path_gist ON settlement_reports USING GIST(entity_path);
+CREATE INDEX idx_settlement_reports_entity ON settlement_reports(entity_id, entity_type);
+CREATE INDEX idx_settlement_reports_period ON settlement_reports(period_start, period_end);
+```
+
+### 4.21 merchant_org_history - 가맹점 이관 이력
+
+```sql
+CREATE TABLE merchant_org_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  merchant_id UUID NOT NULL REFERENCES merchants(id),
+  from_org_id UUID NOT NULL,
+  from_org_path public.ltree NOT NULL,
+  to_org_id UUID NOT NULL,
+  to_org_path public.ltree NOT NULL,
+  moved_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  moved_by VARCHAR(100),
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_merchant_org_history_merchant_id ON merchant_org_history(merchant_id);
 ```
 
 ---
 
-## 5. Materialized Views
+## 5. Views
 
-### 5.1 일별 정산 요약 (이벤트 기준)
-
-```sql
-CREATE MATERIALIZED VIEW mv_daily_settlement_summary AS
-SELECT
-    DATE(e.event_at) AS event_date,
-    s.entity_type,
-    s.entity_id,
-    s.entity_path,
-    COUNT(DISTINCT e.transaction_id) AS transaction_count,
-    COUNT(e.id) AS event_count,
-    SUM(CASE WHEN s.entry_type = 'CREDIT' THEN s.amount ELSE 0 END) AS credit_total,
-    SUM(CASE WHEN s.entry_type = 'DEBIT' THEN s.amount ELSE 0 END) AS debit_total,
-    SUM(CASE WHEN s.entry_type = 'CREDIT' THEN s.amount ELSE -s.amount END) AS net_total
-FROM transaction_events e
-JOIN settlements s ON e.id = s.transaction_event_id
-GROUP BY DATE(e.event_at), s.entity_type, s.entity_id, s.entity_path;
-
-CREATE UNIQUE INDEX idx_mv_daily_unique
-    ON mv_daily_settlement_summary (event_date, entity_type, entity_id);
-CREATE INDEX idx_mv_daily_path ON mv_daily_settlement_summary USING GIST (entity_path);
-
--- 갱신 (매일 자정)
--- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_daily_settlement_summary;
-```
-
-### 5.2 가맹점별 월간 매출 (현재 상태 기준)
+### 5.1 Zero-Sum 검증 뷰
 
 ```sql
-CREATE MATERIALIZED VIEW mv_monthly_merchant_sales AS
+CREATE VIEW settlement_zero_sum_validation AS
 SELECT
-    DATE_TRUNC('month', t.transacted_at) AS month,
-    t.merchant_id,
-    m.name AS merchant_name,
-    m.org_path,
-    COUNT(*) AS transaction_count,
-    SUM(t.original_amount) AS total_original,   -- 원거래 금액 합계
-    SUM(t.current_amount) AS total_current,     -- 현재 유효 금액 합계
-    AVG(t.original_amount) AS avg_transaction
-FROM transactions t
-JOIN merchants m ON t.merchant_id = m.id
-GROUP BY DATE_TRUNC('month', t.transacted_at), t.merchant_id, m.name, m.org_path;
+  te.id AS transaction_event_id,
+  te.transaction_id,
+  te.event_type,
+  te.amount AS event_amount,
+  COALESCE(SUM(s.amount), 0) AS total_settlement_amount,
+  te.amount - COALESCE(SUM(s.amount), 0) AS zero_sum_diff,
+  CASE WHEN te.amount - COALESCE(SUM(s.amount), 0) = 0 THEN TRUE ELSE FALSE END AS is_zero_sum_valid,
+  COUNT(s.id) AS settlement_count
+FROM transaction_events te
+LEFT JOIN settlements s ON s.transaction_event_id = te.id
+GROUP BY te.id, te.transaction_id, te.event_type, te.amount;
 
-CREATE UNIQUE INDEX idx_mv_monthly_unique
-    ON mv_monthly_merchant_sales (month, merchant_id);
-CREATE INDEX idx_mv_monthly_path ON mv_monthly_merchant_sales USING GIST (org_path);
+COMMENT ON VIEW settlement_zero_sum_validation IS 'Validates Zero-Sum constraint: |event.amount| = SUM(settlement.amount)';
 ```
 
 ---
 
 ## 6. Functions & Procedures
 
-### 6.1 테넌트 스키마 생성
+### 6.1 파티션 자동 생성
 
 ```sql
-CREATE OR REPLACE FUNCTION public.create_tenant_schema(
-    p_tenant_code VARCHAR(20),
-    p_tenant_name VARCHAR(100)
-)
-RETURNS VARCHAR AS $$
+-- 매일 실행: 일별 파티션 자동 생성
+DO $$
 DECLARE
-    v_schema_name VARCHAR(50);
+  start_date DATE := CURRENT_DATE - INTERVAL '7 days';
+  end_date DATE := CURRENT_DATE + INTERVAL '30 days';
+  partition_date DATE;
+  partition_name TEXT;
+  start_ts TEXT;
+  end_ts TEXT;
 BEGIN
-    v_schema_name := 'tenant_' || p_tenant_code;
-
-    -- 스키마 생성
-    EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', v_schema_name);
-
-    -- 테넌트 테이블에 등록
-    INSERT INTO public.tenants (code, name, schema_name)
-    VALUES (p_tenant_code, p_tenant_name, v_schema_name);
-
-    -- 테이블 생성 (별도 마이그레이션 스크립트 호출)
-    -- CALL create_tenant_tables(v_schema_name);
-
-    RETURN v_schema_name;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### 6.2 파티션 자동 생성 (transaction_events)
-
-```sql
-CREATE OR REPLACE PROCEDURE create_daily_event_partition(
-    p_schema_name VARCHAR(50),
-    p_date DATE
-)
-AS $$
-DECLARE
-    v_partition_name VARCHAR(100);
-    v_start_date DATE;
-    v_end_date DATE;
-BEGIN
-    v_partition_name := 'transaction_events_' || TO_CHAR(p_date, 'YYYY_MM_DD');
-    v_start_date := p_date;
-    v_end_date := p_date + INTERVAL '1 day';
+  partition_date := start_date;
+  WHILE partition_date < end_date LOOP
+    partition_name := 'transaction_events_' || to_char(partition_date, 'YYYYMMDD');
+    start_ts := partition_date::TEXT || ' 00:00:00+00';
+    end_ts := (partition_date + INTERVAL '1 day')::DATE::TEXT || ' 00:00:00+00';
 
     EXECUTE format(
-        'CREATE TABLE IF NOT EXISTS %I.%I PARTITION OF %I.transaction_events
-         FOR VALUES FROM (%L) TO (%L)',
-        p_schema_name, v_partition_name, p_schema_name,
-        v_start_date, v_end_date
+      'CREATE TABLE IF NOT EXISTS %I PARTITION OF transaction_events FOR VALUES FROM (%L) TO (%L)',
+      partition_name, start_ts, end_ts
     );
-END;
-$$ LANGUAGE plpgsql;
 
--- 매일 실행: 7일 후 파티션 미리 생성
--- CALL create_daily_event_partition('tenant_001', CURRENT_DATE + INTERVAL '7 days');
-```
-
-### 6.3 이벤트-거래 정합성 검증 함수
-
-```sql
-CREATE OR REPLACE FUNCTION verify_transaction_event_consistency(
-    p_transaction_id BIGINT
-)
-RETURNS BOOLEAN AS $$
-DECLARE
-    v_current_amount BIGINT;
-    v_event_total BIGINT;
-BEGIN
-    -- 거래 현재 금액 조회
-    SELECT current_amount INTO v_current_amount
-    FROM transactions
-    WHERE id = p_transaction_id;
-
-    -- 이벤트 합계 조회
-    SELECT COALESCE(SUM(amount), 0) INTO v_event_total
-    FROM transaction_events
-    WHERE transaction_id = p_transaction_id;
-
-    RETURN v_current_amount = v_event_total;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### 6.4 이벤트-정산 Zero-Sum 검증 함수
-
-```sql
-CREATE OR REPLACE FUNCTION verify_event_zero_sum(
-    p_event_id BIGINT
-)
-RETURNS BOOLEAN AS $$
-DECLARE
-    v_event_amount BIGINT;
-    v_stl_total BIGINT;
-BEGIN
-    -- 이벤트 금액 조회
-    SELECT ABS(amount) INTO v_event_amount
-    FROM transaction_events
-    WHERE id = p_event_id;
-
-    -- 정산 합계 조회
-    SELECT COALESCE(SUM(amount), 0) INTO v_stl_total
-    FROM settlements
-    WHERE transaction_event_id = p_event_id;
-
-    RETURN v_event_amount = v_stl_total;
-END;
-$$ LANGUAGE plpgsql;
+    partition_date := partition_date + INTERVAL '1 day';
+  END LOOP;
+END $$;
 ```
 
 ---
@@ -1183,173 +1010,141 @@ $$ LANGUAGE plpgsql;
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              PUBLIC SCHEMA                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
-│  │   tenants    │    │ pg_connections│    │ card_companies│                  │
-│  ├──────────────┤    ├──────────────┤    ├──────────────┤                  │
-│  │ id           │    │ id           │    │ id           │                  │
-│  │ code         │    │ pg_code      │    │ code         │                  │
-│  │ schema_name  │    │ webhook_path │    │ name         │                  │
-│  └──────────────┘    └──────────────┘    └──────────────┘                  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
+│  │   tenants    │    │pg_connections│    │   holidays   │                   │
+│  ├──────────────┤    ├──────────────┤    ├──────────────┤                   │
+│  │ id (VARCHAR) │◄───│ tenant_id    │    │ id (UUID)    │                   │
+│  │ schema_name  │    │ pg_code      │    │ holiday_date │                   │
+│  │ status       │    │ credentials  │    │ name         │                   │
+│  └──────────────┘    └──────────────┘    └──────────────┘                   │
+│                                                                              │
+│  ┌──────────────┐    ┌──────────────┐                                       │
+│  │organizations │    │    users     │                                       │
+│  ├──────────────┤    ├──────────────┤                                       │
+│  │ id (UUID)    │    │ id (UUID)    │                                       │
+│  │ path (ltree) │    │ username     │                                       │
+│  │ level        │    │ tenant_id    │◄── tenants.id                        │
+│  └──────────────┘    └──────────────┘                                       │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             TENANT SCHEMA                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
+│  ┌──────────────┐         ┌──────────────┐         ┌──────────────┐         │
+│  │organizations │◄────────│   users      │         │business_     │         │
+│  ├──────────────┤  org_id ├──────────────┤         │entities      │         │
+│  │ id (UUID)    │         │ id (UUID)    │         ├──────────────┤         │
+│  │ path (ltree) │         │ org_path     │         │ id (UUID)    │         │
+│  │ level        │         │ role         │         │ business_type│         │
+│  │ business_    │─────────────────────────────────►│ business_no  │         │
+│  │ entity_id    │                                  └──────┬───────┘         │
+│  └──────┬───────┘                                         │                 │
+│         │                                                 │                 │
+│         │ org_id                              ┌───────────┴─────────────┐   │
+│         ▼                                     │                         │   │
+│  ┌──────────────┐                     ┌──────────────┐         ┌──────────────┐
+│  │  merchants   │                     │  contacts    │         │settlement_   │
+│  ├──────────────┤                     ├──────────────┤         │accounts      │
+│  │ id (UUID)    │                     │ entity_type  │         ├──────────────┤
+│  │ org_id       │─────────────────────│ entity_id    │         │ entity_type  │
+│  │ org_path     │                     │ role         │         │ entity_id    │
+│  └──────┬───────┘                     └──────────────┘         └──────────────┘
+│         │                                                                    │
+│         │ merchant_id                                                        │
+│         ▼                                                                    │
 │  ┌──────────────┐         ┌──────────────┐                                  │
-│  │organizations │◄────────│   users      │                                  │
-│  ├──────────────┤    org_id├──────────────┤                                  │
-│  │ id           │         │ id           │                                  │
-│  │ path (ltree) │         │ email        │                                  │
-│  │ parent_id    │─────────│ org_id       │                                  │
-│  │ fee_policy   │    self │ role         │                                  │
+│  │merchant_pg   │         │  terminals   │                                  │
+│  │_mappings     │         ├──────────────┤                                  │
+│  ├──────────────┤         │ merchant_id  │◄── merchants.id                 │
+│  │ mid          │         │ cat_id       │                                  │
+│  │ terminal_id  │         │ terminal_type│                                  │
 │  └──────┬───────┘         └──────────────┘                                  │
 │         │                                                                    │
-│         │ org_id                                                             │
+│         │ merchant_pg_mapping_id                                            │
 │         ▼                                                                    │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
-│  │  merchants   │◄───│  businesses  │    │ fee_policies │                  │
-│  ├──────────────┤ N:1├──────────────┤    ├──────────────┤                  │
-│  │ id           │    │ id           │    │ id           │                  │
-│  │ org_id       │    │ business_type│    │ code         │                  │
-│  │ org_path     │    │ business_no  │    │ version      │                  │
-│  │ business_id ─┼───►│ business_name│    │ rates (JSONB)│                  │
-│  │ fee_policy_id├───────────────────────►│ effective_from│                  │
-│  │ card_grade   │ N:1│ representative│    │ status       │                  │
-│  │ name         │    │ phone, email │    └──────────────┘                  │
-│  └──────┬───────┘    │ address      │                                      │
-│         │            └──────────────┘                                      │
-│         │ merchant_id                                                       │
-│         ▼                                                                   │
-│  ┌──────────────┐                                                          │
-│  │merchant_pg   │                                                          │
-│  │_mappings     │  (1 merchant : N MID/단말기)                              │
-│  ├──────────────┤                                                          │
-│  │ pg_merchant_no│                                                          │
-│  │ terminal_id  │                                                          │
-│  └──────────────┘                                                          │
-│         │                                                                   │
-│         │ merchant_id                                                       │
-│         ▼                                                                   │
 │  ┌──────────────────┐                                                       │
 │  │  transactions    │  (현재 상태)                                          │
 │  ├──────────────────┤                                                       │
-│  │ id               │                                                       │
-│  │ original_amount  │                                                       │
-│  │ current_amount   │◄──── 이벤트 합계와 일치                                │
+│  │ id (UUID)        │                                                       │
+│  │ transaction_id   │                                                       │
+│  │ amount           │                                                       │
 │  │ status           │                                                       │
 │  └────────┬─────────┘                                                       │
 │           │                                                                  │
 │           │ transaction_id                                                   │
 │           ▼                                                                  │
 │  ┌──────────────────┐                                                       │
-│  │transaction_events│  (이벤트 이력, 파티셔닝)                                │
+│  │transaction_events│  (이벤트 이력, 파티셔닝)                              │
 │  ├──────────────────┤                                                       │
-│  │ id               │                                                       │
-│  │ transaction_id   │                                                       │
-│  │ event_type       │  APPROVED / CANCELED / PARTIAL_CANCELED               │
-│  │ amount           │  +승인 / -취소                                         │
-│  │ event_seq        │  1, 2, 3...                                           │
+│  │ id (UUID)        │                                                       │
+│  │ event_type       │  APPROVAL / CANCEL / PARTIAL_CANCEL / REFUND         │
+│  │ amount           │  +승인 / -취소                                        │
+│  │ event_sequence   │                                                       │
 │  └────────┬─────────┘                                                       │
 │           │                                                                  │
 │           │ transaction_event_id                                             │
 │           ▼                                                                  │
-│  ┌──────────────────┐                                                       │
-│  │   settlements    │  (이벤트별 정산, 복식부기)                              │
-│  ├──────────────────┤                                                       │
-│  │ id               │                                                       │
-│  │ transaction_event_id │◄── 정산의 소스                                     │
-│  │ transaction_id   │◄── 조회 편의용                                         │
-│  │ entity_type      │  MERCHANT / ORGANIZATION / MASTER                     │
-│  │ entry_type       │  CREDIT (승인) / DEBIT (취소)                          │
-│  │ amount           │  항상 양수                                             │
-│  └──────────────────┘                                                       │
-│                                                                              │
-│  [주요 관계]                                                                 │
-│  • 1 Business : N Merchants (1 사업자 다수 가맹점)                           │
-│  • 1 FeePolicy : N Merchants (수수료 정책 공유)                              │
-│  • 1 Organization : N Merchants (조직 계층 소속)                             │
-│  • 1 Merchant : N PG Mappings (다중 PG/단말기)                               │
-│  • 1 BusinessEntity : N Contacts (사업자 다수 담당자)                        │
-│  • 1 Merchant : N Contacts (가맹점 다수 담당자)                              │
-│                                                                              │
-│  [데이터 흐름]                                                               │
-│  PG Webhook → transactions INSERT → transaction_events INSERT               │
-│            → settlements INSERT (이벤트 기준 복식부기)                        │
-│                                                                              │
+│  ┌──────────────────┐         ┌──────────────────┐                         │
+│  │   settlements    │◄────────│settlement_batches│                         │
+│  ├──────────────────┤ batch_id├──────────────────┤                         │
+│  │ entity_type      │         │ batch_number     │                         │
+│  │ entity_id        │         │ settlement_date  │                         │
+│  │ entry_type       │  CREDIT/DEBIT             │                         │
+│  │ amount           │  +승인 / -취소             │                         │
+│  │ fee_amount       │                            │                         │
+│  │ net_amount       │                            │                         │
+│  └──────────────────┘                            │                         │
+│                                                  │                         │
+│  ┌──────────────────┐         ┌──────────────────┐                         │
+│  │fee_configurations│         │  webhook_logs    │                         │
+│  ├──────────────────┤         ├──────────────────┤                         │
+│  │ entity_type      │         │ pg_connection_id │                         │
+│  │ fee_type         │         │ payload          │                         │
+│  │ fee_rate         │         │ status           │                         │
+│  └──────────────────┘         └──────────────────┘                         │
+│                                                                             │
+│  ┌──────────────────┐         ┌──────────────────┐                         │
+│  │   api_keys       │         │   audit_logs     │                         │
+│  ├──────────────────┤         ├──────────────────┤                         │
+│  │ key_hash         │         │ action           │                         │
+│  │ scopes           │         │ entity_type      │                         │
+│  │ status           │         │ old_values       │                         │
+│  └──────────────────┘         │ new_values       │                         │
+│                               └──────────────────┘                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 8. 인덱스 전략
+## 8. 핵심 아키텍처 패턴
 
-### 8.1 인덱스 유형별 용도
+### 8.1 Zero-Sum 원장 (복식부기)
 
-| 인덱스 유형 | 용도 | 적용 컬럼 |
-|------------|------|----------|
-| B-tree | 일반 조회, 범위 검색 | id, created_at, status |
-| GiST | ltree 계층 쿼리 | path, org_path, merchant_path |
-| Hash | 동등 비교 (대량) | uuid, pg_tid |
-| Partial | 조건부 인덱스 | status = 'ACTIVE' 조건 |
-
-### 8.2 주요 쿼리별 인덱스
-
-| 쿼리 패턴 | 인덱스 |
-|----------|--------|
-| 하위 조직 조회 | `idx_org_path_gist` (GiST on path) |
-| 가맹점 PG 매핑 조회 | `idx_pg_mapping_lookup` (Partial) |
-| 거래 내역 조회 | `idx_txn_merchant` + Partition Pruning |
-| 정산 집계 | `idx_stl_entity_path` (GiST) |
-
----
-
-## 9. 마이그레이션 전략
-
-### 9.1 Flyway 설정
+모든 정산은 `transaction_events` 기준으로 생성되며, 다음 원칙을 준수합니다:
 
 ```
-flyway/
-├── public/                    # 공통 스키마
-│   ├── V1__create_tenants.sql
-│   ├── V2__create_pg_connections.sql
-│   └── V3__create_master_data.sql
-│
-└── tenant/                    # 테넌트 스키마 (템플릿)
-    ├── V1__create_organizations.sql
-    ├── V2__create_users.sql
-    ├── V3__create_businesses.sql           # 사업자
-    ├── V4__create_fee_policies.sql         # 수수료 정책
-    ├── V5__create_merchants.sql
-    ├── V6__create_merchant_pg_mappings.sql
-    ├── V7__create_transactions.sql
-    ├── V8__create_transaction_events.sql   # 이벤트 이력
-    ├── V9__create_settlements.sql          # 이벤트 기준 정산
-    ├── V10__create_audit_logs.sql
-    └── V15__create_contacts.sql            # 담당자 정보
+|이벤트 금액| = SUM(정산 amount)
 ```
 
-### 9.2 테넌트 마이그레이션 실행
+- **승인 (APPROVAL)**: 모든 entity에 CREDIT (+)
+- **취소 (CANCEL/PARTIAL_CANCEL)**: 모든 entity에 DEBIT (-)
 
-```java
-@Service
-public class TenantMigrationService {
+### 8.2 ltree 계층 구조
 
-    public void migrateAllTenants() {
-        List<Tenant> tenants = tenantRepository.findAll();
+5단계 조직 계층을 ltree로 관리합니다:
 
-        for (Tenant tenant : tenants) {
-            Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .schemas(tenant.getSchemaName())
-                .locations("classpath:flyway/tenant")
-                .load();
-
-            flyway.migrate();
-        }
-    }
-}
 ```
+DISTRIBUTOR (Level 1) → AGENCY (Level 2) → DEALER (Level 3) → SELLER (Level 4) → VENDOR (Level 5)
+
+경로 예시: dist_001.agcy_001.deal_001.sell_001.vend_001
+```
+
+### 8.3 하이브리드 이벤트 소싱
+
+- `transactions`: 현재 상태 (빠른 조회)
+- `transaction_events`: 모든 이벤트 이력 (불변, 일별 파티셔닝)
+- `settlements`: 이벤트별 복식부기 정산
 
 ---
 
@@ -1358,7 +1153,4 @@ public class TenantMigrationService {
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
 | v1.0 | 2026-01-28 | 초안 작성 |
-| v2.0 | 2026-01-28 | 하이브리드 이벤트 소싱 방식 적용 - transactions(현재상태) + transaction_events(이력) 분리 |
-| v3.0 | 2026-01-29 | KORPAY 연동 필드 추가 (GID/VID 제외), MID-단말기 1:1 매핑 반영 |
-| v4.0 | 2026-01-29 | 사업자-가맹점 분리 (businesses 테이블 추가), 수수료 정책 분리 (fee_policies 테이블 추가), merchants 테이블에서 business_id/fee_policy_id FK 참조로 변경 |
-| v5.0 | 2026-02-01 | 담당자 정보 분리 (contacts 테이블 추가), 사업자/가맹점 공용 담당자 관리, 역할별(주담당자/부담당자/정산담당/기술담당) 분류 |
+| v2.0 | 2026-02-05 | 실제 마이그레이션 기준 전면 재작성 |
