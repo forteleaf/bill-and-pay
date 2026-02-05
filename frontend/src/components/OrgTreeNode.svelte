@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { OrgTree } from '../types/api';
   import { Badge } from '$lib/components/ui/badge';
   import OrgTreeNode from './OrgTreeNode.svelte';
@@ -18,7 +19,7 @@
   }: Props = $props();
   
   // Intentionally capture initial level value for default expansion state
-  const defaultExpanded = level < 2;
+  const defaultExpanded = untrack(() => level < 2);
   let expanded = $state(defaultExpanded);
   
   const orgTypeIcons: Record<string, string> = {
