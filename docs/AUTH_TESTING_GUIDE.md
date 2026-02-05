@@ -37,7 +37,7 @@
 
 ```bash
 # 데이터베이스 시작
-finch compose up -d postgres
+docker compose up -d postgres
 
 # 백엔드 시작
 ./gradlew bootRun

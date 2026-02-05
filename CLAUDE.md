@@ -362,7 +362,7 @@ $effect(() => {
 
 ### DATABASE
 
-- finch 로 설치
+- docker 로 설치
 - container name: postgres-postgres-1
 - postgres 18
 - host: localhost
@@ -448,7 +448,7 @@ $effect(() => {
   - contactApi.ts - Contact API 클라이언트
   - MerchantList에 담당자/연락처 컬럼 추가
 
-### 인프라 (Finch/Docker)
+### 인프라 (Docker)
 - ✅ PostgreSQL 18 + ltree 확장
 - ✅ Spring Boot 멀티스테이지 빌드
 - ✅ Svelte Vite 개발 서버
@@ -468,7 +468,7 @@ $effect(() => {
 
 ```bash
 cp .env.example .env
-finch compose up -d
+docker compose up -d
 
 # 접속
 # Frontend: http://localhost:5173
@@ -479,7 +479,7 @@ finch compose up -d
 ### 운영 환경 (Nginx Reverse Proxy)
 
 ```bash
-finch compose -f compose.prod.yaml up -d
+docker compose -f compose.prod.yaml up -d
 
 # 접속 (단일 포트)
 # All requests: http://localhost
@@ -489,6 +489,6 @@ finch compose -f compose.prod.yaml up -d
 ```
 
 상세 내용은 다음 문서 참조:
-- [DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) - Docker/Finch 실행 가이드
+- [DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) - Docker 실행 가이드
 - [API_INTEGRATION_GUIDE.md](docs/API_INTEGRATION_GUIDE.md) - API 연동 가이드
 - [AUTH_TESTING_GUIDE.md](docs/AUTH_TESTING_GUIDE.md) - JWT 인증 테스트 가이드

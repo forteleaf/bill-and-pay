@@ -200,16 +200,16 @@ if (response.success && response.data) {
 
 ## 로컬 테스트 방법
 
-### 1. Finch로 전체 스택 실행
+### 1. Docker로 전체 스택 실행
 
 ```bash
 # 프로젝트 루트에서
 cp .env.example .env
-finch compose up -d
+docker compose up -d
 
 # 로그 확인
-finch compose logs -f backend
-finch compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### 2. 서비스 접속
@@ -232,7 +232,7 @@ export const tenantStore = {
 
 ```bash
 # PostgreSQL 접속
-finch compose exec postgres psql -U postgres -d billpay
+docker compose exec postgres psql -U postgres -d billpay
 
 # 테넌트 스키마 확인
 \dn

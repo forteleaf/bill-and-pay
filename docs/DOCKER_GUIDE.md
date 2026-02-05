@@ -1,12 +1,12 @@
-# Bill&Pay - Finch/Docker 실행 가이드
+# Bill&Pay - Docker 실행 가이드
 
 ## 사전 준비
 
-### Finch 설치
+### Docker 설치
 ```bash
-brew install finch
-finch vm init
-finch vm start
+brew install orbstack
+docker vm init
+docker vm start
 ```
 
 ### 환경 설정
@@ -35,25 +35,25 @@ VITE_API_BASE_URL=http://localhost:8080/api
 
 ### 1. 전체 스택 실행
 ```bash
-finch compose up -d
+docker compose up -d
 ```
 
 ### 2. 개별 서비스 실행
 ```bash
-finch compose up -d postgres
-finch compose up -d backend
-finch compose up -d frontend
+docker compose up -d postgres
+docker compose up -d backend
+docker compose up -d frontend
 ```
 
 ### 3. 로그 확인
 ```bash
-finch compose logs -f
-finch compose logs -f backend
+docker compose logs -f
+docker compose logs -f backend
 ```
 
 ### 4. 서비스 상태 확인
 ```bash
-finch compose ps
+docker compose ps
 ```
 
 ## 접속 정보
@@ -74,19 +74,19 @@ finch compose ps
 
 ### 수동 마이그레이션 (필요시)
 ```bash
-finch compose exec backend ./gradlew flywayMigrate -Pflyway.schemas=tenant_002
+docker compose exec backend ./gradlew flywayMigrate -Pflyway.schemas=tenant_002
 ```
 
 ## 서비스 종료
 
 ### 전체 종료
 ```bash
-finch compose down
+docker compose down
 ```
 
 ### 데이터 볼륨 포함 삭제
 ```bash
-finch compose down -v
+docker compose down -v
 ```
 
 ## 개발 모드
@@ -97,21 +97,21 @@ finch compose down -v
 ### 백엔드 재빌드
 코드 변경 후:
 ```bash
-finch compose up -d --build backend
+docker compose up -d --build backend
 ```
 
 ## 트러블슈팅
 
 ### PostgreSQL 연결 실패
 ```bash
-finch compose exec postgres pg_isready -U postgres
-finch compose logs postgres
+docker compose exec postgres pg_isready -U postgres
+docker compose logs postgres
 ```
 
 ### 백엔드 실행 실패
 ```bash
-finch compose logs backend
-finch compose exec backend java -version
+docker compose logs backend
+docker compose exec backend java -version
 ```
 
 ### 포트 충돌
@@ -119,15 +119,15 @@ finch compose exec backend java -version
 
 ### 데이터 초기화
 ```bash
-finch compose down -v
-finch volume prune
-finch compose up -d
+docker compose down -v
+docker volume prune
+docker compose up -d
 ```
 
 ## 빌드 캐시 정리
 ```bash
-finch builder prune
-finch image prune -a
+docker builder prune
+docker image prune -a
 ```
 
 ## 아키텍처
@@ -147,7 +147,7 @@ finch image prune -a
 
 ### 테넌트 스키마 생성
 ```bash
-finch compose exec postgres psql -U postgres -d billpay -c "CREATE SCHEMA IF NOT EXISTS tenant_002;"
+docker compose exec postgres psql -U postgres -d billpay -c "CREATE SCHEMA IF NOT EXISTS tenant_002;"
 ```
 
 ### API 요청 (X-Tenant-ID 헤더)
@@ -175,10 +175,10 @@ curl http://localhost:8080/actuator/health
 
 ### 백업
 ```bash
-finch compose exec postgres pg_dump -U postgres billpay > backup.sql
+docker compose exec postgres pg_dump -U postgres billpay > backup.sql
 ```
 
 ### 복원
 ```bash
-cat backup.sql | finch compose exec -T postgres psql -U postgres billpay
+cat backup.sql | docker compose exec -T postgres psql -U postgres billpay
 ```

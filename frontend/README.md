@@ -87,9 +87,9 @@ npm run build
 
 앱 시작 시 자동으로 마이그레이션됩니다:
 
-# Finch/Docker로 실행
+# Docker로 실행
 
-finch compose up -d
+docker compose up -d
 
 # 또는 직접 실행
 

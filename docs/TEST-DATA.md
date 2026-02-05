@@ -17,7 +17,7 @@ src/main/resources/db/migration/tenant/V3__seed_test_data.sql
 사용 방법
 1. DB 초기화 후 앱 시작 (권장):
       # DB 리셋
-   finch exec postgres-postgres-1 psql -U postgres -d billpay -c "DROP SCHEMA tenant_001 CASCADE;"
+   docker exec postgres-postgres-1 psql -U postgres -d billpay -c "DROP SCHEMA tenant_001 CASCADE;"
    
    # 앱 시작 (자동 마이그레이션)
    ./gradlew bootRun
