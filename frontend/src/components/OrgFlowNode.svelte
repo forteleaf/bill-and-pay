@@ -9,6 +9,7 @@
     path: string;
     level: number;
     hasChildren: boolean;
+    merchantCount?: number;
     layoutDirection?: "vertical" | "horizontal";
     onAddChild?: (nodeId: string) => void;
     onDoubleClick?: (nodeId: string) => void;
@@ -174,25 +175,35 @@
         >
           {ORG_TYPE_LABELS[data.orgType]}
         </span>
-        {#if data.status === "ACTIVE"}
-          <Badge
-            variant="default"
-            class="text-xs px-1.5 py-0 h-5 bg-emerald-500 hover:bg-emerald-500"
-          >
-            {STATUS_LABELS[data.status]}
-          </Badge>
-        {:else if data.status === "SUSPENDED"}
-          <Badge
-            variant="secondary"
-            class="text-xs px-1.5 py-0 h-5 bg-amber-500 text-white hover:bg-amber-500"
-          >
-            {STATUS_LABELS[data.status]}
-          </Badge>
-        {:else}
-          <Badge variant="destructive" class="text-xs px-1.5 py-0 h-5">
-            {STATUS_LABELS[data.status]}
-          </Badge>
-        {/if}
+        <div class="flex items-center gap-1.5">
+          {#if data.merchantCount !== undefined && data.merchantCount > 0}
+            <Badge variant="outline" class="text-xs px-1.5 py-0 h-5 gap-0.5">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              {data.merchantCount}
+            </Badge>
+          {/if}
+          {#if data.status === "ACTIVE"}
+            <Badge
+              variant="default"
+              class="text-xs px-1.5 py-0 h-5 bg-emerald-500 hover:bg-emerald-500"
+            >
+              {STATUS_LABELS[data.status]}
+            </Badge>
+          {:else if data.status === "SUSPENDED"}
+            <Badge
+              variant="secondary"
+              class="text-xs px-1.5 py-0 h-5 bg-amber-500 text-white hover:bg-amber-500"
+            >
+              {STATUS_LABELS[data.status]}
+            </Badge>
+          {:else}
+            <Badge variant="destructive" class="text-xs px-1.5 py-0 h-5">
+              {STATUS_LABELS[data.status]}
+            </Badge>
+          {/if}
+        </div>
       </div>
     </div>
   </div>

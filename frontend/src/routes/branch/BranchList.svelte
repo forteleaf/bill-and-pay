@@ -307,6 +307,7 @@
           <TableHead class="min-w-[180px] font-bold text-xs uppercase tracking-wide">영업점명</TableHead>
           <TableHead class="w-[100px] text-center font-bold text-xs uppercase tracking-wide">유형</TableHead>
           <TableHead class="w-[100px] font-bold text-xs uppercase tracking-wide">대표자</TableHead>
+          <TableHead class="w-[80px] text-center font-bold text-xs uppercase tracking-wide">가맹점</TableHead>
           <TableHead class="w-[90px] text-center font-bold text-xs uppercase tracking-wide">상태</TableHead>
           <TableHead class="w-[110px] font-bold text-xs uppercase tracking-wide">등록일</TableHead>
         </TableRow>
@@ -320,6 +321,7 @@
               <TableCell><div class="h-4 w-40 bg-muted animate-pulse rounded"></div></TableCell>
               <TableCell class="text-center"><div class="h-4 w-16 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
               <TableCell><div class="h-4 w-14 bg-muted animate-pulse rounded"></div></TableCell>
+              <TableCell class="text-center"><div class="h-4 w-8 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
               <TableCell class="text-center"><div class="h-4 w-12 bg-muted animate-pulse rounded mx-auto"></div></TableCell>
               <TableCell><div class="h-4 w-20 bg-muted animate-pulse rounded"></div></TableCell>
             </TableRow>
@@ -327,7 +329,7 @@
         {:else if branches.length === 0}
           <!-- Empty State -->
           <TableRow>
-            <TableCell colspan={6} class="py-16 text-center">
+            <TableCell colspan={7} class="py-16 text-center">
               <div class="flex flex-col items-center gap-3">
                 <svg class="w-16 h-16 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -360,6 +362,9 @@
               </TableCell>
               <TableCell>
                 {branch.businessEntity?.representativeName || '-'}
+              </TableCell>
+              <TableCell class="text-center">
+                <span class="font-medium text-muted-foreground">{branch.merchantCount ?? 0}</span>
               </TableCell>
               <TableCell class="text-center">
                 <Badge variant={getStatusVariant(branch.status)}>

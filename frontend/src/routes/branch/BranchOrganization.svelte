@@ -251,6 +251,7 @@
           path: org.path,
           level: org.level,
           hasChildren,
+          merchantCount: org.merchantCount,
           layoutDirection,
           onAddChild: handleAddChild,
           onDoubleClick: handleNodeDoubleClick,

@@ -51,6 +51,7 @@ export interface Organization {
   email?: string;
   phone?: string;
   address?: string;
+  merchantCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }

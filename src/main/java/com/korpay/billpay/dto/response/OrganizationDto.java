@@ -32,6 +32,7 @@ public class OrganizationDto {
     private String address;
     private OrganizationStatus status;
     private Map<String, Object> config;
+    private Long merchantCount;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     
@@ -51,8 +52,15 @@ public class OrganizationDto {
                 .address(organization.getAddress())
                 .status(organization.getStatus())
                 .config(organization.getConfig())
+                .merchantCount(0L)
                 .createdAt(organization.getCreatedAt())
                 .updatedAt(organization.getUpdatedAt())
                 .build();
+    }
+    
+    public static OrganizationDto from(Organization organization, long merchantCount) {
+        OrganizationDto dto = from(organization);
+        dto.setMerchantCount(merchantCount);
+        return dto;
     }
 }

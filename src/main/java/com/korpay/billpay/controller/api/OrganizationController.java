@@ -7,6 +7,7 @@ import com.korpay.billpay.dto.request.OrganizationUpdateRequest;
 import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.dto.response.OrganizationDto;
 import com.korpay.billpay.dto.response.PagedResponse;
+import com.korpay.billpay.repository.MerchantRepository;
 import com.korpay.billpay.service.auth.UserContextHolder;
 import com.korpay.billpay.service.organization.OrganizationService;
 import jakarta.validation.Valid;
@@ -22,7 +23,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,6 +40,7 @@ import com.korpay.billpay.domain.enums.OrganizationType;
 public class OrganizationController {
 
     private final OrganizationService organizationService;
+    private final MerchantRepository merchantRepository;
     private final UserContextHolder userContextHolder;
 
     @GetMapping
@@ -61,8 +65,10 @@ public class OrganizationController {
         Page<Organization> organizationsPage = organizationService.findAccessibleOrganizations(
                 currentUser, pageable, type, status, search, startDate, endDate);
         
+        Map<String, Long> merchantCounts = calculateMerchantCounts(organizationsPage.getContent());
+        
         List<OrganizationDto> dtos = organizationsPage.getContent().stream()
-                .map(OrganizationDto::from)
+                .map(org -> OrganizationDto.from(org, merchantCounts.getOrDefault(org.getPath(), 0L)))
                 .collect(Collectors.toList());
         
         PagedResponse<OrganizationDto> pagedResponse = PagedResponse.of(organizationsPage, dtos);
@@ -95,11 +101,30 @@ public class OrganizationController {
         User currentUser = userContextHolder.getCurrentUser();
         
         List<Organization> descendants = organizationService.findDescendants(id, currentUser);
+        Map<String, Long> merchantCounts = calculateMerchantCounts(descendants);
+        
         List<OrganizationDto> dtos = descendants.stream()
-                .map(OrganizationDto::from)
+                .map(org -> OrganizationDto.from(org, merchantCounts.getOrDefault(org.getPath(), 0L)))
                 .collect(Collectors.toList());
         
         return ResponseEntity.ok(ApiResponse.success(dtos));
+    }
+    
+    private Map<String, Long> calculateMerchantCounts(List<Organization> organizations) {
+        List<Object[]> rawCounts = merchantRepository.countMerchantsByOrgPath();
+        Map<String, Long> directCounts = new HashMap<>();
+        for (Object[] row : rawCounts) {
+            String path = (String) row[0];
+            Long count = ((Number) row[1]).longValue();
+            directCounts.put(path, count);
+        }
+        
+        Map<String, Long> result = new HashMap<>();
+        for (Organization org : organizations) {
+            result.put(org.getPath(), directCounts.getOrDefault(org.getPath(), 0L));
+        }
+        
+        return result;
     }
 
     @PostMapping
