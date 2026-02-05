@@ -78,3 +78,16 @@ VALUES (
   '{"timeout_ms": 30000, "retry_count": 3, "webhook_secret": "SAMPLE_WEBHOOK_SECRET"}'::jsonb,
   'ACTIVE'
 );
+
+-- =============================================================================
+-- Seed: Test Users (인증용 - 비밀번호: password123)
+-- =============================================================================
+-- tenant_001.users와 동기화 필요
+INSERT INTO public.users (id, username, password, tenant_id, status, created_at, updated_at) VALUES
+('01960000-0000-7000-0002-000000000001', 'admin', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('01960000-0000-7000-0002-000000000002', 'dist_admin', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('01960000-0000-7000-0002-000000000003', 'seoul_admin', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('01960000-0000-7000-0002-000000000004', 'busan_admin', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('01960000-0000-7000-0002-000000000005', 'dealer1', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('01960000-0000-7000-0002-000000000006', 'seller1', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('01960000-0000-7000-0002-000000000007', 'merchant1', '$2a$10$ECihIpHMvuzkZTrOpqdKC.J9A3.5U.QpIw2RTVKQRgEroZW5nw6su', '001', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

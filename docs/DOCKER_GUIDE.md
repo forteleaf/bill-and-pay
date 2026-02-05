@@ -72,6 +72,15 @@ docker compose ps
 3. `billpay` 데이터베이스 생성
 4. Flyway 마이그레이션 실행 (public + tenant_001 스키마)
 
+### 초기 데이터베이스 설절
+
+```sh
+# billpay 데이터베이스 설치
+docker exec postgres-18 psql -U postgres -c "CREATE DATABASE billpay;"
+# ltree 확장설치
+docker exec postgres-18 psql -U postgres -d billpay -c "CREATE EXTENSION IF NOT EXISTS ltree;"
+```
+
 ### 수동 마이그레이션 (필요시)
 ```bash
 docker compose exec backend ./gradlew flywayMigrate -Pflyway.schemas=tenant_002
