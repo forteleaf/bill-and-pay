@@ -21,6 +21,8 @@ out/
 bin/
 
 .env
+.env.production
+.env.local
 
 node_modules/
 dist/
