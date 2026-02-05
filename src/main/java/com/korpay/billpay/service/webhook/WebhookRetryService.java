@@ -1,6 +1,8 @@
 package com.korpay.billpay.service.webhook;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.korpay.billpay.config.tenant.TenantContextHolder;
+import com.korpay.billpay.config.tenant.TenantService;
 import com.korpay.billpay.domain.entity.WebhookLog;
 import com.korpay.billpay.domain.enums.WebhookLogStatus;
 import com.korpay.billpay.repository.WebhookLogRepository;
@@ -22,6 +24,7 @@ public class WebhookRetryService {
 
     private final WebhookLogRepository webhookLogRepository;
     private final WebhookProcessingService webhookProcessingService;
+    private final TenantService tenantService;
     private final ObjectMapper objectMapper;
 
     @Value("${webhook.retry.max-attempts:5}")
@@ -31,12 +34,20 @@ public class WebhookRetryService {
     private boolean retryEnabled;
 
     @Scheduled(fixedDelayString = "${webhook.retry.interval-ms:60000}")
-    @Transactional
     public void processFailedWebhooks() {
         if (!retryEnabled) {
             return;
         }
 
+        List<String> activeTenants = tenantService.getAllActiveTenants();
+        
+        for (String tenantId : activeTenants) {
+            TenantContextHolder.runInTenant(tenantId, () -> processFailedWebhooksForTenant(tenantId));
+        }
+    }
+    
+    @Transactional
+    protected void processFailedWebhooksForTenant(String tenantId) {
         List<WebhookLog> failedWebhooks = webhookLogRepository.findRetryableWebhooks(
                 WebhookLogStatus.FAILED,
                 maxRetryAttempts
@@ -46,7 +57,7 @@ public class WebhookRetryService {
             return;
         }
 
-        log.info("Found {} failed webhooks to retry", failedWebhooks.size());
+        log.info("Found {} failed webhooks to retry for tenant {}", failedWebhooks.size(), tenantId);
 
         for (WebhookLog webhookLog : failedWebhooks) {
             retryWebhook(webhookLog);

@@ -94,12 +94,19 @@ public class FeeCalculationService {
         long masterResidual = eventAbsAmount - totalAllocated;
 
         if (masterResidual > 0) {
+            Organization distributor = ancestors.stream()
+                    .filter(org -> org.getOrgType() == OrganizationType.DISTRIBUTOR)
+                    .findFirst()
+                    .orElse(null);
+
             Settlement masterSettlement = buildMasterSettlement(
-                    event, entryType, masterResidual, previousFeeRate);
+                    event, distributor, entryType, masterResidual, previousFeeRate);
             settlements.add(masterSettlement);
 
             breakdowns.add(FeeBreakdown.builder()
+                    .entityId(distributor != null ? distributor.getId() : null)
                     .entityType(OrganizationType.DISTRIBUTOR)
+                    .entityPath(distributor != null ? distributor.getPath() : null)
                     .marginRate(previousFeeRate)
                     .marginAmount(masterResidual)
                     .settlementAmount(masterResidual)
@@ -137,7 +144,7 @@ public class FeeCalculationService {
                 .entityPath(merchant.getOrgPath())
                 .entryType(entryType)
                 .amount(settlementAmount)
-                .feeAmount(feeAmount)
+                .feeAmount(0L)
                 .netAmount(settlementAmount)
                 .currency(event.getCurrency())
                 .feeRate(feeRate)
@@ -176,6 +183,7 @@ public class FeeCalculationService {
 
     private Settlement buildMasterSettlement(
             TransactionEvent event,
+            Organization distributor,
             EntryType entryType,
             long residualAmount,
             BigDecimal feeRate) {
@@ -185,9 +193,9 @@ public class FeeCalculationService {
                 .transactionId(event.getTransactionId())
                 .merchantId(event.getMerchantId())
                 .orgPath(event.getOrgPath())
-                .entityId(null)
+                .entityId(distributor != null ? distributor.getId() : null)
                 .entityType(OrganizationType.DISTRIBUTOR)
-                .entityPath("master")
+                .entityPath(distributor != null ? distributor.getPath() : "master")
                 .entryType(entryType)
                 .amount(residualAmount)
                 .feeAmount(0L)

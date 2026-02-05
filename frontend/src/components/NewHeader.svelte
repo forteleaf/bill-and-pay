@@ -55,6 +55,7 @@
   <div class="flex items-center justify-between px-6 h-[60px] max-w-full">
     <div class="flex items-center gap-2">
       <Sidebar.Trigger class="text-slate-600 hover:bg-slate-100" />
+
       <button
         class="flex items-center gap-2 bg-transparent border-none cursor-pointer py-2 px-3 rounded-lg transition-all duration-200 hover:bg-blue-500/[0.08] active:scale-[0.98]"
         onclick={handleLogoClick}

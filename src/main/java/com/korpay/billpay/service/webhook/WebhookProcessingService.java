@@ -17,7 +17,7 @@ import com.korpay.billpay.service.webhook.adapter.PgWebhookAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -34,10 +34,10 @@ public class WebhookProcessingService {
     private final TransactionService transactionService;
     private final WebhookLoggingService webhookLoggingService;
     private final SettlementService settlementService;
+    private final TransactionTemplate transactionTemplate;
 
     private Map<String, PgWebhookAdapter> adapterMap;
 
-    @Transactional
     public WebhookResponse processWebhook(
             String pgCode,
             Long pgConnectionId,
@@ -86,28 +86,27 @@ public class WebhookProcessingService {
                 return WebhookResponse.success("Unmapped transaction saved");
             }
 
-            Transaction transaction = transactionService.createOrUpdateFromWebhook(
-                    transactionDto, merchantPgMapping);
+            final MerchantPgMapping finalMapping = merchantPgMapping;
+            
+            record TransactionResult(Transaction transaction, TransactionEvent event) {}
+            
+            TransactionResult result = transactionTemplate.execute(status -> {
+                Transaction transaction = transactionService.createOrUpdateFromWebhook(
+                        transactionDto, finalMapping);
 
-            TransactionEvent event = transactionService.createTransactionEvent(transaction, transactionDto);
+                TransactionEvent event = transactionService.createTransactionEvent(transaction, transactionDto);
 
-            try {
-                settlementService.processTransactionEventWithMerchant(
-                        event,
-                        merchantPgMapping.getMerchant(),
-                        transactionDto.getPaymentMethod()
-                );
-                log.info("Settlement created for transaction event: {}", event.getId());
-            } catch (Exception e) {
-                log.error("Failed to create settlement for event {}: {}", event.getId(), e.getMessage());
-            }
+                settlementService.processTransactionEvent(event);
+                
+                return new TransactionResult(transaction, event);
+            });
 
-            webhookLoggingService.updateToProcessed(webhookLog.getId(), transaction.getId(), event.getId());
+            webhookLoggingService.updateToProcessed(webhookLog.getId(), result.transaction().getId(), result.event().getId());
 
             log.info("Successfully processed webhook. Transaction ID: {}, Event Sequence: {}",
-                    transaction.getTransactionId(), event.getEventSequence());
+                    result.transaction().getTransactionId(), result.event().getEventSequence());
 
-            return WebhookResponse.success(transaction.getTransactionId());
+            return WebhookResponse.success(result.transaction().getTransactionId());
 
         } catch (DuplicateTransactionException e) {
             log.info("Duplicate transaction detected (idempotent): {}", e.getPgTid());

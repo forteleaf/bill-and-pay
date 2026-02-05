@@ -81,13 +81,38 @@ public class KorpayWebhookAdapter implements PgWebhookAdapter {
 
     @Override
     public boolean verifySignature(String rawBody, Map<String, String> headers, String secret) {
+        // Parse connCd from rawBody to determine if it's a terminal transaction
+        String connCd = extractConnCd(rawBody);
+        
+        // Terminal transactions (connCd=0003) don't have signature - skip verification
+        if ("0003".equals(connCd)) {
+            log.debug("Skipping signature verification for terminal transaction (connCd=0003)");
+            return true;
+        }
+        
+        // Online transactions (connCd=0005) require signature verification
         try {
             signatureVerifier.verifyKorpaySignature(rawBody, headers, secret);
             return true;
         } catch (Exception e) {
-            log.warn("KORPAY signature verification failed", e);
+            log.warn("KORPAY signature verification failed for online transaction", e);
             return false;
         }
+    }
+    
+    private String extractConnCd(String rawBody) {
+        try {
+            String[] pairs = rawBody.split("&");
+            for (String pair : pairs) {
+                String[] keyValue = pair.split("=", 2);
+                if (keyValue.length == 2 && "connCd".equals(keyValue[0])) {
+                    return java.net.URLDecoder.decode(keyValue[1], "UTF-8");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract connCd from body", e);
+        }
+        return null;
     }
 
     @Override

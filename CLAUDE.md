@@ -400,6 +400,14 @@ $effect(() => {
   - TerminalController (REST API 8개 엔드포인트)
   - TerminalService (CRUD, 필터링, 가맹점별 조회)
   - V21 마이그레이션 (terminals 테이블)
+- ✅ **수수료 설정 및 정산 엔진** (Fee Configuration & Settlement Engine)
+  - FeeConfiguration 엔티티 (fee_configurations 테이블 매핑)
+  - FeeConfigurationRepository (활성 수수료 조회)
+  - FeeConfigResolver (fee_configurations 테이블 기반 수수료율 조회)
+  - FeeCalculationService (계층별 마진 계산, Zero-Sum 준수)
+  - SettlementCreationService (이벤트 기반 정산 생성)
+  - WebhookProcessingService에서 Settlement 자동 생성 연동
+  - Zero-Sum 검증 완료 (이벤트 금액 = Settlement 합계)
 
 ### 프론트엔드 (Svelte 5)
 - ✅ Runes API ($state, $derived, $effect)

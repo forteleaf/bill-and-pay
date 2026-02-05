@@ -14,6 +14,7 @@ import com.korpay.billpay.service.webhook.WebhookProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,15 +32,16 @@ public class WebhookController {
     private final TenantService tenantService;
     private final PgConnectionRepository pgConnectionRepository;
 
-    @PostMapping("/{tenantId}/{pgCode}")
+    @PostMapping(value = "/{tenantId}/{pgCode}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<WebhookResponse> receiveWebhookWithTenant(
             @PathVariable String tenantId,
             @PathVariable String pgCode,
             @RequestParam Long pgConnectionId,
             @RequestParam String webhookSecret,
             @RequestHeader Map<String, String> headers,
-            @RequestBody String rawBody) {
+            @RequestParam Map<String, String> formParams) {
 
+        String rawBody = buildFormEncodedBody(formParams);
         log.info("Received tenant-aware webhook: tenant={}, pgCode={}, connectionId={}", 
                 tenantId, pgCode, pgConnectionId);
 
@@ -63,14 +65,15 @@ public class WebhookController {
         );
     }
 
-    @PostMapping("/{pgCode}")
+    @PostMapping(value = "/{pgCode}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<WebhookResponse> receiveWebhookLegacy(
             @PathVariable String pgCode,
             @RequestParam Long pgConnectionId,
             @RequestParam String webhookSecret,
             @RequestHeader Map<String, String> headers,
-            @RequestBody String rawBody) {
+            @RequestParam Map<String, String> formParams) {
 
+        String rawBody = buildFormEncodedBody(formParams);
         log.warn("DEPRECATED: Using legacy webhook endpoint without tenant ID. " +
                 "Please update to /webhook/{tenantId}/{pgCode}. pgCode={}, connectionId={}", 
                 pgCode, pgConnectionId);
@@ -129,5 +132,25 @@ public class WebhookController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(WebhookResponse.error("Internal server error"));
         }
+    }
+
+    private String buildFormEncodedBody(Map<String, String> params) {
+        StringBuilder sb = new StringBuilder();
+        params.forEach((key, value) -> {
+            if ("pgConnectionId".equals(key) || "webhookSecret".equals(key)) {
+                return;
+            }
+            if (sb.length() > 0) {
+                sb.append("&");
+            }
+            try {
+                sb.append(java.net.URLEncoder.encode(key, "UTF-8"))
+                  .append("=")
+                  .append(java.net.URLEncoder.encode(value != null ? value : "", "UTF-8"));
+            } catch (java.io.UnsupportedEncodingException e) {
+                sb.append(key).append("=").append(value != null ? value : "");
+            }
+        });
+        return sb.toString();
     }
 }

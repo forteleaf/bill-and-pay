@@ -918,6 +918,89 @@ GROUP BY DATE(e.event_at), s.entity_type, s.entity_id;
 
 ---
 
+## 12. 구현 현황
+
+### 12.1 수수료 조회 (FeeConfigResolver)
+
+수수료율은 `fee_configurations` 테이블에서 조회합니다:
+
+```java
+@Service
+public class FeeConfigResolver {
+    private final FeeConfigurationRepository feeConfigurationRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+
+    public BigDecimal resolveMerchantFeeRate(Merchant merchant, String paymentMethodCode) {
+        Organization vendorOrg = merchant.getOrganization();
+        PaymentMethod paymentMethod = paymentMethodRepository.findByMethodCode(paymentMethodCode);
+        
+        List<FeeConfiguration> configs = feeConfigurationRepository.findActiveByEntityAndPaymentMethod(
+            vendorOrg.getId(),
+            vendorOrg.getOrgType(),
+            paymentMethod.getId(),
+            FeeConfigStatus.ACTIVE,
+            OffsetDateTime.now()
+        );
+        
+        return configs.getFirst().getFeeRate();
+    }
+}
+```
+
+### 12.2 정산 생성 흐름
+
+```
+[Webhook 수신]
+     │
+     ▼
+[WebhookProcessingService]
+     │ processWebhook()
+     ▼
+[TransactionService]
+     │ createOrUpdateFromWebhook()
+     │ createTransactionEvent()
+     ▼
+[SettlementService]
+     │ processTransactionEvent()
+     ▼
+[SettlementCreationService]
+     │ createSettlements()
+     ▼
+[FeeCalculationService]
+     │ calculateFees()
+     │  ├─ resolveMerchantFeeRate() → 가맹점 정산금
+     │  ├─ resolveOrganizationFeeRate() × N → 계층별 마진
+     │  └─ buildMasterSettlement() → DISTRIBUTOR 잔여금
+     ▼
+[ZeroSumValidator]
+     │ validate() → 이벤트 금액 = SUM(정산금)
+     ▼
+[SettlementRepository.saveAll()]
+```
+
+### 12.3 Zero-Sum 검증 예시
+
+```
+이벤트: APPROVAL +50,000원
+
+┌─────────────┬──────────────────────────────────────────────┬────────┐
+│ Entity Type │ Entity Path                                   │ Amount │
+├─────────────┼──────────────────────────────────────────────┼────────┤
+│ VENDOR      │ dist_001.agcy_001.deal_001.sell_001.vend_001 │ 48,250 │
+│ SELLER      │ dist_001.agcy_001.deal_001.sell_001          │    150 │
+│ DEALER      │ dist_001.agcy_001.deal_001                   │    100 │
+│ AGENCY      │ dist_001.agcy_001                            │    100 │
+│ DISTRIBUTOR │ dist_001 (margin)                            │    150 │
+│ DISTRIBUTOR │ dist_001 (master residual)                   │  1,250 │
+├─────────────┼──────────────────────────────────────────────┼────────┤
+│ 합계        │                                              │ 50,000 │
+└─────────────┴──────────────────────────────────────────────┴────────┘
+
+✅ Zero-Sum 검증 통과: 이벤트 금액(50,000) = Settlement 합계(50,000)
+```
+
+---
+
 ## 변경 이력
 
 | 버전 | 날짜 | 변경 내용 |
@@ -925,3 +1008,4 @@ GROUP BY DATE(e.event_at), s.entity_type, s.entity_id;
 | v1.0 | 2026-01-28 | 초안 작성 |
 | v2.0 | 2026-01-28 | 하이브리드 이벤트 소싱 방식으로 변경 |
 | v3.0 | 2026-02-05 | 실제 마이그레이션 기준 스키마 업데이트 (transactions, transaction_events, settlements) |
+| v3.1 | 2026-02-06 | 정산 엔진 구현 완료 (FeeConfigResolver, FeeCalculationService, Zero-Sum 검증) |

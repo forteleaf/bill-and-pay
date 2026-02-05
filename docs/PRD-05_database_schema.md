@@ -1154,3 +1154,4 @@ DISTRIBUTOR (Level 1) → AGENCY (Level 2) → DEALER (Level 3) → SELLER (Leve
 |------|------|----------|
 | v1.0 | 2026-01-28 | 초안 작성 |
 | v2.0 | 2026-02-05 | 실제 마이그레이션 기준 전면 재작성 |
+| v2.1 | 2026-02-06 | FeeConfiguration JPA 엔티티 구현 (fee_configurations 테이블 매핑) |

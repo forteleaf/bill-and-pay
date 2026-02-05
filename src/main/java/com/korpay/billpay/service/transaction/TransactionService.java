@@ -115,7 +115,7 @@ public class TransactionService {
                 .metadata(dto.getMetadata())
                 .build();
 
-        transaction = transactionRepository.save(transaction);
+        transaction = transactionRepository.saveAndFlush(transaction);
         log.info("Created new transaction: {}", transaction.getTransactionId());
 
         return transaction;
