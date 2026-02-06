@@ -149,7 +149,7 @@ Authorization: Bearer {access_token}
 
 | 메서드 | 경로 | 설명 | 연동 상태 |
 |--------|------|------|-----------|
-| POST | `/webhook/{pgCode}` | PG 웹훅 수신 | 🔧 백엔드만 |
+| POST | `/webhook/{tenantId}/{pgCode}` | PG 웹훅 수신 | 🔧 백엔드만 |
 
 ## 상세 명세
 

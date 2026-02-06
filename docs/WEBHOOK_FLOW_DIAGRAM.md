@@ -9,14 +9,14 @@
 │  Transaction Occurs → Generate Webhook → Sign with HMAC-SHA256              │
 └────────────────────────────────┬────────────────────────────────────────────┘
                                  │
-                                 │ POST /api/webhook/korpay
+                                 │ POST /api/webhook/tenant_001/KORPAY
                                  │ Content-Type: application/x-www-form-urlencoded
                                  │ X-Korpay-Signature: {hmac}
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           WebhookController                                  │
-│  POST /api/webhook/{pgCode}?pgConnectionId={uuid}&webhookSecret={secret}    │
+│  POST /api/webhook/{tenantId}/{pgCode}?pgConnectionId={uuid}&webhookSecret={secret}    │
 └────────────────────────────────┬────────────────────────────────────────────┘
                                  │
                                  │ 1. Extract raw body (for signature)
@@ -382,7 +382,7 @@ KorpayWebhookData (KORPAY-specific parsing)
 1. Database Setup
    ├─ Create pg_connections record
    │  └─ pg_code: KORPAY
-   │     webhook_path: /api/webhook/korpay
+   │     webhook_path: /api/webhook/tenant_001/KORPAY
    │     webhook_secret: {HMAC secret}
    │     status: ACTIVE
    │
@@ -403,7 +403,7 @@ KorpayWebhookData (KORPAY-specific parsing)
    │
    └─ KORPAY PG Configuration
       └─ Register webhook URL with KORPAY:
-         https://your-domain.com/api/webhook/korpay?pgConnectionId={uuid}&webhookSecret={secret}
+         https://your-domain.com/api/webhook/tenant_001/KORPAY?pgConnectionId={uuid}&webhookSecret={secret}
 
 3. Security Configuration
    ├─ HTTPS/TLS required in production

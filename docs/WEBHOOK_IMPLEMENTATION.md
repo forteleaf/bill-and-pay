@@ -92,7 +92,7 @@ Location: `com.korpay.billpay.service.webhook`
 Location: `com.korpay.billpay.controller`
 
 - **WebhookController**
-  - Endpoint: POST /api/webhook/{pgCode}
+  - Endpoint: POST /api/webhook/{tenantId}/{pgCode}
   - Required params:
     - pgConnectionId (UUID) - Identifies PG connection
     - webhookSecret (String) - HMAC secret for verification
@@ -200,7 +200,7 @@ spring:
 INSERT INTO pg_connections (
     pg_code, pg_name, webhook_path, webhook_secret, status
 ) VALUES (
-    'KORPAY', 'KORPAY', '/api/webhook/korpay', 'your-webhook-secret', 'ACTIVE'
+    'KORPAY', 'KORPAY', '/api/webhook/tenant_001/KORPAY', 'your-webhook-secret', 'ACTIVE'
 );
 ```
 
@@ -217,7 +217,7 @@ INSERT INTO merchant_pg_mappings (
 
 ### KORPAY Webhook Request
 ```bash
-curl -X POST 'http://localhost:8080/api/webhook/korpay?pgConnectionId=xxx&webhookSecret=yyy' \
+curl -X POST 'http://localhost:8080/api/webhook/tenant_001/KORPAY?pgConnectionId=xxx&webhookSecret=yyy' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -H 'X-Korpay-Signature: computed-hmac-sha256' \
   -d 'tid=ktest6111m01032304111003000874' \

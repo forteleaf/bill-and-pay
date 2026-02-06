@@ -80,7 +80,7 @@ INSERT INTO pg_connections (
 ) VALUES (
     'KORPAY', 
     'KORPAY Payment Gateway', 
-    '/api/webhook/korpay', 
+    '/api/webhook/tenant_001/KORPAY', 
     'YOUR_WEBHOOK_SECRET_HERE',
     'ACTIVE'
 ) ON CONFLICT (pg_code) DO NOTHING;
@@ -146,7 +146,7 @@ management:
 # (Your deployment process here)
 
 # 4. Smoke test on staging
-curl -X POST "http://staging.example.com/api/webhook/korpay?pgConnectionId=xxx&webhookSecret=yyy" \
+curl -X POST "http://staging.example.com/api/webhook/tenant_001/KORPAY?pgConnectionId=xxx&webhookSecret=yyy" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -H "X-Korpay-Signature: test-signature" \
   -d "tid=test123&mid=test&catId=test&amt=1000&cancelYN=N&appDtm=20240130120000"
@@ -162,7 +162,7 @@ curl -X POST "http://staging.example.com/api/webhook/korpay?pgConnectionId=xxx&w
 ```bash
 # 1. Register webhook URL with KORPAY
 # Contact KORPAY support to register:
-# URL: https://your-domain.com/api/webhook/korpay?pgConnectionId={UUID}&webhookSecret={SECRET}
+# URL: https://your-domain.com/api/webhook/tenant_001/KORPAY?pgConnectionId={UUID}&webhookSecret={SECRET}
 # Method: POST
 # Content-Type: application/x-www-form-urlencoded
 
