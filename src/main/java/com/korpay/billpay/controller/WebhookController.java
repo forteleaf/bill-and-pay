@@ -2,14 +2,10 @@ package com.korpay.billpay.controller;
 
 import com.korpay.billpay.config.tenant.TenantContextHolder;
 import com.korpay.billpay.config.tenant.TenantService;
-import com.korpay.billpay.domain.entity.PgConnection;
 import com.korpay.billpay.dto.webhook.WebhookResponse;
-import com.korpay.billpay.exception.EntityNotFoundException;
-import com.korpay.billpay.exception.InvalidTenantException;
 import com.korpay.billpay.exception.TenantNotFoundException;
 import com.korpay.billpay.exception.webhook.SignatureVerificationFailedException;
 import com.korpay.billpay.exception.webhook.WebhookProcessingException;
-import com.korpay.billpay.repository.PgConnectionRepository;
 import com.korpay.billpay.service.webhook.WebhookProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +26,6 @@ public class WebhookController {
 
     private final WebhookProcessingService webhookProcessingService;
     private final TenantService tenantService;
-    private final PgConnectionRepository pgConnectionRepository;
 
     @PostMapping(value = "/{tenantId}/{pgCode}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<WebhookResponse> receiveWebhookWithTenant(
@@ -57,41 +52,6 @@ public class WebhookController {
             log.warn("Tenant not found: {}", tenantId);
             return ResponseEntity.badRequest()
                     .body(WebhookResponse.error("Tenant not found: " + tenantId));
-        }
-
-        return TenantContextHolder.runInTenant(tenantId, 
-            (java.util.function.Supplier<ResponseEntity<WebhookResponse>>) () -> 
-                processWebhook(pgCode, pgConnectionId, webhookSecret, rawBody, headers)
-        );
-    }
-
-    @PostMapping(value = "/{pgCode}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public ResponseEntity<WebhookResponse> receiveWebhookLegacy(
-            @PathVariable String pgCode,
-            @RequestParam Long pgConnectionId,
-            @RequestParam String webhookSecret,
-            @RequestHeader Map<String, String> headers,
-            @RequestParam Map<String, String> formParams) {
-
-        String rawBody = buildFormEncodedBody(formParams);
-        log.warn("DEPRECATED: Using legacy webhook endpoint without tenant ID. " +
-                "Please update to /webhook/{tenantId}/{pgCode}. pgCode={}, connectionId={}", 
-                pgCode, pgConnectionId);
-
-        PgConnection pgConnection = pgConnectionRepository.findById(pgConnectionId)
-                .orElse(null);
-
-        if (pgConnection == null) {
-            log.error("PG Connection not found: {}", pgConnectionId);
-            return ResponseEntity.badRequest()
-                    .body(WebhookResponse.error("PG Connection not found"));
-        }
-
-        String tenantId = pgConnection.getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            log.error("PG Connection has no tenant ID assigned: {}", pgConnectionId);
-            return ResponseEntity.badRequest()
-                    .body(WebhookResponse.error("PG Connection has no tenant ID assigned. Please configure tenant_id."));
         }
 
         return TenantContextHolder.runInTenant(tenantId, 

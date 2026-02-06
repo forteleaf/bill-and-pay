@@ -45,11 +45,10 @@ public class PgConnectionService {
     }
 
     private PgConnectionDto toDto(PgConnection entity) {
-        String generatedWebhookUrl = null;
-        String legacyWebhookUrl = null;
+        String webhookUrl = null;
 
         if (entity.getTenantId() != null && entity.getWebhookSecret() != null) {
-            generatedWebhookUrl = webhookUrlGenerator.generateNewUrl(
+            webhookUrl = webhookUrlGenerator.generateUrl(
                     entity.getTenantId(),
                     entity.getPgCode(),
                     entity.getId(),
@@ -57,15 +56,7 @@ public class PgConnectionService {
             );
         }
 
-        if (entity.getWebhookSecret() != null) {
-            legacyWebhookUrl = webhookUrlGenerator.generateLegacyUrl(
-                    entity.getPgCode(),
-                    entity.getId(),
-                    entity.getWebhookSecret()
-            );
-        }
-
-        return PgConnectionDto.from(entity, generatedWebhookUrl, legacyWebhookUrl);
+        return PgConnectionDto.from(entity, webhookUrl);
     }
 
     @Transactional

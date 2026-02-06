@@ -28,8 +28,7 @@ public class PgConnectionDto {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
-    private String generatedWebhookUrl;
-    private String legacyWebhookUrl;
+    private String webhookUrl;
 
     public static PgConnectionDto from(PgConnection entity) {
         return PgConnectionDto.builder()
@@ -46,7 +45,7 @@ public class PgConnectionDto {
                 .build();
     }
 
-    public static PgConnectionDto from(PgConnection entity, String generatedWebhookUrl, String legacyWebhookUrl) {
+    public static PgConnectionDto from(PgConnection entity, String webhookUrl) {
         return PgConnectionDto.builder()
                 .id(entity.getId())
                 .pgCode(entity.getPgCode())
@@ -58,8 +57,7 @@ public class PgConnectionDto {
                 .status(entity.getStatus())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
-                .generatedWebhookUrl(generatedWebhookUrl)
-                .legacyWebhookUrl(legacyWebhookUrl)
+                .webhookUrl(webhookUrl)
                 .build();
     }
 }
