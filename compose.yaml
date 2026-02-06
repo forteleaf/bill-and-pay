@@ -34,7 +34,7 @@ services:
       JAVA_OPTS: ${JAVA_OPTS:--Xmx512m -Xms256m}
       TZ: Asia/Seoul
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8100}:8100"
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,7 +48,7 @@ services:
       dockerfile: Dockerfile
     container_name: billpay-frontend
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8100/api}
       TZ: Asia/Seoul
     ports:
       - "${FRONTEND_PORT:-5173}:5173"

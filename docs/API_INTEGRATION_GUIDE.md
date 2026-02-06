@@ -215,7 +215,7 @@ docker compose logs -f frontend
 ### 2. 서비스 접속
 
 - **프론트엔드**: http://localhost:5173
-- **백엔드 API**: http://localhost:8080/api
+- **백엔드 API**: http://localhost:8100/api
 - **데이터베이스**: localhost:5432
 
 ### 3. 테넌트 설정
@@ -248,21 +248,21 @@ SELECT * FROM settlements LIMIT 10;
 ### 대시보드 메트릭
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/dashboard/metrics \
+curl -X GET http://localhost:8100/api/v1/dashboard/metrics \
   -H "X-Tenant-ID: tenant_001"
 ```
 
 ### 거래 목록
 
 ```bash
-curl -X GET "http://localhost:8080/api/v1/transactions?page=0&size=10&sortBy=createdAt&direction=DESC" \
+curl -X GET "http://localhost:8100/api/v1/transactions?page=0&size=10&sortBy=createdAt&direction=DESC" \
   -H "X-Tenant-ID: tenant_001"
 ```
 
 ### 정산 목록
 
 ```bash
-curl -X GET "http://localhost:8080/api/v1/settlements?page=0&size=10&status=PENDING" \
+curl -X GET "http://localhost:8100/api/v1/settlements?page=0&size=10&status=PENDING" \
   -H "X-Tenant-ID: tenant_001"
 ```
 

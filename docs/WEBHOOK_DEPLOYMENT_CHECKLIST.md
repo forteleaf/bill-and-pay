@@ -212,7 +212,7 @@ LIMIT 5;
 "
 
 # 5. Check metrics
-curl http://localhost:8080/actuator/metrics/http.server.requests | jq '.measurements'
+curl http://localhost:8100/actuator/metrics/http.server.requests | jq '.measurements'
 ```
 
 ## Post-Deployment Monitoring
@@ -364,7 +364,7 @@ systemctl start billpay-application
 - [Webhook Implementation](WEBHOOK_IMPLEMENTATION.md)
 - [Testing Guide](WEBHOOK_TESTING_GUIDE.md)
 - [Flow Diagram](WEBHOOK_FLOW_DIAGRAM.md)
-- [API Documentation](http://localhost:8080/swagger-ui.html)
+- [API Documentation](http://localhost:8100/swagger-ui.html)
 
 ## Sign-Off
 

@@ -5,7 +5,7 @@ RUN bun install --frozen-lockfile
 
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
-ARG VITE_API_BASE_URL=http://localhost:8080/api
+ARG VITE_API_BASE_URL=http://localhost:8100/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

@@ -87,7 +87,7 @@ VALUES (
 #### 3.2 API 직접 테스트
 ```bash
 # 로그인 요청
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://localhost:8100/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -113,12 +113,12 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 ACCESS_TOKEN="eyJhbGc..."
 
 # 대시보드 메트릭 조회
-curl -X GET http://localhost:8080/api/v1/dashboard/metrics \
+curl -X GET http://localhost:8100/api/v1/dashboard/metrics \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "X-Tenant-ID: tenant_001"
 
 # 거래 내역 조회
-curl -X GET "http://localhost:8080/api/v1/transactions?page=0&size=20" \
+curl -X GET "http://localhost:8100/api/v1/transactions?page=0&size=20" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "X-Tenant-ID: tenant_001"
 ```
@@ -129,7 +129,7 @@ curl -X GET "http://localhost:8080/api/v1/transactions?page=0&size=20" \
 # 토큰 리프레시 요청
 REFRESH_TOKEN="eyJhbGc..."
 
-curl -X POST http://localhost:8080/api/v1/auth/refresh \
+curl -X POST http://localhost:8100/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
   -d "{
     \"refreshToken\": \"$REFRESH_TOKEN\"
@@ -148,7 +148,7 @@ curl -X POST http://localhost:8080/api/v1/auth/refresh \
 
 #### 6.2 API 직접 테스트
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/logout \
+curl -X POST http://localhost:8100/api/v1/auth/logout \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
@@ -163,7 +163,7 @@ curl -X POST http://localhost:8080/api/v1/auth/logout \
 #### 7.2 잘못된 토큰 테스트
 ```bash
 # 잘못된 토큰으로 요청
-curl -X GET http://localhost:8080/api/v1/dashboard/metrics \
+curl -X GET http://localhost:8100/api/v1/dashboard/metrics \
   -H "Authorization: Bearer invalid_token" \
   -H "X-Tenant-ID: tenant_001"
 

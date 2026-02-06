@@ -8,7 +8,7 @@ public class WebhookUrlGenerator {
 
     private final String webhookBaseUrl;
 
-    public WebhookUrlGenerator(@Value("${app.webhook.base-url:http://localhost:8080/api}") String webhookBaseUrl) {
+    public WebhookUrlGenerator(@Value("${app.webhook.base-url:http://localhost:8100/api}") String webhookBaseUrl) {
         this.webhookBaseUrl = webhookBaseUrl.endsWith("/") 
             ? webhookBaseUrl.substring(0, webhookBaseUrl.length() - 1) 
             : webhookBaseUrl;

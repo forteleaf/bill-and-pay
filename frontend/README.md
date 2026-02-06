@@ -123,7 +123,7 @@ frontend/
 
 ## API 연동
 
-백엔드 API는 `http://localhost:8080/api/v1`에서 실행되어야 합니다.
+백엔드 API는 `http://localhost:8100/api/v1`에서 실행되어야 합니다.
 
 모든 API 요청에는 `X-Tenant-ID` 헤더가 필요합니다.
 

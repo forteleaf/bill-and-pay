@@ -36,7 +36,7 @@ echo "Signature: $SIGNATURE"
 ### 3. Test KORPAY Approval Webhook
 
 ```bash
-curl -X POST 'http://localhost:8080/api/webhook/tenant_001/KORPAY?pgConnectionId=YOUR-PG-CONNECTION-UUID&webhookSecret=your-webhook-secret' \
+curl -X POST 'http://localhost:8100/api/webhook/tenant_001/KORPAY?pgConnectionId=YOUR-PG-CONNECTION-UUID&webhookSecret=your-webhook-secret' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -H 'X-Korpay-Signature: YOUR-COMPUTED-SIGNATURE' \
   --data-urlencode "tid=ktest6111m01032304111003000874" \
@@ -76,7 +76,7 @@ Expected Response (200 OK):
 ### 4. Test KORPAY Cancel Webhook
 
 ```bash
-curl -X POST 'http://localhost:8080/api/webhook/tenant_001/KORPAY?pgConnectionId=YOUR-PG-CONNECTION-UUID&webhookSecret=your-webhook-secret' \
+curl -X POST 'http://localhost:8100/api/webhook/tenant_001/KORPAY?pgConnectionId=YOUR-PG-CONNECTION-UUID&webhookSecret=your-webhook-secret' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -H 'X-Korpay-Signature: YOUR-COMPUTED-SIGNATURE' \
   --data-urlencode "tid=ktest6111m01032304111003000874" \
@@ -551,7 +551,7 @@ ab -n 100 -c 10 \
    -p webhook_body.txt \
    -T "application/x-www-form-urlencoded" \
    -H "X-Korpay-Signature: your-signature" \
-   "http://localhost:8080/api/webhook/tenant_001/KORPAY?pgConnectionId=xxx&webhookSecret=yyy"
+   "http://localhost:8100/api/webhook/tenant_001/KORPAY?pgConnectionId=xxx&webhookSecret=yyy"
 ```
 
 ### Expected Performance

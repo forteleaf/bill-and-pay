@@ -46,7 +46,7 @@ docker compose up -d
 
 # 접속
 # Frontend: http://localhost:5173
-# Backend API: http://localhost:8080/api
+# Backend API: http://localhost:8100/api
 # PostgreSQL: localhost:5432
 ```
 
@@ -63,7 +63,7 @@ NixOS 서버에 배포 시 기존 PostgreSQL과 nginx를 활용합니다.
           ┌────────────┴────────────┐
           │ /api/*                  │ /*
           ▼                         ▼
-   billpay-backend:8080      billpay-frontend:3010
+   billpay-backend:8100      billpay-frontend:3010
           │
           ▼
    NixOS PostgreSQL:5432 (billpay DB)

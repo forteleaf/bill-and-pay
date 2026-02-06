@@ -60,7 +60,7 @@
     error = null;
     
     try {
-      const response = await fetch('http://localhost:8080/api/v1/public/demo-requests', {
+      const response = await fetch('http://localhost:8100/api/v1/public/demo-requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

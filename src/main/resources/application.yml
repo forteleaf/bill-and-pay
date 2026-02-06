@@ -46,7 +46,7 @@ spring:
     default-schema: public
 
 server:
-  port: 8080
+  port: 8100
   servlet:
     context-path: /api
 
@@ -67,7 +67,7 @@ app:
   webhook:
     # Base URL for webhook endpoints (used to generate full webhook URLs for PG configuration)
     # Override via WEBHOOK_BASE_URL environment variable in production
-    base-url: ${WEBHOOK_BASE_URL:http://localhost:8080/api}
+    base-url: ${WEBHOOK_BASE_URL:http://localhost:8100/api}
 
 webhook:
   retry:

@@ -217,7 +217,7 @@ INSERT INTO merchant_pg_mappings (
 
 ### KORPAY Webhook Request
 ```bash
-curl -X POST 'http://localhost:8080/api/webhook/tenant_001/KORPAY?pgConnectionId=xxx&webhookSecret=yyy' \
+curl -X POST 'http://localhost:8100/api/webhook/tenant_001/KORPAY?pgConnectionId=xxx&webhookSecret=yyy' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -H 'X-Korpay-Signature: computed-hmac-sha256' \
   -d 'tid=ktest6111m01032304111003000874' \

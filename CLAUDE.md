@@ -497,7 +497,7 @@ docker compose up -d
 
 # 접속
 # Frontend: http://localhost:5173
-# Backend API: http://localhost:8080/api
+# Backend API: http://localhost:8100/api
 # PostgreSQL: localhost:5432
 ```
 
@@ -508,7 +508,7 @@ docker compose -f compose.prod.yaml up -d
 
 # 접속 (단일 포트)
 # All requests: http://localhost
-#   - /api/* → Backend (8080)
+#   - /api/* → Backend (8100)
 #   - /* → Frontend (80)
 # PostgreSQL: localhost:5432
 ```

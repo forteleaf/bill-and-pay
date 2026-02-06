@@ -22,13 +22,13 @@ POSTGRES_PASSWORD=postgres
 POSTGRES_DB=postgres
 POSTGRES_PORT=5432
 
-BACKEND_PORT=8080
+BACKEND_PORT=8100
 FRONTEND_PORT=5173
 
 SPRING_PROFILES_ACTIVE=prod
 JAVA_OPTS=-Xmx512m -Xms256m
 
-VITE_API_BASE_URL=http://localhost:8080/api
+VITE_API_BASE_URL=http://localhost:8100/api
 ```
 
 ## 실행 방법
@@ -61,7 +61,7 @@ docker compose ps
 | 서비스 | URL | 용도 |
 |--------|-----|------|
 | Frontend | http://localhost:5173 | Svelte UI |
-| Backend API | http://localhost:8080/api | Spring Boot REST API |
+| Backend API | http://localhost:8100/api | Spring Boot REST API |
 | PostgreSQL | localhost:5432 | Database |
 
 ## 데이터베이스 초기화
@@ -145,7 +145,7 @@ docker image prune -a
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Frontend   │────▶│   Backend    │────▶│  PostgreSQL  │
 │  (Svelte 5)  │     │(Spring Boot) │     │     18       │
-│   :5173      │     │    :8080     │     │    :5432     │
+│   :5173      │     │    :8100     │     │    :5432     │
 └──────────────┘     └──────────────┘     └──────────────┘
       │                     │                     │
       └─────────────────────┴─────────────────────┘
@@ -161,7 +161,7 @@ docker compose exec postgres psql -U postgres -d billpay -c "CREATE SCHEMA IF NO
 
 ### API 요청 (X-Tenant-ID 헤더)
 ```bash
-curl -H "X-Tenant-ID: tenant_001" http://localhost:8080/api/v1/organizations
+curl -H "X-Tenant-ID: tenant_001" http://localhost:8100/api/v1/organizations
 ```
 
 ## 운영 고려사항
@@ -179,7 +179,7 @@ services:
 
 ### Health Check
 ```bash
-curl http://localhost:8080/actuator/health
+curl http://localhost:8100/actuator/health
 ```
 
 ### 백업

@@ -1,7 +1,7 @@
 import type { ApiResponse } from '../types/api';
 import { authStore } from './authStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8100/api/v1';
 
 class ApiClient {
   private tenantId: string | null = null;

@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-BASE_URL="http://localhost:8080/api"
+BASE_URL="http://localhost:8100/api"
 PASSWORD="password123"
 RESULTS_DIR="/tmp/billpay-permission-test"
 rm -rf "$RESULTS_DIR"

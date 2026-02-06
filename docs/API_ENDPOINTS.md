@@ -11,7 +11,7 @@ Authorization: Bearer {access_token}
 
 ## API 기본 정보
 
-- **Base URL**: `http://localhost:8080/api/v1`
+- **Base URL**: `http://localhost:8100/api/v1`
 - **응답 형식**: JSON
 - **문자 인코딩**: UTF-8
 - **타임존**: Asia/Seoul
@@ -159,7 +159,7 @@ Authorization: Bearer {access_token}
 
 **요청**:
 ```bash
-curl -X GET http://localhost:8080/api/v1/dashboard/metrics \
+curl -X GET http://localhost:8100/api/v1/dashboard/metrics \
   -H "X-Tenant-ID: tenant_001"
 ```
 
@@ -182,7 +182,7 @@ curl -X GET http://localhost:8080/api/v1/dashboard/metrics \
 
 **요청**:
 ```bash
-curl -X GET http://localhost:8080/api/v1/dashboard/top-merchants \
+curl -X GET http://localhost:8100/api/v1/dashboard/top-merchants \
   -H "X-Tenant-ID: tenant_001"
 ```
 
@@ -217,7 +217,7 @@ curl -X GET http://localhost:8080/api/v1/dashboard/top-merchants \
 
 **요청**:
 ```bash
-curl -X GET "http://localhost:8080/api/v1/transactions?page=0&size=10&sortBy=createdAt&direction=DESC&status=APPROVED" \
+curl -X GET "http://localhost:8100/api/v1/transactions?page=0&size=10&sortBy=createdAt&direction=DESC&status=APPROVED" \
   -H "X-Tenant-ID: tenant_001"
 ```
 
@@ -270,7 +270,7 @@ curl -X GET "http://localhost:8080/api/v1/transactions?page=0&size=10&sortBy=cre
 
 **요청**:
 ```bash
-curl -X GET "http://localhost:8080/api/v1/settlements?page=0&size=10&status=PENDING" \
+curl -X GET "http://localhost:8100/api/v1/settlements?page=0&size=10&status=PENDING" \
   -H "X-Tenant-ID: tenant_001"
 ```
 
@@ -320,7 +320,7 @@ curl -X GET "http://localhost:8080/api/v1/settlements?page=0&size=10&status=PEND
 
 **요청**:
 ```bash
-curl -X GET http://localhost:8080/api/v1/settlements/summary \
+curl -X GET http://localhost:8100/api/v1/settlements/summary \
   -H "X-Tenant-ID: tenant_001" \
   -H "Authorization: Bearer {token}"
 ```
@@ -343,7 +343,7 @@ curl -X GET http://localhost:8080/api/v1/settlements/summary \
 
 **요청**:
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://localhost:8100/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "X-Tenant-ID: tenant_001" \
   -d '{
@@ -371,7 +371,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 
 **요청**:
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/refresh \
+curl -X POST http://localhost:8100/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
   -H "X-Tenant-ID: tenant_001" \
   -d '{
