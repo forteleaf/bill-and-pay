@@ -53,10 +53,9 @@ server:
 logging:
   level:
     root: INFO
-    com.korpay: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.korpay: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: INFO
 
 jwt:
   secret: ${JWT_SECRET:billpay-secret-key-for-jwt-token-generation-minimum-256-bits-required-for-hs256-algorithm}
@@ -69,3 +68,9 @@ app:
     # Base URL for webhook endpoints (used to generate full webhook URLs for PG configuration)
     # Override via WEBHOOK_BASE_URL environment variable in production
     base-url: ${WEBHOOK_BASE_URL:http://localhost:8080/api}
+
+webhook:
+  retry:
+    enabled: false
+    interval-ms: 300000
+    max-attempts: 3

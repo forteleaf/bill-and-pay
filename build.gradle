@@ -43,7 +43,11 @@ tasks.withType(Test).configureEach {
 }
 
 tasks.named('bootRun') {
-    jvmArgs = ['--enable-preview']
+    jvmArgs = [
+        '--enable-preview',
+        '-Xms256m',
+        '-Xmx1g'
+    ]
 }
 
 repositories {
