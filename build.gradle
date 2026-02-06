@@ -166,7 +166,40 @@ tasks.register('flywayInfoTenant') {
     }
 }
 
-// Public 마이그레이션 정보 조회
+tasks.register('flywayRepairPublic') {
+    group = 'flyway'
+    description = 'Repair public schema migration checksums'
+    doLast {
+        Flyway.configure()
+            .dataSource(dbUrl, dbUser, dbPassword)
+            .schemas('public')
+            .locations("filesystem:${migrationsDir}/db/migration/public")
+            .load()
+            .repair()
+        println 'Public schema repair completed.'
+    }
+}
+
+tasks.register('flywayRepairTenant') {
+    group = 'flyway'
+    description = 'Repair tenant_001 schema migration checksums'
+    doLast {
+        Flyway.configure()
+            .dataSource(dbUrl, dbUser, dbPassword)
+            .schemas('tenant_001')
+            .locations("filesystem:${migrationsDir}/db/migration/tenant")
+            .load()
+            .repair()
+        println 'Tenant schema repair completed.'
+    }
+}
+
+tasks.register('flywayRepairAll') {
+    group = 'flyway'
+    description = 'Repair all schema migration checksums'
+    dependsOn 'flywayRepairPublic', 'flywayRepairTenant'
+}
+
 tasks.register('flywayInfoPublic') {
     group = 'flyway'
     description = 'Show public schema migration info'
