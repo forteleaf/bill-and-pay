@@ -60,6 +60,26 @@ export function getBankName(bankCode: string): string {
 }
 
 /**
+ * 사업자번호 포맷팅 (xxx-xx-xxxxx)
+ */
+export function formatBusinessNumber(num?: string): string {
+	if (!num) return '-';
+	const digits = num.replace(/\D/g, '');
+	if (digits.length !== 10) return num;
+	return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+}
+
+/**
+ * 사업자번호 입력 실시간 포맷팅 (부분 입력 지원)
+ */
+export function formatBusinessNumberInput(value: string): string {
+	const digits = value.replace(/\D/g, '').slice(0, 10);
+	if (digits.length <= 3) return digits;
+	if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+	return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+}
+
+/**
  * 계좌번호 마스킹 (끝 4자리만 표시)
  */
 export function maskAccountNumber(accountNumber: string): string {

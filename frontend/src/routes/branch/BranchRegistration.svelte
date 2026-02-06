@@ -12,6 +12,7 @@
     type BusinessEntity,
     type BusinessEntityCreateRequest,
   } from "../../types/branch";
+  import { formatBusinessNumberInput } from "$lib/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Label } from "$lib/components/ui/label";
@@ -131,13 +132,6 @@
     [BusinessType.NON_BUSINESS]: "비사업자",
   };
 
-  function formatBusinessNumber(value: string): string {
-    const digits = value.replace(/\D/g, "").slice(0, 10);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
-  }
-
   function formatCorporateNumber(value: string): string {
     const digits = value.replace(/\D/g, "").slice(0, 13);
     if (digits.length <= 6) return digits;
@@ -146,7 +140,7 @@
 
   function handleBusinessNumberInput(e: Event) {
     const input = e.target as HTMLInputElement;
-    const formatted = formatBusinessNumber(input.value);
+    const formatted = formatBusinessNumberInput(input.value);
     businessInfo.businessNumber = formatted;
     input.value = formatted;
   }

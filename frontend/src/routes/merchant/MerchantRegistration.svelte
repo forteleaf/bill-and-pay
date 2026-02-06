@@ -9,6 +9,7 @@
   } from "../../types/merchant";
   import type { BusinessEntity } from "../../types/branch";
   import type { Organization } from "../../types/api";
+  import { formatBusinessNumberInput } from "$lib/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Label } from "$lib/components/ui/label";
@@ -66,13 +67,6 @@
     merchantCode = `MER-${timestamp}-${random}`;
   }
 
-  function formatBusinessNumber(value: string): string {
-    const digits = value.replace(/\D/g, "").slice(0, 10);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
-  }
-
   function formatCorporateNumber(value: string): string {
     const digits = value.replace(/\D/g, "").slice(0, 13);
     if (digits.length <= 6) return digits;
@@ -81,7 +75,7 @@
 
   function handleBusinessNumberInput(e: Event) {
     const input = e.target as HTMLInputElement;
-    const formatted = formatBusinessNumber(input.value);
+    const formatted = formatBusinessNumberInput(input.value);
     businessNumber = formatted;
     input.value = formatted;
     blacklistResult = null;

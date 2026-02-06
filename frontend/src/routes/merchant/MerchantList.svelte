@@ -10,6 +10,7 @@
   } from '../../types/merchant';
   import { BusinessType } from '../../types/branch';
   import { format } from 'date-fns';
+  import { formatBusinessNumber } from '$lib/formatters';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -63,13 +64,6 @@
     } catch {
       return '-';
     }
-  }
-
-  function formatBusinessNumber(num?: string): string {
-    if (!num) return '-';
-    const digits = num.replace(/\D/g, '');
-    if (digits.length !== 10) return num;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
   }
 
   async function loadMerchants(reset: boolean = false) {
@@ -326,7 +320,9 @@
                  <span class="text-sm text-muted-foreground">{merchant.primaryContact?.phone || '-'}</span>
                </TableCell>
                <TableCell>
-                 <span class="font-mono text-sm">{formatBusinessNumber(merchant.businessNumber)}</span>
+                 <span class="font-mono text-sm">
+                   {merchant.businessNumber ? formatBusinessNumber(merchant.businessNumber) : '비사업자'}
+                 </span>
                </TableCell>
               <TableCell class="text-center">
                 {#if merchant.businessType}

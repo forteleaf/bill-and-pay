@@ -6,6 +6,7 @@
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
+  import { formatBusinessNumber } from '$lib/formatters';
   
   let selectedOrg = $state<Organization | null>(null);
   let mode = $state<'view' | 'create' | 'edit'>('view');
@@ -128,6 +129,22 @@
                 <div class="text-sm font-medium text-muted-foreground">Level</div>
                 <div class="text-foreground">{selectedOrg.level}</div>
               </div>
+
+              {#if selectedOrg.businessEntity}
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-muted-foreground">사업자번호</div>
+                  <div class="text-foreground">
+                    {selectedOrg.businessEntity.businessType === 'NON_BUSINESS'
+                      ? '비사업자'
+                      : formatBusinessNumber(selectedOrg.businessEntity.businessNumber)}
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-muted-foreground">사업자유형</div>
+                  <div class="text-foreground">{selectedOrg.businessEntity.businessType}</div>
+                </div>
+              {/if}
             </div>
           </CardContent>
         </Card>

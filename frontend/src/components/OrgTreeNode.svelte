@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import type { OrgTree } from '../types/api';
   import { Badge } from '$lib/components/ui/badge';
+  import { formatBusinessNumber } from '$lib/formatters';
   import OrgTreeNode from './OrgTreeNode.svelte';
   
   interface Props {
@@ -81,8 +82,17 @@
     <span class="w-6 h-6 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
       {orgTypeIcons[node.orgType] || '?'}
     </span>
-    <span class="font-medium text-foreground">{node.name}</span>
-    <span class="text-muted-foreground text-sm hidden sm:inline">({node.orgCode})</span>
+    <div class="flex flex-col min-w-0">
+      <div class="flex items-center gap-1">
+        <span class="font-medium text-foreground">{node.name}</span>
+        <span class="text-muted-foreground text-sm hidden sm:inline">({node.orgCode})</span>
+      </div>
+      {#if node.businessEntity}
+        <span class="text-xs text-muted-foreground">
+          {node.businessEntity.businessType === 'NON_BUSINESS' ? '비사업자' : formatBusinessNumber(node.businessEntity.businessNumber)}
+        </span>
+      {/if}
+    </div>
     <Badge variant="outline" class="text-xs px-1.5">
       <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />

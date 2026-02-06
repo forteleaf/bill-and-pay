@@ -15,6 +15,7 @@
     BRANCH_TYPE_LABELS,
     OrgStatus,
   } from "../../types/branch";
+  import { formatBusinessNumber } from "$lib/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
   import {
@@ -144,13 +145,6 @@
       default:
         return "outline";
     }
-  }
-
-  function formatBusinessNumber(num?: string): string {
-    if (!num) return "-";
-    const digits = num.replace(/\D/g, "");
-    if (digits.length !== 10) return num;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
   }
 
   function formatDate(dateStr?: string): string {
