@@ -13,21 +13,21 @@ import java.util.List;
 public class ZeroSumValidator {
 
     public void validate(TransactionEvent event, List<Settlement> settlements) {
-        long eventAbsAmount = Math.abs(event.getAmount());
+        long eventAmount = event.getAmount();
         long settlementTotal = settlements.stream()
                 .mapToLong(Settlement::getAmount)
                 .sum();
 
-        if (eventAbsAmount != settlementTotal) {
+        if (eventAmount != settlementTotal) {
             log.error("Zero-Sum validation failed for event {}: event={}, settlements={}, diff={}",
-                    event.getId(), eventAbsAmount, settlementTotal, eventAbsAmount - settlementTotal);
+                    event.getId(), eventAmount, settlementTotal, eventAmount - settlementTotal);
 
             logSettlementBreakdown(settlements);
 
-            throw new ZeroSumViolationException(event.getId(), event.getAmount(), settlementTotal);
+            throw new ZeroSumViolationException(event.getId(), eventAmount, settlementTotal);
         }
 
-        log.debug("Zero-Sum validation passed for event {}: {}", event.getId(), eventAbsAmount);
+        log.debug("Zero-Sum validation passed for event {}: {}", event.getId(), eventAmount);
     }
 
     private void logSettlementBreakdown(List<Settlement> settlements) {

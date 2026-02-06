@@ -74,3 +74,9 @@ webhook:
     enabled: false
     interval-ms: 300000
     max-attempts: 3
+
+settlement:
+  batch:
+    enabled: false
+    cron: "0 0 1 * * *"
+    timezone: Asia/Seoul

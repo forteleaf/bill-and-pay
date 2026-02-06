@@ -46,7 +46,7 @@ public class PartialCancelCalculator {
 
         List<Settlement> cancelSettlements = new ArrayList<>();
         for (Settlement original : originalSettlements) {
-            long cancelAmount = calculateProportionalAmount(original.getAmount(), cancelRatio);
+            long cancelAmountAbs = calculateProportionalAmount(original.getAmount(), cancelRatio);
 
             Settlement cancelSettlement = Settlement.builder()
                     .transactionEventId(cancelEvent.getId())
@@ -57,9 +57,9 @@ public class PartialCancelCalculator {
                     .entityType(original.getEntityType())
                     .entityPath(original.getEntityPath())
                     .entryType(EntryType.DEBIT)
-                    .amount(cancelAmount)
+                    .amount(-cancelAmountAbs)
                     .feeAmount(0L)
-                    .netAmount(cancelAmount)
+                    .netAmount(-cancelAmountAbs)
                     .currency(original.getCurrency())
                     .feeRate(original.getFeeRate())
                     .feeConfig(original.getFeeConfig())
@@ -95,7 +95,7 @@ public class PartialCancelCalculator {
             TransactionEvent cancelEvent,
             List<Settlement> cancelSettlements) {
 
-        long targetAmount = Math.abs(cancelEvent.getAmount());
+        long targetAmount = cancelEvent.getAmount(); // 음수 (취소금액)
         long currentTotal = cancelSettlements.stream()
                 .mapToLong(Settlement::getAmount)
                 .sum();
@@ -133,7 +133,7 @@ public class PartialCancelCalculator {
         if (finalTotal != targetAmount) {
             throw new ZeroSumViolationException(
                     settlements.get(0).getTransactionEventId(),
-                    -targetAmount,
+                    targetAmount,
                     finalTotal
             );
         }

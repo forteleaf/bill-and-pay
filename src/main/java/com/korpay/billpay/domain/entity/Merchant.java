@@ -1,6 +1,7 @@
 package com.korpay.billpay.domain.entity;
 
 import com.korpay.billpay.domain.enums.MerchantStatus;
+import com.korpay.billpay.domain.enums.SettlementCycle;
 import com.korpay.billpay.domain.type.LtreeType;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
@@ -54,6 +55,11 @@ public class Merchant {
     @Type(JsonBinaryType.class)
     @Column(name = "config", columnDefinition = "jsonb")
     private Map<String, Object> config;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "settlement_cycle", nullable = false, length = 20)
+    @Builder.Default
+    private SettlementCycle settlementCycle = SettlementCycle.D_PLUS_1;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

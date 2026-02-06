@@ -1,9 +1,11 @@
 package com.korpay.billpay.controller.api;
 
 import com.korpay.billpay.domain.entity.Settlement;
+import com.korpay.billpay.domain.entity.SettlementBatch;
 import com.korpay.billpay.domain.entity.User;
 import com.korpay.billpay.domain.enums.OrganizationType;
 import com.korpay.billpay.domain.enums.SettlementBatchStatus;
+import com.korpay.billpay.domain.enums.SettlementCycle;
 import com.korpay.billpay.domain.enums.SettlementStatus;
 import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.dto.response.OrganizationSettlementDetailDto;
@@ -13,6 +15,7 @@ import com.korpay.billpay.dto.response.SettlementBatchDto;
 import com.korpay.billpay.dto.response.SettlementDto;
 import com.korpay.billpay.dto.response.SettlementSummaryDto;
 import com.korpay.billpay.service.auth.UserContextHolder;
+import com.korpay.billpay.service.settlement.SettlementBatchService;
 import com.korpay.billpay.service.settlement.SettlementQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,7 @@ import java.util.stream.Collectors;
 public class SettlementController {
 
     private final SettlementQueryService settlementQueryService;
+    private final SettlementBatchService settlementBatchService;
     private final UserContextHolder userContextHolder;
 
     @GetMapping
@@ -142,7 +146,35 @@ public class SettlementController {
         if (result == null) {
             return ResponseEntity.notFound().build();
         }
-        
+
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/batches")
+    public ResponseEntity<ApiResponse<SettlementBatchDto>> createBatch(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "D_PLUS_1") SettlementCycle cycle) {
+
+        log.info("Manual batch creation requested: date={}, cycle={}", date, cycle);
+
+        SettlementBatch batch = settlementBatchService.createDailyBatch(date, cycle);
+        if (batch == null) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(SettlementBatchDto.from(batch)));
+    }
+
+    @PostMapping("/batches/realtime")
+    public ResponseEntity<ApiResponse<SettlementBatchDto>> createRealtimeBatch() {
+        log.info("Realtime batch creation requested");
+
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        SettlementBatch batch = settlementBatchService.createRealtimeBatch(today);
+        if (batch == null) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(SettlementBatchDto.from(batch)));
     }
 }

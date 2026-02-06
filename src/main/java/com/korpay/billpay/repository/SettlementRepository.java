@@ -66,6 +66,20 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
         Long getNetAmount();
     }
 
+    @Query(value = """
+        SELECT s.* FROM settlements s
+        JOIN merchants m ON s.merchant_id = m.id
+        WHERE s.settlement_batch_id IS NULL
+          AND CAST(s.status AS TEXT) = 'PENDING'
+          AND s.created_at >= CAST(:start AS TIMESTAMP WITH TIME ZONE)
+          AND s.created_at < CAST(:end AS TIMESTAMP WITH TIME ZONE)
+          AND CAST(m.settlement_cycle AS TEXT) = :cycle
+        """, nativeQuery = true)
+    List<Settlement> findUnbatchedSettlementsByCycle(
+            @Param("start") OffsetDateTime start,
+            @Param("end") OffsetDateTime end,
+            @Param("cycle") String cycle);
+
     List<Settlement> findByTransactionEventId(UUID transactionEventId);
 
     List<Settlement> findByEntityIdAndStatus(UUID entityId, SettlementStatus status);

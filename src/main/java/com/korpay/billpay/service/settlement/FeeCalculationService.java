@@ -46,15 +46,18 @@ public class FeeCalculationService {
         long merchantFeeAmount = calculateFeeAmount(eventAbsAmount, merchantFeeRate);
         long merchantSettlementAmount = eventAbsAmount - merchantFeeAmount;
 
+        long signedMerchantSettlement = isCredit ? merchantSettlementAmount : -merchantSettlementAmount;
+        long signedMerchantFee = isCredit ? merchantFeeAmount : -merchantFeeAmount;
+
         Settlement merchantSettlement = buildMerchantSettlement(
-                event, merchant, entryType, merchantSettlementAmount, merchantFeeAmount, merchantFeeRate);
+                event, merchant, entryType, signedMerchantSettlement, signedMerchantFee, merchantFeeRate);
         settlements.add(merchantSettlement);
 
         breakdowns.add(FeeBreakdown.builder()
                 .entityId(merchant.getId())
                 .entityType(merchant.getOrganization().getOrgType())
                 .feeRate(merchantFeeRate)
-                .settlementAmount(merchantSettlementAmount)
+                .settlementAmount(signedMerchantSettlement)
                 .description("Merchant settlement")
                 .build());
 
@@ -68,9 +71,10 @@ public class FeeCalculationService {
 
             if (marginRate.compareTo(BigDecimal.ZERO) > 0) {
                 long marginAmount = calculateFeeAmount(eventAbsAmount, marginRate);
+                long signedMargin = isCredit ? marginAmount : -marginAmount;
 
                 Settlement orgSettlement = buildOrganizationSettlement(
-                        event, org, entryType, marginAmount, marginRate);
+                        event, org, entryType, signedMargin, marginRate);
                 settlements.add(orgSettlement);
 
                 breakdowns.add(FeeBreakdown.builder()
@@ -79,8 +83,8 @@ public class FeeCalculationService {
                         .entityPath(org.getPath())
                         .feeRate(orgFeeRate)
                         .marginRate(marginRate)
-                        .marginAmount(marginAmount)
-                        .settlementAmount(marginAmount)
+                        .marginAmount(signedMargin)
+                        .settlementAmount(signedMargin)
                         .description(org.getOrgType() + " margin")
                         .build());
             }
@@ -88,19 +92,21 @@ public class FeeCalculationService {
             previousFeeRate = orgFeeRate;
         }
 
-        long totalAllocated = settlements.stream()
-                .mapToLong(Settlement::getAmount)
+        long totalAllocatedAbs = settlements.stream()
+                .mapToLong(s -> Math.abs(s.getAmount()))
                 .sum();
-        long masterResidual = eventAbsAmount - totalAllocated;
+        long masterResidualAbs = eventAbsAmount - totalAllocatedAbs;
 
-        if (masterResidual > 0) {
+        if (masterResidualAbs > 0) {
+            long signedResidual = isCredit ? masterResidualAbs : -masterResidualAbs;
+
             Organization distributor = ancestors.stream()
                     .filter(org -> org.getOrgType() == OrganizationType.DISTRIBUTOR)
                     .findFirst()
                     .orElse(null);
 
             Settlement masterSettlement = buildMasterSettlement(
-                    event, distributor, entryType, masterResidual, previousFeeRate);
+                    event, distributor, entryType, signedResidual, previousFeeRate);
             settlements.add(masterSettlement);
 
             breakdowns.add(FeeBreakdown.builder()
@@ -108,13 +114,13 @@ public class FeeCalculationService {
                     .entityType(OrganizationType.DISTRIBUTOR)
                     .entityPath(distributor != null ? distributor.getPath() : null)
                     .marginRate(previousFeeRate)
-                    .marginAmount(masterResidual)
-                    .settlementAmount(masterResidual)
+                    .marginAmount(signedResidual)
+                    .settlementAmount(signedResidual)
                     .description("Master residual")
                     .build());
         }
 
-        logFeeBreakdown(event.getId(), breakdowns, eventAbsAmount);
+        logFeeBreakdown(event.getId(), breakdowns, isCredit ? eventAbsAmount : -eventAbsAmount);
 
         return settlements;
     }

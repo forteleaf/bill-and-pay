@@ -20,4 +20,6 @@ public interface SettlementBatchRepository extends JpaRepository<SettlementBatch
     List<SettlementBatch> findByStatus(SettlementBatchStatus status);
 
     List<SettlementBatch> findBySettlementDateBetween(LocalDate startDate, LocalDate endDate);
+
+    boolean existsBySettlementDateAndBatchNumberContaining(LocalDate date, String cyclePrefix);
 }
