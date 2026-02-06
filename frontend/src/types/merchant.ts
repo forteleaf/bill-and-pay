@@ -100,3 +100,22 @@ export interface MerchantUpdateRequest {
 	status?: MerchantStatus;
 	config?: Record<string, unknown>;
 }
+
+/**
+ * Contact API Request Types
+ */
+export interface ContactCreateRequest {
+	name: string;
+	phone?: string;
+	email?: string;
+	role: ContactRole;
+	entityType: string;
+	entityId: string;
+}
+
+export interface ContactUpdateRequest {
+	name?: string;
+	phone?: string;
+	email?: string;
+	role?: ContactRole;
+}

@@ -23,6 +23,7 @@
     CardHeader,
     CardTitle,
   } from "$lib/components/ui/card";
+  import { Skeleton } from "$lib/components/ui/skeleton";
   import * as Sheet from "$lib/components/ui/sheet";
   import { SettlementAccountEntityType } from "../../types/settlementAccount";
   import MerchantTransactions from "./MerchantTransactions.svelte";
@@ -219,13 +220,42 @@
 
 <div class="h-full flex flex-col bg-muted/30">
   {#if loading}
-    <div
-      class="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground p-12"
-    >
-      <div
-        class="w-9 h-9 border-3 border-muted border-t-primary rounded-full animate-spin"
-      ></div>
-      <span>불러오는 중...</span>
+    <div class="flex justify-between items-start p-6 bg-background border-b border-border">
+      <div class="flex flex-col gap-2">
+        <Skeleton class="h-8 w-48" />
+        <div class="flex items-center gap-3">
+          <Skeleton class="h-4 w-24" />
+          <Skeleton class="h-4 w-20" />
+          <Skeleton class="h-5 w-16" />
+        </div>
+      </div>
+      <Skeleton class="h-10 w-20" />
+    </div>
+
+    <div class="flex gap-0 bg-background border-b border-border px-6">
+      {#each Array(3) as _}
+        <Skeleton class="h-12 w-24 mx-2" />
+      {/each}
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+      {#each Array(3) as _}
+        <Card>
+          <CardHeader>
+            <Skeleton class="h-5 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div class="grid grid-cols-2 gap-5">
+              {#each Array(4) as _}
+                <div class="flex flex-col gap-1.5">
+                  <Skeleton class="h-3 w-20" />
+                  <Skeleton class="h-4 w-full" />
+                </div>
+              {/each}
+            </div>
+          </CardContent>
+        </Card>
+      {/each}
     </div>
   {:else if error}
     <div

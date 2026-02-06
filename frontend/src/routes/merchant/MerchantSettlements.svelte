@@ -6,6 +6,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
+  import { Skeleton } from '$lib/components/ui/skeleton';
 
   interface Props {
     merchantId: string;
@@ -73,10 +74,12 @@
         settlements = response.data.content.filter(s => s.merchantId === merchantId);
         totalCount = settlements.length;
         totalPages = Math.ceil(totalCount / pageSize);
+      } else {
+        error = response.error?.message || '정산내역을 불러올 수 없습니다.';
       }
     } catch (err) {
-      error = '정산내역을 불러올 수 없습니다.';
-      console.error(err);
+      error = err instanceof Error ? err.message : '정산내역을 불러올 수 없습니다.';
+      console.error('API Error:', err);
     } finally {
       loading = false;
     }
@@ -101,9 +104,31 @@
   </div>
 
   {#if loading}
-    <div class="flex items-center justify-center py-12 text-muted-foreground">
-      <div class="w-6 h-6 border-2 border-muted border-t-primary rounded-full animate-spin mr-2"></div>
-      불러오는 중...
+    <div class="border rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>유형</TableHead>
+            <TableHead class="text-right">거래금액</TableHead>
+            <TableHead class="text-right">수수료</TableHead>
+            <TableHead class="text-right">정산금액</TableHead>
+            <TableHead>상태</TableHead>
+            <TableHead>정산일시</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {#each Array(5) as _}
+            <TableRow>
+              <TableCell><Skeleton class="h-5 w-16" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-24 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-20 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-28 ml-auto" /></TableCell>
+              <TableCell><Skeleton class="h-5 w-16" /></TableCell>
+              <TableCell><Skeleton class="h-4 w-28" /></TableCell>
+            </TableRow>
+          {/each}
+        </TableBody>
+      </Table>
     </div>
   {:else if error}
     <div class="text-center py-12 text-destructive">{error}</div>

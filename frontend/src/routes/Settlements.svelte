@@ -9,6 +9,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   
   let settlements = $state<Settlement[]>([]);
   let loading = $state(true);
@@ -99,12 +100,17 @@
         totalPages = response.data.totalPages;
         currentPage = response.data.page;
       }
-      
+
+
+      if (!response.success) {
+        error = response.error?.message || '데이터를 불러올 수 없습니다.';
+      }
+
       loading = false;
     } catch (err) {
-      error = 'Failed to load data.';
+      error = err instanceof Error ? err.message : '데이터를 불러올 수 없습니다.';
       loading = false;
-      console.error(err);
+      console.error('API Error:', err);
     }
   }
   
@@ -201,9 +207,50 @@
       </div>
     </CardContent>
   </Card>
-  
+
+
   {#if loading}
-    <div class="text-center py-12 text-lg text-muted-foreground">Loading data...</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {#each Array(3) as _}
+        <Card>
+          <CardHeader class="pb-2">
+            <Skeleton class="h-4 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton class="h-8 w-16" />
+          </CardContent>
+        </Card>
+      {/each}
+    </div>
+
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Entity Type</TableHead>
+            <TableHead>Entry Type</TableHead>
+            <TableHead class="text-right">Amount</TableHead>
+            <TableHead class="text-right">Fee</TableHead>
+            <TableHead class="text-right">Net Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Created At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {#each Array(5) as _}
+            <TableRow>
+              <TableCell><Skeleton class="h-4 w-24" /></TableCell>
+              <TableCell><Skeleton class="h-5 w-16" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-24 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-20 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-28 ml-auto" /></TableCell>
+              <TableCell><Skeleton class="h-5 w-16" /></TableCell>
+              <TableCell><Skeleton class="h-4 w-36" /></TableCell>
+            </TableRow>
+          {/each}
+        </TableBody>
+      </Table>
+    </Card>
   {:else if error}
     <div class="text-center py-12 text-lg text-destructive">{error}</div>
   {:else}

@@ -7,11 +7,21 @@ import type {
 } from '../types/pgConnection';
 import { PgConnectionStatus } from '../types/pgConnection';
 
+export interface PgConnectionListParams {
+  page?: number;
+  size?: number;
+}
+
 class PgConnectionApi {
-  async getAll(page = 0, size = 50): Promise<ApiResponse<PagedResponse<PgConnectionDto>>> {
-    return apiClient.get<PagedResponse<PgConnectionDto>>(
-      `/pg-connections?page=${page}&size=${size}`
-    );
+  async getAll(params: PgConnectionListParams = {}): Promise<ApiResponse<PagedResponse<PgConnectionDto>>> {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.set('page', params.page.toString());
+    if (params.size !== undefined) queryParams.set('size', params.size.toString());
+
+    const queryString = queryParams.toString();
+    const endpoint = `/pg-connections${queryString ? `?${queryString}` : ''}`;
+
+    return apiClient.get<PagedResponse<PgConnectionDto>>(endpoint);
   }
 
   async getById(id: number): Promise<ApiResponse<PgConnectionDto>> {

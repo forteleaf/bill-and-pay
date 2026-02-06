@@ -22,6 +22,7 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import { cn } from "$lib/utils";
+  import * as Select from '$lib/components/ui/select';
 
   interface Props {
     merchantId: string;
@@ -362,8 +363,8 @@
 
 <!-- Add/Edit Dialog -->
 <DialogPrimitive.Root
-  bind:open={dialogOpen}
-  onOpenChange={(v) => { if (!v) closeDialog(); }}
+  open={dialogOpen}
+  onOpenChange={(v) => { dialogOpen = v; if (!v) closeDialog(); }}
 >
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay
@@ -391,20 +392,22 @@
       <div class="px-6 py-5 space-y-5">
         <div class="space-y-2">
           <Label for="pg-select" class="text-sm font-medium">PG사 <span class="text-destructive">*</span></Label>
-          <select
-            id="pg-select"
-            value={formPgConnectionId ?? ""}
-            onchange={(e) => {
-              const val = e.currentTarget.value;
-              formPgConnectionId = val ? Number(val) : null;
-            }}
-            class="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-          >
-            <option value="">PG사를 선택하세요</option>
-            {#each pgConnections as pg}
-              <option value={pg.id}>{pg.pgName || pg.pgCode}</option>
-            {/each}
-          </select>
+          <Select.Root type="single"
+            value={formPgConnectionId?.toString() ?? ""}
+            onValueChange={(v) => formPgConnectionId = v ? Number(v) : null}>
+            <Select.Trigger class="w-full">
+              {#if formPgConnectionId}
+                {pgConnections.find(pg => pg.id.toString() === formPgConnectionId?.toString())?.pgName || formPgConnectionId}
+              {:else}
+                <span class="text-muted-foreground">PG사를 선택하세요</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              {#each pgConnections as pg}
+                <Select.Item value={pg.id.toString()}>{pg.pgName || pg.pgCode}</Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div class="space-y-2">
@@ -446,15 +449,20 @@
 
         <div class="space-y-2">
           <Label for="status-select" class="text-sm font-medium">상태</Label>
-          <select
-            id="status-select"
-            bind:value={formStatus}
-            class="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-          >
-            {#each Object.values(MerchantPgMappingStatus) as status}
-              <option value={status}>{MERCHANT_PG_MAPPING_STATUS_LABELS[status]}</option>
-            {/each}
-          </select>
+          <Select.Root type="single" bind:value={formStatus}>
+            <Select.Trigger class="w-full">
+              {#if formStatus}
+                {MERCHANT_PG_MAPPING_STATUS_LABELS[formStatus]}
+              {:else}
+                <span class="text-muted-foreground">상태 선택</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              {#each Object.values(MerchantPgMappingStatus) as status}
+                <Select.Item value={status}>{MERCHANT_PG_MAPPING_STATUS_LABELS[status]}</Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
         </div>
       </div>
 
@@ -487,8 +495,8 @@
 
 <!-- Delete Confirmation Dialog -->
 <DialogPrimitive.Root
-  bind:open={deleteConfirmOpen}
-  onOpenChange={(v) => { if (!v) closeDeleteConfirm(); }}
+  open={deleteConfirmOpen}
+  onOpenChange={(v) => { deleteConfirmOpen = v; if (!v) closeDeleteConfirm(); }}
 >
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay

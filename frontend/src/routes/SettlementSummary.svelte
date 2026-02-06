@@ -7,7 +7,9 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
-  import { DatePicker } from '$lib/components/ui/date-picker';
+  import { DateRangePicker } from '$lib/components/ui/date-range-picker';
+  import { Skeleton } from '$lib/components/ui/skeleton';
+  import { format } from 'date-fns';
   
   let summary = $state<SettlementSummary | null>(null);
   let loading = $state(true);
@@ -31,7 +33,16 @@
   function formatNumber(num: number): string {
     return new Intl.NumberFormat('ko-KR').format(num);
   }
-  
+
+  function setDateRange(days: number) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    startDate = format(start, 'yyyy/MM/dd');
+    endDate = format(end, 'yyyy/MM/dd');
+    loadSummary();
+  }
+
   async function loadSummary() {
     if (!tenantStore.current) {
       return;
@@ -62,12 +73,13 @@
       if (response.success && response.data) {
         summary = response.data;
       }
-      
+
+
       loading = false;
     } catch (err) {
-      error = 'Failed to load data.';
+      error = err instanceof Error ? err.message : '데이터를 불러올 수 없습니다.';
       loading = false;
-      console.error(err);
+      console.error('API Error:', err);
     }
   }
   
@@ -101,25 +113,25 @@
             <option value="VENDOR">Vendor</option>
           </select>
         </div>
-        
-        <div class="space-y-2">
-          <Label for="startDate">Start Date</Label>
-          <DatePicker 
-            value={startDate}
-            onchange={(d) => { startDate = d; loadSummary(); }}
-            placeholder="시작일"
-          />
+
+        <div class="flex flex-row items-end gap-3">
+          <div class="flex flex-col gap-1.5">
+            <Label>기간</Label>
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onchange={(start, end) => { startDate = start; endDate = end; }}
+              placeholder="기간 선택"
+              class="w-[280px]"
+            />
+          </div>
+          <div class="flex gap-1">
+            <Button variant="outline" size="sm" onclick={() => setDateRange(7)}>7일</Button>
+            <Button variant="outline" size="sm" onclick={() => setDateRange(30)}>30일</Button>
+            <Button variant="outline" size="sm" onclick={() => setDateRange(90)}>90일</Button>
+          </div>
         </div>
-        
-        <div class="space-y-2">
-          <Label for="endDate">End Date</Label>
-          <DatePicker 
-            value={endDate}
-            onchange={(d) => { endDate = d; loadSummary(); }}
-            placeholder="종료일"
-          />
-        </div>
-        
+
         <Button onclick={() => loadSummary()}>
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -129,9 +141,48 @@
       </div>
     </CardContent>
   </Card>
-  
+
+
   {#if loading}
-    <div class="text-center py-12 text-lg text-muted-foreground">Loading data...</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {#each Array(3) as _}
+        <Card>
+          <CardHeader class="pb-2">
+            <Skeleton class="h-4 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton class="h-6 w-32" />
+          </CardContent>
+        </Card>
+      {/each}
+    </div>
+
+    <Card>
+      <CardHeader>
+        <Skeleton class="h-6 w-48" />
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <Skeleton class="h-12 w-full" />
+        <div class="grid grid-cols-2 gap-4">
+          <Skeleton class="h-10 w-full" />
+          <Skeleton class="h-10 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {#each Array(3) as _}
+        <Card>
+          <CardHeader>
+            <Skeleton class="h-5 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton class="h-8 w-40 mb-2" />
+            <Skeleton class="h-5 w-16" />
+          </CardContent>
+        </Card>
+      {/each}
+    </div>
   {:else if error}
     <div class="text-center py-12 text-lg text-destructive">{error}</div>
   {:else if summary}

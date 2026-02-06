@@ -6,6 +6,7 @@
   import { ko } from 'date-fns/locale';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Badge } from '$lib/components/ui/badge';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   
   interface DashboardMetrics {
     todaySales: number;
@@ -86,9 +87,9 @@
       
       loading = false;
     } catch (err) {
-      error = 'Failed to load data.';
+      error = err instanceof Error ? err.message : '데이터를 불러올 수 없습니다.';
       loading = false;
-      console.error(err);
+      console.error('API Error:', err);
     }
   }
   
@@ -109,9 +110,36 @@
     <h1 class="text-3xl font-bold text-foreground">Dashboard</h1>
     <p class="text-muted-foreground mt-1">{format(new Date(), 'yyyy-MM-dd (E)', { locale: ko })}</p>
   </div>
-  
+
   {#if loading}
-    <div class="text-center py-12 text-lg text-muted-foreground">Loading data...</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {#each Array(4) as _}
+        <Card>
+          <CardHeader class="pb-2">
+            <Skeleton class="h-4 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton class="h-8 w-32 mb-2" />
+            <Skeleton class="h-5 w-16" />
+          </CardContent>
+        </Card>
+      {/each}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {#each Array(2) as _}
+        <Card>
+          <CardHeader>
+            <Skeleton class="h-6 w-40" />
+          </CardHeader>
+          <CardContent class="space-y-3">
+            {#each Array(5) as _}
+              <Skeleton class="h-16 w-full" />
+            {/each}
+          </CardContent>
+        </Card>
+      {/each}
+    </div>
   {:else if error}
     <div class="text-center py-12 text-lg text-destructive">{error}</div>
   {:else}
@@ -205,15 +233,12 @@
             {/each}
             {#each monthDays as day}
               {@const isToday = isSameDay(day, new Date())}
-              {@const hasTransactions = Math.random() > 0.3}
-              <div 
+              {@const hasTransactions = false}
+              <div
                 class="aspect-square flex flex-col items-center justify-center rounded-md cursor-pointer transition-colors
                   {isToday ? 'bg-primary text-primary-foreground font-bold' : hasTransactions ? 'bg-primary/10' : 'hover:bg-muted'}"
               >
                 <span class="text-sm">{format(day, 'd')}</span>
-                {#if hasTransactions && !isToday}
-                  <span class="text-[10px] text-primary mt-0.5">${(Math.random() * 50).toFixed(0)}K</span>
-                {/if}
               </div>
             {/each}
           </div>

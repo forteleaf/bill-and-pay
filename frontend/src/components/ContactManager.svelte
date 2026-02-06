@@ -1,6 +1,5 @@
 <script lang="ts">
   import { Dialog as DialogPrimitive } from "bits-ui";
-  import { onMount } from 'svelte';
   import { contactApi, type ContactCreateRequest, type ContactUpdateRequest } from '../lib/contactApi';
   import { ContactRole, type ContactDto } from '../types/merchant';
   import { Button } from '$lib/components/ui/button';
@@ -9,6 +8,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { cn } from '$lib/utils';
+  import * as Select from '$lib/components/ui/select';
 
   interface Props {
     entityType: string;
@@ -50,14 +50,11 @@
   let contactToDelete = $state<ContactDto | null>(null);
   let deleting = $state(false);
 
-  onMount(() => {
-    if (entityId) {
-      loadContacts();
-    }
-  });
+  let prevEntityId = $state<string | null>(null);
 
   $effect(() => {
-    if (entityId) {
+    if (entityId && entityId !== prevEntityId && !loading) {
+      prevEntityId = entityId;
       loadContacts();
     }
   });
@@ -380,7 +377,7 @@
   </CardContent>
 </Card>
 
-<DialogPrimitive.Root bind:open={dialogOpen} onOpenChange={(v) => { if (!v) closeDialog(); }}>
+<DialogPrimitive.Root open={dialogOpen} onOpenChange={(v) => { dialogOpen = v; if (!v) closeDialog(); }}>
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay 
       class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" 
@@ -418,15 +415,21 @@
 
         <div class="space-y-2">
           <Label for="role-select" class="text-sm font-medium">역할 <span class="text-destructive">*</span></Label>
-          <select
-            id="role-select"
-            bind:value={formRole}
-            class="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-          >
-            {#each ROLE_OPTIONS as option}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
+          <Select.Root type="single" bind:value={formRole}>
+            <Select.Trigger class="w-full">
+              {#if formRole}
+                {CONTACT_ROLE_LABELS[formRole]}
+              {:else}
+                <span class="text-muted-foreground">역할 선택</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value={ContactRole.PRIMARY}>대표</Select.Item>
+              <Select.Item value={ContactRole.SECONDARY}>담당자</Select.Item>
+              <Select.Item value={ContactRole.SETTLEMENT}>정산담당</Select.Item>
+              <Select.Item value={ContactRole.TECHNICAL}>기술담당</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div class="space-y-2">
@@ -482,7 +485,7 @@
   </DialogPrimitive.Portal>
 </DialogPrimitive.Root>
 
-<DialogPrimitive.Root bind:open={deleteConfirmOpen} onOpenChange={(v) => { if (!v) closeDeleteConfirm(); }}>
+<DialogPrimitive.Root open={deleteConfirmOpen} onOpenChange={(v) => { deleteConfirmOpen = v; if (!v) closeDeleteConfirm(); }}>
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay 
       class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" 

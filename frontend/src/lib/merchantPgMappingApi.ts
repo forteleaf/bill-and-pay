@@ -7,11 +7,21 @@ import type {
 } from '../types/merchantPgMapping';
 import { MerchantPgMappingStatus } from '../types/merchantPgMapping';
 
+export interface MerchantPgMappingListParams {
+  page?: number;
+  size?: number;
+}
+
 class MerchantPgMappingApi {
-  async getAll(page = 0, size = 20): Promise<ApiResponse<PagedResponse<MerchantPgMappingDto>>> {
-    return apiClient.get<PagedResponse<MerchantPgMappingDto>>(
-      `/merchant-pg-mappings?page=${page}&size=${size}`
-    );
+  async getAll(params: MerchantPgMappingListParams = {}): Promise<ApiResponse<PagedResponse<MerchantPgMappingDto>>> {
+    const queryParams = new URLSearchParams();
+    if (params.page !== undefined) queryParams.set('page', params.page.toString());
+    if (params.size !== undefined) queryParams.set('size', params.size.toString());
+
+    const queryString = queryParams.toString();
+    const endpoint = `/merchant-pg-mappings${queryString ? `?${queryString}` : ''}`;
+
+    return apiClient.get<PagedResponse<MerchantPgMappingDto>>(endpoint);
   }
 
   async getById(id: string): Promise<ApiResponse<MerchantPgMappingDto>> {

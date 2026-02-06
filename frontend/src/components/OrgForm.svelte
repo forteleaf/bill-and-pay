@@ -7,6 +7,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
   
   interface Props {
     mode: 'create' | 'edit';
@@ -240,16 +241,22 @@
       {#if mode === 'edit'}
         <div class="space-y-2">
           <Label for="status">Status</Label>
-          <select
-            id="status"
+          <Select.Root type="single"
             value={formData.status}
-            onchange={(e) => handleStatusChange(e.currentTarget.value as OrgStatus)}
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="ACTIVE">Active</option>
-            <option value="SUSPENDED">Suspended</option>
-            <option value="TERMINATED">Terminated</option>
-          </select>
+            onValueChange={(v) => handleStatusChange(v as OrgStatus)}>
+            <Select.Trigger class="w-full">
+              {#if formData.status}
+                {formData.status === 'ACTIVE' ? 'Active' : formData.status === 'SUSPENDED' ? 'Suspended' : 'Terminated'}
+              {:else}
+                <span class="text-muted-foreground">상태 선택</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="ACTIVE">Active</Select.Item>
+              <Select.Item value="SUSPENDED">Suspended</Select.Item>
+              <Select.Item value="TERMINATED">Terminated</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
       {/if}
       

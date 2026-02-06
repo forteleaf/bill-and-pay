@@ -3,6 +3,7 @@
   import type { Organization, OrgType } from '../types/api';
   import { apiClient } from '../lib/api';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
   
   interface Props {
     selectedParentId?: string | null;
@@ -103,20 +104,29 @@
   {:else if error}
     <div class="p-2 rounded-md bg-destructive/10 text-destructive text-sm">{error}</div>
   {:else}
-    <select
-      id="parent-select"
-      bind:value={selectedParentId}
-      onchange={handleSelect}
-      {disabled}
-      class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <option value="">Select parent...</option>
-      {#each parentOptions as org (org.id)}
-        <option value={org.id}>
-          {getIndentedLabel(org)}
-        </option>
-      {/each}
-    </select>
+    <Select.Root type="single"
+      value={selectedParentId ?? ""}
+      onValueChange={(v) => {
+        selectedParentId = v || null;
+        if (v) {
+          const event = { target: { value: v } } as any;
+          handleSelect(event);
+        }
+      }}
+      disabled={disabled}>
+      <Select.Trigger class="w-full">
+        {#if selectedParentId}
+          {parentOptions.find(o => o.id === selectedParentId)?.name || selectedParentId}
+        {:else}
+          <span class="text-muted-foreground">상위 조직 선택</span>
+        {/if}
+      </Select.Trigger>
+      <Select.Content>
+        {#each parentOptions as org (org.id)}
+          <Select.Item value={org.id}>{getIndentedLabel(org)}</Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
   {/if}
   
   {#if !nextOrgType && selectedParentId}

@@ -1,22 +1,13 @@
 import { apiClient } from './api';
 import type { ApiResponse } from '../types/api';
-import type { ContactDto, ContactRole } from '../types/merchant';
+import type {
+	ContactDto,
+	ContactCreateRequest,
+	ContactUpdateRequest
+} from '../types/merchant';
 
-export interface ContactCreateRequest {
-	name: string;
-	phone?: string;
-	email?: string;
-	role: ContactRole;
-	entityType: string;
-	entityId: string;
-}
-
-export interface ContactUpdateRequest {
-	name?: string;
-	phone?: string;
-	email?: string;
-	role?: ContactRole;
-}
+// Re-export types for convenience
+export type { ContactDto, ContactCreateRequest, ContactUpdateRequest };
 
 class ContactApi {
 	async create(data: ContactCreateRequest): Promise<ApiResponse<ContactDto>> {
