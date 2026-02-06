@@ -482,62 +482,30 @@
           </CardContent>
         </Card>
 
-        {#if connection.generatedWebhookUrl || connection.legacyWebhookUrl}
+        {#if connection.webhookUrl}
           <Card>
             <CardHeader>
               <CardTitle class="text-base">Webhook URL 정보</CardTitle>
             </CardHeader>
             <CardContent>
-              <div class="flex flex-col gap-5">
-                {#if connection.generatedWebhookUrl}
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-medium text-muted-foreground">신규 Webhook URL</span>
-                      <span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700">권장</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        value={connection.generatedWebhookUrl}
-                        readonly
-                        class="font-mono text-xs flex-1"
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onclick={() => copyToClipboard(connection?.generatedWebhookUrl || '')}
-                      >
-                        복사
-                      </Button>
-                    </div>
-                    <p class="text-xs text-muted-foreground">테넌트 ID가 포함된 새 형식입니다. 신규 PG 설정 시 이 URL을 사용하세요.</p>
-                  </div>
-                {/if}
-
-                {#if connection.legacyWebhookUrl}
-                  <div class="flex flex-col gap-1.5">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-medium text-muted-foreground">기존 Webhook URL</span>
-                      <span class="text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">Deprecated</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        value={connection.legacyWebhookUrl}
-                        readonly
-                        class="font-mono text-xs flex-1"
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onclick={() => copyToClipboard(connection?.legacyWebhookUrl || '')}
-                      >
-                        복사
-                      </Button>
-                    </div>
-                    <p class="text-xs text-muted-foreground">기존 PG 연동에서 사용 중인 URL입니다. 향후 신규 URL로 마이그레이션을 권장합니다.</p>
-                  </div>
-                {/if}
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-medium text-muted-foreground">Webhook URL</span>
+                <div class="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    value={connection.webhookUrl}
+                    readonly
+                    class="font-mono text-xs flex-1"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onclick={() => copyToClipboard(connection?.webhookUrl || '')}
+                  >
+                    복사
+                  </Button>
+                </div>
+                <p class="text-xs text-muted-foreground">PG사에 등록할 Webhook URL입니다.</p>
               </div>
             </CardContent>
           </Card>

@@ -21,8 +21,7 @@ export interface PgConnectionDto {
   status: PgConnectionStatus;
   createdAt: string;
   updatedAt: string;
-  generatedWebhookUrl?: string;
-  legacyWebhookUrl?: string;
+  webhookUrl?: string;
 }
 
 export interface PgConnectionCreateRequest {
