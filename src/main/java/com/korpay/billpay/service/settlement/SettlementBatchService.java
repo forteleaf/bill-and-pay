@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -99,6 +100,44 @@ public class SettlementBatchService {
     @Transactional
     public SettlementBatch createRealtimeBatch(LocalDate today) {
         return createDailyBatch(today, SettlementCycle.REALTIME);
+    }
+
+    @Transactional
+    public int backfillUnbatchedSettlements() {
+        List<Settlement> unbatched = settlementRepository.findAll().stream()
+                .filter(s -> s.getSettlementBatch() == null && s.getStatus() == SettlementStatus.PENDING)
+                .toList();
+
+        if (unbatched.isEmpty()) {
+            log.info("No unbatched settlements found for backfill");
+            return 0;
+        }
+
+        Map<LocalDate, List<Settlement>> byDate = new java.util.LinkedHashMap<>();
+        for (Settlement s : unbatched) {
+            LocalDate date = s.getCreatedAt().atZoneSameInstant(KST).toLocalDate();
+            byDate.computeIfAbsent(date, k -> new ArrayList<>()).add(s);
+        }
+
+        int totalBatches = 0;
+        SettlementCycle[] cycles = { SettlementCycle.D_PLUS_1, SettlementCycle.D_PLUS_3 };
+
+        for (LocalDate transactionDate : byDate.keySet()) {
+            for (SettlementCycle cycle : cycles) {
+                try {
+                    SettlementBatch batch = createDailyBatch(transactionDate, cycle);
+                    if (batch != null) {
+                        totalBatches++;
+                        log.info("Backfill: created batch for date={}, cycle={}", transactionDate, cycle);
+                    }
+                } catch (Exception e) {
+                    log.warn("Backfill: failed for date={}, cycle={}: {}", transactionDate, cycle, e.getMessage());
+                }
+            }
+        }
+
+        log.info("Backfill completed: {} batches created from {} dates", totalBatches, byDate.size());
+        return totalBatches;
     }
 
     private String generateBatchNumber(LocalDate date, SettlementCycle cycle) {

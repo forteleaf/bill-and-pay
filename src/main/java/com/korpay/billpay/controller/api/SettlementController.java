@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -216,6 +217,17 @@ public class SettlementController {
         }
 
         return ResponseEntity.ok(ApiResponse.success(SettlementBatchDto.from(batch)));
+    }
+
+    @PostMapping("/batches/backfill")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> backfillBatches() {
+        log.info("Backfill unbatched settlements requested");
+
+        int batchesCreated = settlementBatchService.backfillUnbatchedSettlements();
+
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "batchesCreated", batchesCreated
+        )));
     }
 
     @GetMapping("/merchant-daily")

@@ -77,7 +77,7 @@ webhook:
 
 settlement:
   batch:
-    enabled: false
+    enabled: true
     cron: "0 0 1 * * *"
     timezone: Asia/Seoul
 
