@@ -1,5 +1,14 @@
 # PRD-05: 데이터베이스 스키마
 
+## 관련 문서
+- [PRD-00: 용어 사전](PRD-00_glossary.md) - 용어 정의 및 표준화
+- [PRD-01: 아키텍처](PRD-01_architecture.md) - 전체 시스템 아키텍처
+- [PRD-02: 조직 구조](PRD-02_organization.md) - organizations 테이블 설계 근거
+- [PRD-03: 원장/정산](PRD-03_ledger.md) - transactions, settlements 설계 근거
+- [PRD-04: PG 연동](PRD-04_pg_integration.md) - pg_connections, webhook_logs 설계 근거
+
+---
+
 ## 1. 개요
 
 Bill&Pay 시스템의 PostgreSQL 18 데이터베이스 스키마를 정의합니다.
@@ -640,6 +649,18 @@ CREATE INDEX idx_transaction_events_pg_txn
 -- 일별 파티션 자동 생성 (과거 7일 ~ 향후 30일)
 ```
 
+### 6.2 DEFAULT 파티션
+
+범위 밖 레코드 삽입 시 에러를 방지하기 위해 DEFAULT 파티션을 생성합니다:
+
+```sql
+-- DEFAULT 파티션 (범위 밖 데이터 안전망)
+CREATE TABLE IF NOT EXISTS transaction_events_default
+  PARTITION OF transaction_events DEFAULT;
+```
+
+> **주의**: DEFAULT 파티션에 데이터가 존재하면 해당 범위의 새 파티션 생성이 불가능합니다. 정기적으로 DEFAULT 파티션의 데이터를 확인하고 적절한 파티션으로 이동시켜야 합니다.
+
 **이벤트 유형**:
 
 | event_type | amount 부호 | 설명 |
@@ -1117,6 +1138,55 @@ END $$;
 
 ---
 
+## 9. 운영 및 유지보수
+
+### 9.1 파티션 관리
+
+| 작업 | 주기 | 설명 |
+|------|------|------|
+| 파티션 자동 생성 | 매일 01:00 | 향후 30일 파티션 사전 생성 |
+| 오래된 파티션 분리 | 월 1회 | 90일 이전 파티션 DETACH → 아카이브 |
+| DEFAULT 파티션 점검 | 주 1회 | DEFAULT에 데이터 유입 여부 확인 |
+
+### 9.2 인덱스 모니터링
+
+```sql
+-- 미사용 인덱스 확인
+SELECT schemaname, tablename, indexname, idx_scan
+FROM pg_stat_user_indexes
+WHERE idx_scan = 0 AND schemaname = current_schema()
+ORDER BY pg_relation_size(indexrelid) DESC;
+
+-- 인덱스 크기 확인
+SELECT indexname, pg_size_pretty(pg_relation_size(indexrelid)) AS size
+FROM pg_stat_user_indexes
+WHERE schemaname = current_schema()
+ORDER BY pg_relation_size(indexrelid) DESC
+LIMIT 20;
+```
+
+### 9.3 데이터 정합성 검증 (일별 배치)
+
+```sql
+-- 1. 이벤트-거래 정합성: 이벤트 합계 = 거래 현재 금액
+SELECT t.id, t.amount, COALESCE(SUM(e.amount), 0) AS event_total
+FROM transactions t
+LEFT JOIN transaction_events e ON t.id = e.transaction_id
+WHERE t.created_at >= CURRENT_DATE - 1
+GROUP BY t.id, t.amount
+HAVING t.amount != COALESCE(SUM(e.amount), 0);
+
+-- 2. Zero-Sum 검증: |이벤트 금액| = SUM(정산 amount)
+SELECT te.id, te.amount, COALESCE(SUM(s.amount), 0) AS settlement_total
+FROM transaction_events te
+LEFT JOIN settlements s ON s.transaction_event_id = te.id
+WHERE te.created_at >= CURRENT_DATE - 1
+GROUP BY te.id, te.amount
+HAVING ABS(te.amount) != COALESCE(SUM(s.amount), 0);
+```
+
+---
+
 ## 8. 핵심 아키텍처 패턴
 
 ### 8.1 Zero-Sum 원장 (복식부기)
@@ -1155,3 +1225,4 @@ DISTRIBUTOR (Level 1) → AGENCY (Level 2) → DEALER (Level 3) → SELLER (Leve
 | v1.0 | 2026-01-28 | 초안 작성 |
 | v2.0 | 2026-02-05 | 실제 마이그레이션 기준 전면 재작성 |
 | v2.1 | 2026-02-06 | FeeConfiguration JPA 엔티티 구현 (fee_configurations 테이블 매핑) |
+| v2.2 | 2026-02-07 | DEFAULT 파티션 추가, 운영 가이드 섹션 추가, 상호 참조 링크 추가 |

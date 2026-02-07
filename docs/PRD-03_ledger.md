@@ -1,5 +1,14 @@
 # PRD-03: 원장 설계 및 정산 로직
 
+## 관련 문서
+- [PRD-00: 용어 사전](PRD-00_glossary.md) - 용어 정의 및 표준화
+- [PRD-01: 아키텍처](PRD-01_architecture.md) - 전체 시스템 아키텍처
+- [PRD-02: 조직 구조](PRD-02_organization.md) - 조직 계층 및 수수료 구조
+- [PRD-04: PG 연동](PRD-04_pg_integration.md) - Webhook 처리 및 이벤트 생성
+- [PRD-05: DB 스키마](PRD-05_database_schema.md) - 테이블 스키마 상세
+
+---
+
 ## 1. 개요
 
 Bill&Pay 시스템의 핵심인 원장(Ledger) 설계와 복식부기 기반 정산 로직을 정의합니다.
@@ -513,6 +522,36 @@ CREATE INDEX idx_settlements_batch_id ON settlements(settlement_batch_id) WHERE 
 └──────────────────────────────────────────┘
 ```
 
+### 7.4 동시성 제어
+
+Webhook을 통해 동일 거래에 대한 이벤트가 동시에 수신될 수 있습니다. 데이터 정합성을 보장하기 위해 다음 전략을 적용합니다:
+
+#### 7.4.1 트랜잭션 격리 수준
+```java
+@Transactional(isolation = Isolation.REPEATABLE_READ)
+public void processWebhookEvent(TransactionDto dto) {
+    // transactions UPDATE + transaction_events INSERT + settlements INSERT
+    // 단일 트랜잭션 내에서 처리
+}
+```
+
+#### 7.4.2 배타적 잠금 (Pessimistic Lock)
+```java
+// 동일 거래에 대한 동시 이벤트 처리 방지
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT t FROM Transaction t WHERE t.pgTransactionId = :pgTid AND t.pgConnectionId = :pgConnId")
+Optional<Transaction> findByPgTidForUpdate(@Param("pgTid") String pgTid, @Param("pgConnId") Long pgConnId);
+```
+
+#### 7.4.3 이벤트 시퀀스 보장
+```java
+// event_sequence 자동 증가 (배타적 잠금 하에서)
+int nextSequence = transactionEventRepository
+    .findMaxSequence(transaction.getId())
+    .orElse(0) + 1;
+event.setEventSequence(nextSequence);
+```
+
 ---
 
 ## 8. 수수료 계산 엔진
@@ -766,6 +805,44 @@ long difference = targetAmount - currentTotal;
 masterSettlement.setAmount(masterSettlement.getAmount() + difference);
 ```
 
+#### 8.3.5 다중 부분취소 시나리오
+
+```
+[시나리오] 원금 100,000원에 대해 2회 부분취소
+
+── 1차 부분취소: 33,333원 ──
+취소비율: 33.333%
+
+│ entity    │ 원정산   │ × 비율    │ 절사 후 │ 단수조정 │ 최종    │
+│ 가맹점    │ 97,000  │ 32,332.01│ 32,332 │ -       │ 32,332 │
+│ 벤더      │ 500     │ 166.665  │ 166    │ -       │ 166    │
+│ 셀러      │ 500     │ 166.665  │ 166    │ -       │ 166    │
+│ 딜러      │ 500     │ 166.665  │ 166    │ -       │ 166    │
+│ 에이전시  │ 500     │ 166.665  │ 166    │ -       │ 166    │
+│ 대리점    │ 500     │ 166.665  │ 166    │ -       │ 166    │
+│ 총판      │ 500     │ 166.665  │ 166    │ +5      │ 171    │
+│ 합계      │ 100,000 │          │ 33,328 │ +5      │ 33,333 ✅│
+
+── 2차 부분취소: 20,000원 ──
+취소비율: 20.000%
+
+│ entity    │ 원정산   │ × 비율   │ 절사 후 │ 단수조정 │ 최종    │
+│ 가맹점    │ 97,000  │ 19,400   │ 19,400 │ -       │ 19,400 │
+│ 벤더      │ 500     │ 100      │ 100    │ -       │ 100    │
+│ 셀러      │ 500     │ 100      │ 100    │ -       │ 100    │
+│ 딜러      │ 500     │ 100      │ 100    │ -       │ 100    │
+│ 에이전시  │ 500     │ 100      │ 100    │ -       │ 100    │
+│ 대리점    │ 500     │ 100      │ 100    │ -       │ 100    │
+│ 총판      │ 500     │ 100      │ 100    │ 0       │ 100    │
+│ 합계      │ 100,000 │          │ 20,000 │ 0       │ 20,000 ✅│
+
+── 최종 거래 상태 ──
+원금: 100,000원
+1차 취소: -33,333원
+2차 취소: -20,000원
+잔액: 46,667원 (PARTIAL_CANCELLED)
+```
+
 ---
 
 ## 9. 정산 주기 (D+N)
@@ -860,6 +937,34 @@ public void verifyDataIntegrity() {
                 "event_mismatches", eventMismatches
             )
         );
+    }
+}
+```
+
+### 10.4 Zero-Sum 검증 실패 처리
+
+검증 실패 시 즉시 예외를 던지지 않고, 보류 상태로 전환하여 수동 검토를 유도합니다:
+
+```java
+public List<Settlement> createSettlementsWithFallback(TransactionEvent event) {
+    try {
+        List<Settlement> settlements = feeCalculationService.calculateFees(event);
+        zeroSumValidator.validate(event, settlements);
+        return settlementRepository.saveAll(settlements);
+    } catch (ZeroSumException e) {
+        log.error("Zero-Sum 검증 실패: eventId={}, amount={}", event.getId(), event.getAmount(), e);
+
+        // 정산 보류 처리
+        event.setSettlementStatus("PENDING_REVIEW");
+        transactionEventRepository.save(event);
+
+        // 총판 알림
+        notificationService.sendSystemNotification(
+            NotificationType.ZERO_SUM_FAILURE,
+            Map.of("eventId", event.getId(), "amount", event.getAmount())
+        );
+
+        return Collections.emptyList();
     }
 }
 ```
@@ -1009,3 +1114,4 @@ public class FeeConfigResolver {
 | v2.0 | 2026-01-28 | 하이브리드 이벤트 소싱 방식으로 변경 |
 | v3.0 | 2026-02-05 | 실제 마이그레이션 기준 스키마 업데이트 (transactions, transaction_events, settlements) |
 | v3.1 | 2026-02-06 | 정산 엔진 구현 완료 (FeeConfigResolver, FeeCalculationService, Zero-Sum 검증) |
+| v3.2 | 2026-02-07 | 동시성 제어 전략 추가, 부분취소 상세 시나리오 추가, Zero-Sum 실패 처리 보강, 상호 참조 링크 추가 |

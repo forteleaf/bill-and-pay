@@ -1,5 +1,16 @@
 # Bill&Pay 정산 관리 시스템 PRD v2.0
 
+## 관련 문서
+- [PRD-00: 용어 사전](PRD-00_glossary.md) - 용어 정의 및 표준화
+- [PRD-02: 조직 구조](PRD-02_organization.md) - 조직 계층 상세 설계
+- [PRD-03: 원장/정산](PRD-03_ledger.md) - 복식부기 정산 로직
+- [PRD-04: PG 연동](PRD-04_pg_integration.md) - PG사 연동 및 알림
+- [PRD-05: DB 스키마](PRD-05_database_schema.md) - 데이터베이스 설계
+- [PRD-06: KORPAY](PRD-06_korpay.md) - KORPAY PG 연동 명세
+- [PRD-07: UI 화면 설계](PRD-07_ui_screens.md) - 화면 설계
+
+---
+
 ## 1. 프로젝트 개요
 
 ### 1.1 제품 정보
@@ -30,9 +41,9 @@
 | 영역 | 기술 | 버전 | 선정 이유 |
 |------|------|------|----------|
 | **Database** | PostgreSQL | 18 | ltree 계층 쿼리, 파티셔닝, JSONB |
-| **Backend** | Spring Boot | 3.5.10 | Java 21 Virtual Threads 지원 |
+| **Backend** | Spring Boot | 3.5.10 | Java 25 Virtual Threads 지원 |
 | **Frontend** | Svelte | 5 | Runes 기반 반응형, 경량 번들 |
-| **Runtime** | Java | 21 LTS | Virtual Threads, ScopedValue |
+| **Runtime** | Java | 25 LTS | Virtual Threads, ScopedValue |
 
 ### 2.2 주요 라이브러리
 
@@ -44,7 +55,7 @@
 | Frontend | bits-ui | Headless UI 컴포넌트 (Collapsible, DropdownMenu 등) |
 | Backend | HikariCP | 커넥션 풀 관리 |
 | Backend | Flyway | 스키마 마이그레이션 |
-| Infra | PgBouncer | 커넥션 풀링 (선택) |
+| Infra | PgBouncer | 커넥션 풀링 (필수) |
 
 ### 2.3 Frontend UI 구조
 
@@ -151,6 +162,16 @@ public class TenantContextHolder {
 | Webhook 응답 | 500ms 이내 |
 | 정산 배치 | 10만 건/10분 이내 |
 
+#### 4.1.1 SLA 상세
+| 항목 | P95 | P99 | 비고 |
+|------|-----|-----|------|
+| API 응답시간 | 200ms | 500ms | 일반 조회 API |
+| 대시보드 로딩 | 800ms | 1.5s | 30일 기준 집계 |
+| Webhook 처리 | 300ms | 500ms | 수신 → 200 OK 응답 |
+| 정산 배치 | 8분 | 12분 | 10만건 기준 |
+
+> **측정 기준**: API 서버 수신 시점부터 응답 완료까지. DB 저장 포함.
+
 ### 4.2 보안
 
 | 항목 | 요구사항 |
@@ -167,6 +188,21 @@ public class TenantContextHolder {
 | 신규 결제 수단 | JSONB 필드로 스키마 변경 없이 대응 |
 | 신규 PG사 | pg_connections 테이블에 설정 추가 |
 | 수수료 정책 변경 | 버전 관리된 스냅샷 저장 |
+
+### 4.4 모니터링 및 로깅
+
+| 항목 | 기술 | 용도 |
+|------|------|------|
+| 구조화 로깅 | Logback (JSON) | 모든 요청/응답 로그 |
+| 메트릭 수집 | Micrometer + Prometheus | JVM, DB, API 메트릭 |
+| 분산 추적 | OpenTelemetry | 멀티테넌트 요청 추적 |
+| 알림 | Alertmanager | 임계값 초과 시 알림 |
+
+**핵심 메트릭**:
+- Webhook 수신~응답 시간 (P95 < 300ms)
+- DB 커넥션 풀 사용률 (< 80%)
+- 정산 배치 처리 시간
+- 에러율 (< 0.1%)
 
 ---
 
@@ -199,3 +235,4 @@ PRD 문서는 다음과 같이 분리하여 관리합니다:
 | v1.0 | 2026-01-15 | 초안 작성 |
 | v1.2 | 2026-01-20 | 고도화 전략 추가 |
 | v2.0 | 2026-01-28 | 문서 구조 개편, PG 연동 구조 추가 |
+| v2.1 | 2026-02-07 | PgBouncer 필수화, SLA 상세 추가, 모니터링 전략 추가, 상호 참조 링크 추가 |
