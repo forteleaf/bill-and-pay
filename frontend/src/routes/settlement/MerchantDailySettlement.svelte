@@ -50,8 +50,9 @@
 
   function setDateRange(days: number) {
     const end = new Date();
+    end.setDate(end.getDate() + 5);
     const start = new Date();
-    start.setDate(end.getDate() - days);
+    start.setDate(new Date().getDate() - days);
     startDate = format(start, 'yyyy/MM/dd');
     endDate = format(end, 'yyyy/MM/dd');
     loadSummary();

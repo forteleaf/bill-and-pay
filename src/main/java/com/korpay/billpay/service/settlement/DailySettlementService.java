@@ -16,8 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
@@ -57,8 +59,8 @@ public class DailySettlementService {
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> new DailySettlementSummaryDto(
                 rs.getObject("settlement_date", LocalDate.class),
-                rs.getObject("period_start", OffsetDateTime.class),
-                rs.getObject("period_end", OffsetDateTime.class),
+                toOffsetDateTime(rs.getTimestamp("period_start")),
+                toOffsetDateTime(rs.getTimestamp("period_end")),
                 rs.getLong("merchant_count"),
                 rs.getLong("transaction_count"),
                 rs.getLong("approval_count"),
@@ -92,8 +94,8 @@ public class DailySettlementService {
         if (!batchRows.isEmpty()) {
             var row = batchRows.getFirst();
             batchNumber = (String) row.get("batch_number");
-            periodStart = (OffsetDateTime) row.get("period_start");
-            periodEnd = (OffsetDateTime) row.get("period_end");
+            periodStart = toOffsetDateTime(row.get("period_start"));
+            periodEnd = toOffsetDateTime(row.get("period_end"));
         }
 
         String breakdownSql = """
@@ -132,8 +134,9 @@ public class DailySettlementService {
                 ), date);
 
         String settlementsSql = """
-            SELECT s.* FROM settlements s
+            SELECT s.*, m.name as merchant_name FROM settlements s
             JOIN settlement_batches sb ON s.settlement_batch_id = sb.id
+            LEFT JOIN merchants m ON s.merchant_id = m.id
             WHERE s.entity_id = s.merchant_id
               AND sb.settlement_date = ?
             ORDER BY s.created_at DESC
@@ -163,9 +166,10 @@ public class DailySettlementService {
                         .status(rs.getString("status") != null
                                 ? com.korpay.billpay.domain.enums.SettlementStatus.valueOf(rs.getString("status"))
                                 : null)
-                        .settledAt(rs.getObject("settled_at", OffsetDateTime.class))
-                        .createdAt(rs.getObject("created_at", OffsetDateTime.class))
-                        .updatedAt(rs.getObject("updated_at", OffsetDateTime.class))
+                        .settledAt(toOffsetDateTime(rs.getTimestamp("settled_at")))
+                        .createdAt(toOffsetDateTime(rs.getTimestamp("created_at")))
+                        .updatedAt(toOffsetDateTime(rs.getTimestamp("updated_at")))
+                        .merchantName(rs.getString("merchant_name"))
                         .build(),
                 date);
 
@@ -305,5 +309,14 @@ public class DailySettlementService {
                 summary,
                 dailyDetails
         );
+    }
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    private OffsetDateTime toOffsetDateTime(Object value) {
+        if (value == null) return null;
+        if (value instanceof OffsetDateTime odt) return odt;
+        if (value instanceof Timestamp ts) return ts.toInstant().atZone(KST).toOffsetDateTime();
+        return null;
     }
 }
