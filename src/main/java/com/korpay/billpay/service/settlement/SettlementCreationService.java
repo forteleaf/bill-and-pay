@@ -4,7 +4,9 @@ import com.korpay.billpay.domain.entity.Merchant;
 import com.korpay.billpay.domain.entity.Settlement;
 import com.korpay.billpay.domain.entity.TransactionEvent;
 import com.korpay.billpay.domain.enums.EventType;
+import com.korpay.billpay.domain.enums.SettlementStatus;
 import com.korpay.billpay.exception.settlement.SettlementCalculationException;
+import com.korpay.billpay.exception.settlement.ZeroSumViolationException;
 import com.korpay.billpay.repository.SettlementRepository;
 import com.korpay.billpay.repository.TransactionEventRepository;
 import com.korpay.billpay.service.settlement.calculator.PartialCancelCalculator;
@@ -48,7 +50,21 @@ public class SettlementCreationService {
             throw new SettlementCalculationException("Unsupported event type: " + event.getEventType());
         }
 
-        zeroSumValidator.validate(event, settlements);
+        try {
+            zeroSumValidator.validate(event, settlements);
+        } catch (ZeroSumViolationException e) {
+            log.error("Zero-Sum 검증 실패: eventId={}, amount={}, diff={}",
+                event.getId(), event.getAmount(), e.getDifference());
+
+            // 정산 전체를 PENDING_REVIEW 상태로 저장 (데이터 유실 방지)
+            settlements.forEach(s -> s.setStatus(SettlementStatus.PENDING_REVIEW));
+            List<Settlement> savedSettlements = settlementRepository.saveAll(settlements);
+
+            log.warn("Zero-Sum 검증 실패 정산 {} 건을 PENDING_REVIEW로 저장: eventId={}",
+                savedSettlements.size(), event.getId());
+
+            return savedSettlements;
+        }
 
         List<Settlement> savedSettlements = settlementRepository.saveAll(settlements);
 

@@ -17,7 +17,16 @@
       "Bash(finch build:*)",
       "WebFetch(domain:hub.docker.com)",
       "WebFetch(domain:docs.azul.com)",
-      "Bash(finch images:*)"
+      "Bash(finch images:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker stats:*)",
+      "Bash(jstack:*)",
+      "Bash(jcmd:*)",
+      "Bash(ps:*)",
+      "Bash(sample 64470 1:*)",
+      "Bash(sort:*)",
+      "Bash(jps:*)",
+      "Bash(bun run build:*)"
     ],
     "deny": []
   }
