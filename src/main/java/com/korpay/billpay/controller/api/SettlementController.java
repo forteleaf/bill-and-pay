@@ -9,6 +9,9 @@ import com.korpay.billpay.domain.enums.SettlementCycle;
 import com.korpay.billpay.domain.enums.SettlementStatus;
 import com.korpay.billpay.dto.request.ResettleRequest;
 import com.korpay.billpay.dto.response.ApiResponse;
+import com.korpay.billpay.dto.response.DailySettlementDetailDto;
+import com.korpay.billpay.dto.response.DailySettlementSummaryDto;
+import com.korpay.billpay.dto.response.MerchantStatementDto;
 import com.korpay.billpay.dto.response.OrganizationSettlementDetailDto;
 import com.korpay.billpay.dto.response.OrganizationSettlementSummaryDto;
 import com.korpay.billpay.dto.response.PagedResponse;
@@ -16,6 +19,7 @@ import com.korpay.billpay.dto.response.SettlementBatchDto;
 import com.korpay.billpay.dto.response.SettlementDto;
 import com.korpay.billpay.dto.response.SettlementSummaryDto;
 import com.korpay.billpay.service.auth.UserContextHolder;
+import com.korpay.billpay.service.settlement.DailySettlementService;
 import com.korpay.billpay.service.settlement.SettlementBatchService;
 import com.korpay.billpay.service.settlement.SettlementQueryService;
 import com.korpay.billpay.service.settlement.SettlementResettlementService;
@@ -46,6 +50,7 @@ public class SettlementController {
     private final SettlementQueryService settlementQueryService;
     private final SettlementBatchService settlementBatchService;
     private final SettlementResettlementService settlementResettlementService;
+    private final DailySettlementService dailySettlementService;
     private final UserContextHolder userContextHolder;
 
     @GetMapping
@@ -54,6 +59,7 @@ public class SettlementController {
             @RequestParam(required = false) SettlementStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate,
+            @RequestParam(defaultValue = "false") boolean merchantOnly,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "created_at") String sortBy,
@@ -67,10 +73,18 @@ public class SettlementController {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<Settlement> settlementsPage = settlementQueryService.findAccessibleSettlements(
-                currentUser, entityType, status, startDate, endDate, pageable);
+                currentUser, entityType, status, startDate, endDate, merchantOnly, pageable);
+        
+        List<UUID> merchantIds = settlementsPage.getContent().stream()
+                .map(Settlement::getMerchantId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        java.util.Map<UUID, String> merchantNameMap = settlementQueryService.getMerchantNamesByIds(merchantIds);
         
         List<SettlementDto> dtos = settlementsPage.getContent().stream()
-                .map(SettlementDto::from)
+                .map(s -> SettlementDto.from(s, merchantNameMap.get(s.getMerchantId())))
                 .collect(Collectors.toList());
         
         PagedResponse<SettlementDto> pagedResponse = PagedResponse.of(settlementsPage, dtos);
@@ -202,5 +216,33 @@ public class SettlementController {
         }
 
         return ResponseEntity.ok(ApiResponse.success(SettlementBatchDto.from(batch)));
+    }
+
+    @GetMapping("/merchant-daily")
+    public ResponseEntity<ApiResponse<List<DailySettlementSummaryDto>>> getMerchantDailySummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(30);
+        if (endDate == null) endDate = LocalDate.now();
+        var result = dailySettlementService.getDailySettlementSummary(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/merchant-daily/{date}")
+    public ResponseEntity<ApiResponse<DailySettlementDetailDto>> getMerchantDailyDetail(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        var result = dailySettlementService.getDailySettlementDetail(date);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/merchant-statement/{merchantId}")
+    public ResponseEntity<ApiResponse<MerchantStatementDto>> getMerchantStatement(
+            @PathVariable UUID merchantId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(30);
+        if (endDate == null) endDate = LocalDate.now();
+        var result = dailySettlementService.getMerchantStatement(merchantId, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

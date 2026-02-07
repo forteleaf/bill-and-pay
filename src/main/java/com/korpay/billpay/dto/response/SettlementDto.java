@@ -41,8 +41,13 @@ public class SettlementDto {
     private Map<String, Object> metadata;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private String merchantName;
     
     public static SettlementDto from(Settlement settlement) {
+        return from(settlement, null);
+    }
+
+    public static SettlementDto from(Settlement settlement, String merchantName) {
         return SettlementDto.builder()
                 .id(settlement.getId())
                 .settlementBatchId(settlement.getSettlementBatch() != null ? settlement.getSettlementBatch().getId() : null)
@@ -65,6 +70,7 @@ public class SettlementDto {
                 .metadata(settlement.getMetadata())
                 .createdAt(settlement.getCreatedAt())
                 .updatedAt(settlement.getUpdatedAt())
+                .merchantName(merchantName)
                 .build();
     }
 }

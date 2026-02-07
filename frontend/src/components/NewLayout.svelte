@@ -27,6 +27,8 @@
 import PgConnectionList from "../routes/pgConnection/PgConnectionList.svelte";
 import PgConnectionDetail from "../routes/pgConnection/PgConnectionDetail.svelte";
 import BranchSettlement from "../routes/settlement/BranchSettlement.svelte";
+import MerchantDailySettlement from "../routes/settlement/MerchantDailySettlement.svelte";
+import MerchantStatement from "../routes/settlement/MerchantStatement.svelte";
 
 import type { Component } from "svelte";
 
@@ -51,6 +53,8 @@ import type { Component } from "svelte";
     PgConnectionList: PgConnectionList,
     PgConnectionDetail: PgConnectionDetail,
     BranchSettlement: BranchSettlement,
+    MerchantDailySettlement: MerchantDailySettlement,
+    MerchantStatement: MerchantStatement,
     ComingSoon: null,
   };
 

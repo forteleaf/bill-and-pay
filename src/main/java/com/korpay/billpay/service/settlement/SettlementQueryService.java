@@ -15,6 +15,8 @@ import com.korpay.billpay.dto.response.OrganizationSettlementSummaryDto;
 import com.korpay.billpay.dto.response.PagedResponse;
 import com.korpay.billpay.dto.response.SettlementBatchDto;
 import com.korpay.billpay.dto.response.SettlementSummaryDto;
+import com.korpay.billpay.domain.entity.Merchant;
+import com.korpay.billpay.repository.MerchantRepository;
 import com.korpay.billpay.repository.SettlementBatchRepository;
 import com.korpay.billpay.repository.SettlementRepository;
 import com.korpay.billpay.repository.SettlementRepository.HierarchyFeeAggregation;
@@ -42,6 +44,7 @@ public class SettlementQueryService {
 
     private final SettlementRepository settlementRepository;
     private final SettlementBatchRepository settlementBatchRepository;
+    private final MerchantRepository merchantRepository;
     private final AccessControlService accessControlService;
 
     public Page<Settlement> findAccessibleSettlements(
@@ -50,6 +53,7 @@ public class SettlementQueryService {
             SettlementStatus status,
             OffsetDateTime startDate,
             OffsetDateTime endDate,
+            boolean merchantOnly,
             Pageable pageable) {
         
         String userPath = accessControlService.isMasterAdmin(user) ? "" : user.getOrgPath();
@@ -62,8 +66,18 @@ public class SettlementQueryService {
                 statusStr,
                 startDate,
                 endDate,
+                merchantOnly,
                 pageable
         );
+    }
+
+    public Map<UUID, String> getMerchantNamesByIds(List<UUID> merchantIds) {
+        if (merchantIds == null || merchantIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Merchant> merchants = merchantRepository.findAllById(merchantIds);
+        return merchants.stream()
+                .collect(Collectors.toMap(Merchant::getId, Merchant::getName, (a, b) -> a));
     }
 
     public SettlementSummaryDto getSummary(

@@ -109,12 +109,6 @@
     return entryType === "CREDIT" ? "입금" : "출금";
   }
 
-  function getMerchantLabel(orgPath: string): string {
-    const parts = orgPath.split(".");
-    const vendorPart = parts[parts.length - 1];
-    return vendorPart || orgPath;
-  }
-
   function formatPercent(rate: number): string {
     return (rate * 100).toFixed(2) + "%";
   }
@@ -148,7 +142,7 @@
         size: pageSize.toString(),
         sortBy: sortField,
         direction: sortDirection.toUpperCase(),
-        entityType: "VENDOR",
+        merchantOnly: "true",
       });
 
       if (statusFilter !== "ALL") {
@@ -453,7 +447,7 @@
           {#each displaySettlements as settlement}
             <TableRow>
               <TableCell class="font-medium">
-                {getMerchantLabel(settlement.orgPath)}
+                {settlement.merchantName || settlement.merchantId}
               </TableCell>
               <TableCell>
                 <Badge

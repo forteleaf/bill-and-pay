@@ -83,25 +83,31 @@
         },
       ],
     },
-    {
-      id: "settlement-mgmt",
-      title: "정산 관리",
-      icon: "💰",
-      children: [
-        {
-          id: "branch-settlement",
-          title: "영업점 정산내역",
-          icon: "📈",
-          component: "BranchSettlement",
-        },
-        {
-          id: "merchant-settlement",
-          title: "가맹점 정산내역",
-          icon: "📉",
-          component: "Settlements",
-        },
-      ],
-    },
+     {
+       id: "settlement-mgmt",
+       title: "정산 관리",
+       icon: "💰",
+       children: [
+         {
+           id: "branch-settlement",
+           title: "영업점 정산내역",
+           icon: "📈",
+           component: "BranchSettlement",
+         },
+         {
+           id: "merchant-daily-settlement",
+           title: "가맹점 일자별 정산",
+           icon: "📊",
+           component: "MerchantDailySettlement",
+         },
+         {
+           id: "merchant-statement",
+           title: "가맹점 정산내역서",
+           icon: "📄",
+           component: "MerchantStatement",
+         },
+       ],
+     },
     {
       id: "transfer-mgmt",
       title: "지급 이체",

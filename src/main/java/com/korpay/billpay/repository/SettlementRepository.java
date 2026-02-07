@@ -127,6 +127,7 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
         AND (:status IS NULL OR CAST(s.status AS TEXT) = :status)
         AND (CAST(:startDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at >= CAST(:startDate AS TIMESTAMP WITH TIME ZONE))
         AND (CAST(:endDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at <= CAST(:endDate AS TIMESTAMP WITH TIME ZONE))
+        AND (:merchantOnly = false OR s.entity_id = s.merchant_id)
         ORDER BY s.created_at DESC
         """,
         countQuery = """
@@ -136,6 +137,7 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
         AND (:status IS NULL OR CAST(s.status AS TEXT) = :status)
         AND (CAST(:startDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at >= CAST(:startDate AS TIMESTAMP WITH TIME ZONE))
         AND (CAST(:endDate AS TIMESTAMP WITH TIME ZONE) IS NULL OR s.created_at <= CAST(:endDate AS TIMESTAMP WITH TIME ZONE))
+        AND (:merchantOnly = false OR s.entity_id = s.merchant_id)
         """,
         nativeQuery = true)
     Page<Settlement> findAccessibleSettlements(
@@ -144,6 +146,7 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
             @Param("status") String status,
             @Param("startDate") OffsetDateTime startDate,
             @Param("endDate") OffsetDateTime endDate,
+            @Param("merchantOnly") boolean merchantOnly,
             Pageable pageable
     );
 

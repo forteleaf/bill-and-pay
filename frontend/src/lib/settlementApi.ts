@@ -6,13 +6,20 @@ import type {
   SettlementSummary,
   SettlementBatch,
   OrganizationSettlementSummary,
-  OrganizationSettlementDetail
+  OrganizationSettlementDetail,
+  DailySettlementSummary,
+  DailySettlementDetail,
+  MerchantSettlementBreakdown,
+  MerchantStatement,
+  DailyStatementRow
 } from '../types/api';
 import type {
   SettlementListParams,
   SettlementSummaryParams,
   SettlementBatchListParams,
-  OrganizationSettlementParams
+  OrganizationSettlementParams,
+  DailySettlementParams,
+  MerchantStatementParams
 } from '../types/settlement';
 import { toApiDateTime } from './utils';
 
@@ -21,7 +28,9 @@ export type {
   SettlementListParams,
   SettlementSummaryParams,
   SettlementBatchListParams,
-  OrganizationSettlementParams
+  OrganizationSettlementParams,
+  DailySettlementParams,
+  MerchantStatementParams
 };
 
 class SettlementApi {
@@ -131,6 +140,28 @@ class SettlementApi {
     const endpoint = `/settlements/organization/${organizationId}/details${queryString ? `?${queryString}` : ''}`;
 
     return apiClient.get<OrganizationSettlementDetail>(endpoint);
+  }
+
+  async getMerchantDailySummary(params: DailySettlementParams = {}): Promise<ApiResponse<DailySettlementSummary[]>> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
+    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
+    if (params.status) queryParams.set('status', params.status);
+    const queryString = queryParams.toString();
+    return apiClient.get<DailySettlementSummary[]>(`/settlements/merchant-daily${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getMerchantDailyDetail(date: string): Promise<ApiResponse<DailySettlementDetail>> {
+    const dateApi = date.replace(/\//g, '-');
+    return apiClient.get<DailySettlementDetail>(`/settlements/merchant-daily/${dateApi}`);
+  }
+
+  async getMerchantStatement(params: MerchantStatementParams): Promise<ApiResponse<MerchantStatement>> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
+    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
+    const queryString = queryParams.toString();
+    return apiClient.get<MerchantStatement>(`/settlements/merchant-statement/${params.merchantId}${queryString ? `?${queryString}` : ''}`);
   }
 }
 

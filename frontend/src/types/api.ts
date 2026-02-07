@@ -93,6 +93,7 @@ export interface Settlement {
   transactionEventId: string;
   transactionId: string;
   merchantId: string;
+  merchantName?: string;
   orgPath: string;
   entityId: string;
   entityType: string;
@@ -278,4 +279,86 @@ export interface OrganizationSettlementDetail {
   merchantSettlements: MerchantSettlement[];
   hierarchyFees: HierarchyFee[];
   calculation: SettlementCalculation;
+}
+
+export interface DailySettlementSummary {
+  settlementDate: string;
+  periodStart: string;
+  periodEnd: string;
+  merchantCount: number;
+  transactionCount: number;
+  approvalCount: number;
+  approvalAmount: number;
+  cancelCount: number;
+  cancelAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  status: string;
+}
+
+export interface DailySettlementDetail {
+  settlementDate: string;
+  batchNumber?: string;
+  periodStart: string;
+  periodEnd: string;
+  summary: {
+    transactionCount: number;
+    approvalAmount: number;
+    cancelAmount: number;
+    feeAmount: number;
+    netAmount: number;
+  };
+  merchantBreakdown: MerchantSettlementBreakdown[];
+  settlements: Settlement[];
+}
+
+export interface MerchantSettlementBreakdown {
+  merchantId: string;
+  merchantName: string;
+  transactionCount: number;
+  approvalCount: number;
+  approvalAmount: number;
+  cancelCount: number;
+  cancelAmount: number;
+  feeRate: number;
+  feeAmount: number;
+  netAmount: number;
+}
+
+export interface MerchantStatement {
+  merchantId: string;
+  merchantName: string;
+  merchantCode: string;
+  businessNumber: string;
+  representativeName: string;
+  settlementCycle: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+  periodStart: string;
+  periodEnd: string;
+  summary: {
+    totalApprovalAmount: number;
+    totalApprovalCount: number;
+    totalCancelAmount: number;
+    totalCancelCount: number;
+    grossAmount: number;
+    feeRate: number;
+    feeAmount: number;
+    netAmount: number;
+    transactionCount: number;
+  };
+  dailyDetails: DailyStatementRow[];
+}
+
+export interface DailyStatementRow {
+  settlementDate: string;
+  transactionDate: string;
+  transactionCount: number;
+  approvalCount: number;
+  approvalAmount: number;
+  cancelCount: number;
+  cancelAmount: number;
+  feeAmount: number;
+  netAmount: number;
 }
