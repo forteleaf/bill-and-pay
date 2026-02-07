@@ -110,6 +110,10 @@ class SettlementApi {
     return apiClient.get<OrganizationSettlementSummary[]>(endpoint);
   }
 
+  async resettleByEventId(transactionEventId: string): Promise<ApiResponse<Settlement[]>> {
+    return apiClient.post<Settlement[]>('/settlements/resettle', { transactionEventId });
+  }
+
   async getOrganizationSettlementDetail(
     organizationId: string,
     startDate?: string,

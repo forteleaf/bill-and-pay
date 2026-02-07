@@ -39,4 +39,7 @@ public interface TransactionEventRepository extends JpaRepository<TransactionEve
 
     @Query("SELECT COALESCE(MAX(e.eventSequence), 0) FROM TransactionEvent e WHERE e.transactionId = :transactionId")
     int findMaxSequenceByTransactionId(@Param("transactionId") UUID transactionId);
+
+    @Query(value = "SELECT * FROM transaction_events WHERE id = :id LIMIT 1", nativeQuery = true)
+    java.util.Optional<TransactionEvent> findByIdOnly(@Param("id") UUID id);
 }

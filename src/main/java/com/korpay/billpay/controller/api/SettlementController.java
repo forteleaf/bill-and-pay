@@ -7,6 +7,7 @@ import com.korpay.billpay.domain.enums.OrganizationType;
 import com.korpay.billpay.domain.enums.SettlementBatchStatus;
 import com.korpay.billpay.domain.enums.SettlementCycle;
 import com.korpay.billpay.domain.enums.SettlementStatus;
+import com.korpay.billpay.dto.request.ResettleRequest;
 import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.dto.response.OrganizationSettlementDetailDto;
 import com.korpay.billpay.dto.response.OrganizationSettlementSummaryDto;
@@ -17,6 +18,7 @@ import com.korpay.billpay.dto.response.SettlementSummaryDto;
 import com.korpay.billpay.service.auth.UserContextHolder;
 import com.korpay.billpay.service.settlement.SettlementBatchService;
 import com.korpay.billpay.service.settlement.SettlementQueryService;
+import com.korpay.billpay.service.settlement.SettlementResettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,6 +45,7 @@ public class SettlementController {
 
     private final SettlementQueryService settlementQueryService;
     private final SettlementBatchService settlementBatchService;
+    private final SettlementResettlementService settlementResettlementService;
     private final UserContextHolder userContextHolder;
 
     @GetMapping
@@ -148,6 +151,29 @@ public class SettlementController {
         }
 
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/resettle")
+    public ResponseEntity<ApiResponse<List<SettlementDto>>> resettle(
+            @RequestBody @jakarta.validation.Valid ResettleRequest request) {
+
+        User currentUser = userContextHolder.getCurrentUser();
+        log.info("재정산 요청: transactionEventId={}, user={}", request.getTransactionEventId(), currentUser.getUsername());
+
+        try {
+            List<Settlement> newSettlements = settlementResettlementService
+                    .resettleByTransactionEventId(request.getTransactionEventId());
+
+            List<SettlementDto> dtos = newSettlements.stream()
+                    .map(SettlementDto::from)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(ApiResponse.success(dtos));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            log.warn("재정산 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("RESETTLE_FAILED", e.getMessage()));
+        }
     }
 
     @PostMapping("/batches")

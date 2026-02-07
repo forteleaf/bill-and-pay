@@ -82,6 +82,8 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
 
     List<Settlement> findByTransactionEventId(UUID transactionEventId);
 
+    List<Settlement> findByTransactionEventIdAndStatusIn(UUID transactionEventId, List<SettlementStatus> statuses);
+
     List<Settlement> findByEntityIdAndStatus(UUID entityId, SettlementStatus status);
 
     @Query(value = "SELECT * FROM settlements WHERE entity_path <@ CAST(:path AS ltree)", nativeQuery = true)
