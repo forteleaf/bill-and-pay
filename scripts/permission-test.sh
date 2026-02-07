@@ -33,7 +33,7 @@ USERS=(
   "seoul_admin|AGENCY_ADMIN|dist_001.agcy_001|2|서울대리점 관리자"
   "busan_admin|AGENCY_ADMIN|dist_001.agcy_002|2|부산대리점 관리자"
   "dealer1|DEALER|dist_001.agcy_001.deal_001|3|강남딜러"
-  "seller1|SELLER|dist_001.agcy_001.deal_001.sell_001|4|역삼판매점"
+  "seller1|SELLER|dist_001.agcy_001.deal_001.sell_001|4|역삼셀러"
   "merchant1|MERCHANT|dist_001.agcy_001.deal_001.sell_001.vend_001|5|맛있는 커피숍"
 )
 
@@ -67,10 +67,10 @@ cat << 'MATRIX'
 ║ dist_001 (코르페이 총판)                                                    ║
 ║ ├── agcy_001 (서울대리점)                                                   ║
 ║ │   ├── deal_001 (강남딜러)                                                 ║
-║ │   │   ├── sell_001 (역삼판매점)                                           ║
+║ │   │   ├── sell_001 (역삼셀러)                                           ║
 ║ │   │   │   ├── vend_001 (맛있는 커피숍) ← MCH001, TXN1                   ║
 ║ │   │   │   └── vend_002 (행복한 분식점) ← MCH002, TXN2                   ║
-║ │   │   └── sell_002 (삼성판매점)                                           ║
+║ │   │   └── sell_002 (삼성셀러)                                           ║
 ║ │   │       └── vend_003 (프리미엄마트) ← MCH003, TXN3                    ║
 ║ │   └── deal_002 (서초딜러)                                                 ║
 ║ └── agcy_002 (부산대리점)                                                   ║
@@ -134,10 +134,10 @@ login() {
     -X POST \
     -H "Content-Type: application/json" \
     -d "{\"username\":\"$username\",\"password\":\"$PASSWORD\"}" 2>/dev/null)
-  
+
   local token
   token=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null || echo "")
-  
+
   if [ -z "$token" ]; then
     echo "LOGIN_FAILED"
   else
@@ -247,7 +247,7 @@ for user_info in "${USERS[@]}"; do
   IFS='|' read -r username role orgpath level desc <<< "$user_info"
   actual=$(cat "$RESULTS_DIR/txn_${username}" 2>/dev/null || echo "ERR")
   expected=${EXPECTED_TXN[$username]}
-  
+
   if [ "$actual" = "$expected" ]; then
     status="${GREEN}PASS${NC}"
     TXN_PASS=$((TXN_PASS + 1))
@@ -255,7 +255,7 @@ for user_info in "${USERS[@]}"; do
     status="${RED}FAIL${NC}"
     TXN_FAIL=$((TXN_FAIL + 1))
   fi
-  
+
   printf "  │ %-11s │ %-8s │ %-16s │ %4s건   │ %4s건   │ %b\n" \
     "$username" "$role" "$orgpath" "$expected" "$actual" "$status"
 done
@@ -297,7 +297,7 @@ for user_info in "${USERS[@]}"; do
   IFS='|' read -r username role orgpath level desc <<< "$user_info"
   actual=$(cat "$RESULTS_DIR/stl_${username}" 2>/dev/null || echo "ERR")
   expected=${EXPECTED_STL[$username]}
-  
+
   if [ "$actual" = "$expected" ]; then
     status="${GREEN}PASS${NC}"
     STL_PASS=$((STL_PASS + 1))
@@ -305,7 +305,7 @@ for user_info in "${USERS[@]}"; do
     status="${RED}FAIL${NC}"
     STL_FAIL=$((STL_FAIL + 1))
   fi
-  
+
   printf "  │ %-11s │ %-8s │ %-16s │ %4s건   │ %4s건   │ %b\n" \
     "$username" "$role" "$orgpath" "$expected" "$actual" "$status"
 done
@@ -347,7 +347,7 @@ for user_info in "${USERS[@]}"; do
   IFS='|' read -r username role orgpath level desc <<< "$user_info"
   actual=$(cat "$RESULTS_DIR/mch_${username}" 2>/dev/null || echo "ERR")
   expected=${EXPECTED_MCH[$username]}
-  
+
   if [ "$actual" = "$expected" ]; then
     status="${GREEN}PASS${NC}"
     MCH_PASS=$((MCH_PASS + 1))
@@ -355,7 +355,7 @@ for user_info in "${USERS[@]}"; do
     status="${RED}FAIL${NC}"
     MCH_FAIL=$((MCH_FAIL + 1))
   fi
-  
+
   printf "  │ %-11s │ %-8s │ %-16s │ %4s건   │ %4s건   │ %b\n" \
     "$username" "$role" "$orgpath" "$expected" "$actual" "$status"
 done
@@ -407,16 +407,16 @@ for user_info in "${USERS[@]}"; do
       echo "LOGIN_FAILED" > "$RESULTS_DIR/txn_detail_${username}"
       exit 0
     fi
-    
+
     results=""
     for txn_label_id in "TXN1:$TXN1_ID" "TXN2:$TXN2_ID" "TXN3:$TXN3_ID"; do
       IFS=':' read -r txn_label txn_id <<< "$txn_label_id"
       response=$(api_get "$token" "/v1/transactions/$txn_id")
-      
+
       success=$(echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK' if d.get('success') else 'DENIED')" 2>/dev/null || echo "ERR")
       results="${results}${txn_label}=${success},"
     done
-    
+
     echo "$results" > "$RESULTS_DIR/txn_detail_${username}"
   ) &
 done
@@ -432,13 +432,13 @@ DETAIL_FAIL=0
 for user_info in "${USERS[@]}"; do
   IFS='|' read -r username role orgpath level desc <<< "$user_info"
   raw=$(cat "$RESULTS_DIR/txn_detail_${username}" 2>/dev/null || echo "ERR")
-  
+
   line="  │ $(printf '%-11s' "$username") │ $(printf '%-8s' "$orgpath") │"
-  
+
   for txn_label in TXN1 TXN2 TXN3; do
     actual=$(echo "$raw" | tr ',' '\n' | grep "^${txn_label}=" | cut -d= -f2)
     expected=${EXPECTED_TXN_DETAIL["$username:$txn_label"]}
-    
+
     if [ "$actual" = "$expected" ]; then
       if [ "$actual" = "OK" ]; then
         line="$line ${GREEN}✅ OK${NC}    예상:OK     "
@@ -451,7 +451,7 @@ for user_info in "${USERS[@]}"; do
       DETAIL_FAIL=$((DETAIL_FAIL + 1))
     fi
   done
-  
+
   echo -e "${line}│"
 done
 

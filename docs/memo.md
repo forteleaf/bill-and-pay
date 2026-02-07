@@ -38,7 +38,7 @@
 
   2. 5단계 조직 계층 관리
 
-  DISTRIBUTOR(총판) → AGENCY(대리점) → DEALER(딜러) → SELLER(셀러) → VENDOR(가맹점)
+  DISTRIBUTOR(총판) → AGENCY(대리점) → DEALER(딜러) → SELLER(셀러) → VENDOR(벤더)
   - 상위 조직이 하위 조직의 데이터 조회 가능
   - 각 단계별 수수료율 설정
 

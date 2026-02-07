@@ -62,7 +62,7 @@ BEGIN
   SELECT '01960000-0000-7000-0006-000000000012', '01960000-0000-7000-0001-000000000009', 'VENDOR', 'dist_001.agcy_001.deal_001.sell_001.vend_002', v_debit_method_id, NULL, 'PERCENTAGE', 0.030000, NULL, 60, 'ACTIVE'
   WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000012');
 
-  -- 삼성판매점(sell_002) 수수료: 신용 3.2%, 체크 2.7%
+  -- 삼성셀러(sell_002) 수수료: 신용 3.2%, 체크 2.7%
   INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
   SELECT '01960000-0000-7000-0006-000000000013', '01960000-0000-7000-0001-000000000007', 'SELLER', 'dist_001.agcy_001.deal_001.sell_002', v_credit_method_id, NULL, 'PERCENTAGE', 0.032000, NULL, 70, 'ACTIVE'
   WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000013');

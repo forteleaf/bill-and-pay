@@ -56,7 +56,7 @@ COMMENT ON COLUMN organizations.name IS '영업점 이름';
 COMMENT ON COLUMN organizations.org_type IS '조직 유형 (DISTRIBUTOR, AGENCY, DEALER, SELLER, VENDOR)';
 COMMENT ON COLUMN organizations.path IS 'ltree 계층 경로 (예: dist_001.agcy_001)';
 COMMENT ON COLUMN organizations.parent_id IS '상위 조직 ID (최상위 DISTRIBUTOR는 NULL)';
-COMMENT ON COLUMN organizations.level IS '계층 레벨 (1:총판, 2:대리점, 3:딜러, 4:판매점, 5:벤더)';
+COMMENT ON COLUMN organizations.level IS '계층 레벨 (1:총판, 2:대리점, 3:딜러, 4:셀러, 5:벤더)';
 COMMENT ON COLUMN organizations.business_number IS '사업자등록번호 (숫자만)';
 COMMENT ON COLUMN organizations.business_name IS '사업자명 (상호)';
 COMMENT ON COLUMN organizations.representative_name IS '대표자명';

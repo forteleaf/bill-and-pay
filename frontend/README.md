@@ -40,7 +40,7 @@ npm run build
 | 테이블 | 건수 | 내용 |
 |--------|------|------|
 | business_entities | 12 | 사업자 정보 (법인 3, 개인 8, 비사업자 1) |
-| organizations | 10 | 5단계 계층 (총판 1, 대리점 2, 딜러 2, 판매점 2, 가맹 3) |
+| organizations | 10 | 5단계 계층 (총판 1, 대리점 2, 딜러 2, 셀러 2, 가맹 3) |
 | users | 7 | 테스트 사용자 (비밀번호: password123) |
 | merchants | 3 | 가맹점 |
 | merchant_pg_mappings | 3 | PG 매핑 |
@@ -59,10 +59,10 @@ npm run build
 코르페이 총판 (DIST001) - dist_001
 ├── 서울대리점 (AGCY001) - dist_001.agcy_001
 │   ├── 강남딜러 (DEAL001) - dist_001.agcy_001.deal_001
-│   │   ├── 역삼판매점 (SELL001) - dist_001.agcy_001.deal_001.sell_001
+│   │   ├── 역삼셀러 (SELL001) - dist_001.agcy_001.deal_001.sell_001
 │   │   │   ├── 맛있는 커피숍 (VEND001) - MCH001
 │   │   │   └── 행복한 분식점 (VEND002) - MCH002
-│   │   └── 삼성판매점 (SELL002) - dist_001.agcy_001.deal_001.sell_002
+│   │   └── 삼성셀러 (SELL002) - dist_001.agcy_001.deal_001.sell_002
 │   │       └── 프리미엄마트 (VEND003) - MCH003
 │   └── 서초딜러 (DEAL002)
 └── 부산대리점 (AGCY002)

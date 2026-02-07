@@ -5,8 +5,8 @@ package com.korpay.billpay.domain.enums;
  * Level 1: DISTRIBUTOR (총판)
  * Level 2: AGENCY (대리점)
  * Level 3: DEALER (딜러)
- * Level 4: SELLER (판매점)
- * Level 5: VENDOR (가맹점)
+ * Level 4: SELLER (셀러)
+ * Level 5: VENDOR (벤더)
  */
 public enum OrganizationType {
     DISTRIBUTOR,

@@ -7,9 +7,9 @@
     onLogin: () => void;
     onDemo: () => void;
   }
-  
+
   let { onLogin, onDemo }: Props = $props();
-  
+
   const features = [
     {
       icon: '📊',
@@ -19,7 +19,7 @@
     {
       icon: '🏢',
       title: '다단계 영업 구조',
-      description: '총판 > 대리점 > 딜러 > 판매점 > 가맹점까지 5단계 계층 구조를 완벽하게 지원합니다.'
+      description: '총판 > 대리점 > 딜러 > 셀러 > 벤더까지 5단계 계층 구조를 완벽하게 지원합니다.'
     },
     {
       icon: '⚡',
@@ -42,7 +42,7 @@
       description: '일별, 월별, 가맹점별 상세 정산 리포트를 제공하여 투명한 정산 관리가 가능합니다.'
     }
   ];
-  
+
   const stats = [
     { value: '99.9%', label: '서비스 가동률' },
     { value: '< 0.1초', label: '정산 처리 속도' },
@@ -120,7 +120,7 @@
           비즈니스에 집중할 수 있도록 돕습니다.
         </p>
       </div>
-      
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {#each features as feature}
           <Card class="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
@@ -148,7 +148,7 @@
           3단계로 완성되는 자동 정산
         </h2>
       </div>
-      
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div class="relative">
           <div class="absolute top-8 left-1/2 w-full h-0.5 bg-border hidden md:block"></div>
@@ -162,7 +162,7 @@
             </p>
           </div>
         </div>
-        
+
         <div class="relative">
           <div class="absolute top-8 left-1/2 w-full h-0.5 bg-border hidden md:block"></div>
           <div class="relative z-10 text-center">
@@ -175,7 +175,7 @@
             </p>
           </div>
         </div>
-        
+
         <div class="relative">
           <div class="relative z-10 text-center">
             <div class="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
@@ -235,7 +235,7 @@
             © 2024 Bill&Pay. All rights reserved.
           </p>
         </div>
-        
+
         <div>
           <h4 class="font-semibold text-foreground mb-4">제품</h4>
           <ul class="space-y-2 text-sm text-muted-foreground">
@@ -245,7 +245,7 @@
             <li><span class="cursor-pointer hover:text-foreground transition-colors">릴리즈 노트</span></li>
           </ul>
         </div>
-        
+
         <div>
           <h4 class="font-semibold text-foreground mb-4">고객지원</h4>
           <ul class="space-y-2 text-sm text-muted-foreground">
