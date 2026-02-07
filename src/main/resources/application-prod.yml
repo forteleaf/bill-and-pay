@@ -49,3 +49,12 @@ logging:
     com.korpay: INFO
     org.springframework.web: WARN
     org.hibernate.SQL: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never

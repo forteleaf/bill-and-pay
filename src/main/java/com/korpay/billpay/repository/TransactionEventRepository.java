@@ -36,4 +36,7 @@ public interface TransactionEventRepository extends JpaRepository<TransactionEve
             OffsetDateTime startDate,
             OffsetDateTime endDate
     );
+
+    @Query("SELECT COALESCE(MAX(e.eventSequence), 0) FROM TransactionEvent e WHERE e.transactionId = :transactionId")
+    int findMaxSequenceByTransactionId(@Param("transactionId") UUID transactionId);
 }

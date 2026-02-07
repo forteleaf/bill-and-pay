@@ -66,7 +66,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     );
 
     @Query(value = """
-        SELECT 
+        SELECT
             m.id as merchantId,
             m.name as merchantName,
             SUM(t.amount) as totalAmount,
@@ -85,5 +85,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("startDate") OffsetDateTime startDate,
             @Param("endDate") OffsetDateTime endDate,
             @Param("limit") int limit
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Transaction t WHERE t.pgConnectionId = :pgConnectionId AND t.pgTransactionId = :pgTid")
+    Optional<Transaction> findByPgConnectionIdAndPgTransactionIdForUpdate(
+            @Param("pgConnectionId") Long pgConnectionId,
+            @Param("pgTid") String pgTid
     );
 }

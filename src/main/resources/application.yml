@@ -80,3 +80,16 @@ settlement:
     enabled: false
     cron: "0 0 1 * * *"
     timezone: Asia/Seoul
+
+# Actuator & Metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: bill-and-pay
