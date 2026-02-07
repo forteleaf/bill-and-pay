@@ -67,6 +67,13 @@ public class FeeCalculationService {
         BigDecimal previousFeeRate = merchantFeeRate;
         for (Organization org : ancestors) {
             BigDecimal orgFeeRate = feeConfigResolver.resolveOrganizationFeeRate(org, paymentMethodCode);
+
+            // DISTRIBUTOR는 마스터 잔여금(residual)으로 일괄 처리
+            if (org.getOrgType() == OrganizationType.DISTRIBUTOR) {
+                previousFeeRate = orgFeeRate;
+                continue;
+            }
+
             BigDecimal marginRate = previousFeeRate.subtract(orgFeeRate);
 
             if (marginRate.compareTo(BigDecimal.ZERO) > 0) {
