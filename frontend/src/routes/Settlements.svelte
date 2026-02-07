@@ -109,6 +109,16 @@
     return entryType === "CREDIT" ? "입금" : "출금";
   }
 
+  function getMerchantLabel(orgPath: string): string {
+    const parts = orgPath.split(".");
+    const vendorPart = parts[parts.length - 1];
+    return vendorPart || orgPath;
+  }
+
+  function formatPercent(rate: number): string {
+    return (rate * 100).toFixed(2) + "%";
+  }
+
   function isResettleable(status: string): boolean {
     return status === "FAILED" || status === "PENDING_REVIEW";
   }
@@ -138,6 +148,7 @@
         size: pageSize.toString(),
         sortBy: sortField,
         direction: sortDirection.toUpperCase(),
+        entityType: "VENDOR",
       });
 
       if (statusFilter !== "ALL") {
@@ -340,13 +351,14 @@
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>구분</TableHead>
+            <TableHead>가맹점</TableHead>
             <TableHead>유형</TableHead>
-            <TableHead class="text-right">금액</TableHead>
+            <TableHead class="text-right">정산금액</TableHead>
+            <TableHead class="text-right">수수료율</TableHead>
             <TableHead class="text-right">수수료</TableHead>
-            <TableHead class="text-right">정산액</TableHead>
+            <TableHead class="text-right">순정산액</TableHead>
             <TableHead>상태</TableHead>
-            <TableHead>생성일시</TableHead>
+            <TableHead>일시</TableHead>
             <TableHead>액션</TableHead>
           </TableRow>
         </TableHeader>
@@ -355,17 +367,12 @@
             <TableRow>
               <TableCell><Skeleton class="h-4 w-24" /></TableCell>
               <TableCell><Skeleton class="h-5 w-16" /></TableCell>
-              <TableCell class="text-right"
-                ><Skeleton class="h-4 w-24 ml-auto" /></TableCell
-              >
-              <TableCell class="text-right"
-                ><Skeleton class="h-4 w-20 ml-auto" /></TableCell
-              >
-              <TableCell class="text-right"
-                ><Skeleton class="h-4 w-28 ml-auto" /></TableCell
-              >
+              <TableCell class="text-right"><Skeleton class="h-4 w-24 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-16 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-20 ml-auto" /></TableCell>
+              <TableCell class="text-right"><Skeleton class="h-4 w-24 ml-auto" /></TableCell>
               <TableCell><Skeleton class="h-5 w-16" /></TableCell>
-              <TableCell><Skeleton class="h-4 w-36" /></TableCell>
+              <TableCell><Skeleton class="h-4 w-28" /></TableCell>
               <TableCell><Skeleton class="h-8 w-16" /></TableCell>
             </TableRow>
           {/each}
@@ -396,9 +403,9 @@
           <TableRow>
             <TableHead
               class="cursor-pointer hover:bg-muted/50"
-              onclick={() => sortBy("entity_type")}
+              onclick={() => sortBy("org_path")}
             >
-              구분{getSortIcon("entity_type")}
+              가맹점{getSortIcon("org_path")}
             </TableHead>
             <TableHead
               class="cursor-pointer hover:bg-muted/50"
@@ -410,7 +417,10 @@
               class="cursor-pointer hover:bg-muted/50 text-right"
               onclick={() => sortBy("amount")}
             >
-              금액{getSortIcon("amount")}
+              정산금액{getSortIcon("amount")}
+            </TableHead>
+            <TableHead class="text-right">
+              수수료율
             </TableHead>
             <TableHead
               class="cursor-pointer hover:bg-muted/50 text-right"
@@ -422,7 +432,7 @@
               class="cursor-pointer hover:bg-muted/50 text-right"
               onclick={() => sortBy("net_amount")}
             >
-              정산액{getSortIcon("net_amount")}
+              순정산액{getSortIcon("net_amount")}
             </TableHead>
             <TableHead
               class="cursor-pointer hover:bg-muted/50"
@@ -434,7 +444,7 @@
               class="cursor-pointer hover:bg-muted/50"
               onclick={() => sortBy("created_at")}
             >
-              생성일시{getSortIcon("created_at")}
+              일시{getSortIcon("created_at")}
             </TableHead>
             <TableHead>액션</TableHead>
           </TableRow>
@@ -442,7 +452,9 @@
         <TableBody>
           {#each displaySettlements as settlement}
             <TableRow>
-              <TableCell>{settlement.entityType}</TableCell>
+              <TableCell class="font-medium">
+                {getMerchantLabel(settlement.orgPath)}
+              </TableCell>
               <TableCell>
                 <Badge
                   variant={settlement.entryType === "CREDIT"
@@ -454,6 +466,9 @@
               </TableCell>
               <TableCell class="text-right font-semibold"
                 >{formatCurrency(settlement.amount)}</TableCell
+              >
+              <TableCell class="text-right text-muted-foreground"
+                >{formatPercent(settlement.feeRate)}</TableCell
               >
               <TableCell class="text-right"
                 >{formatCurrency(settlement.feeAmount)}</TableCell
@@ -491,7 +506,7 @@
           {#if displaySettlements.length === 0}
             <TableRow>
               <TableCell
-                colspan={8}
+                colspan={9}
                 class="text-center py-12 text-muted-foreground"
               >
                 정산 내역이 없습니다.
