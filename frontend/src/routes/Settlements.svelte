@@ -10,6 +10,7 @@
   import { Label } from '$lib/components/ui/label';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
   import { Skeleton } from '$lib/components/ui/skeleton';
+  import { Alert, AlertTitle, AlertDescription } from '$lib/components/ui/alert';
   
   let settlements = $state<Settlement[]>([]);
   let loading = $state(true);
@@ -252,7 +253,17 @@
       </Table>
     </Card>
   {:else if error}
-    <div class="text-center py-12 text-lg text-destructive">{error}</div>
+    <div class="flex justify-center py-12">
+      <Alert variant="destructive" class="max-w-lg">
+        <AlertTitle>오류 발생</AlertTitle>
+        <AlertDescription class="flex flex-col gap-3">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onclick={loadSettlements} class="self-start">
+            다시 시도
+          </Button>
+        </AlertDescription>
+      </Alert>
+    </div>
   {:else}
     <Card>
       <Table>

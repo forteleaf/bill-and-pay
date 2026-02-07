@@ -24,10 +24,12 @@
     TableHeader,
     TableRow
   } from '$lib/components/ui/table';
+  import { Alert, AlertTitle, AlertDescription } from '$lib/components/ui/alert';
 
   let branches = $state<Branch[]>([]);
   let loading = $state(false);
   let initialLoading = $state(true);
+  let error = $state<string | null>(null);
   let hasMore = $state(true);
   let page = $state(0);
   const pageSize = 20;
@@ -108,6 +110,7 @@
     if (!reset && !hasMore) return;
 
     loading = true;
+    error = null;
 
     if (reset) {
       page = 0;
@@ -136,19 +139,21 @@
           branches = [...branches, ...newData];
         }
         totalCount = response.data.totalElements || 0;
-        
+
         const isLastPage = newData.length < pageSize;
         const apiHasNext = response.data.hasNext;
         hasMore = apiHasNext === true && !isLastPage;
-        
+
         if (newData.length > 0) {
           page++;
         }
       } else {
         hasMore = false;
+        error = response.error?.message || '데이터를 불러올 수 없습니다.';
       }
     } catch (err) {
       console.error('Failed to load branches:', err);
+      error = err instanceof Error ? err.message : '데이터를 불러올 수 없습니다.';
       hasMore = false;
     } finally {
       loading = false;
@@ -298,6 +303,21 @@
       <Button onclick={handleSearch}>조회</Button>
     </div>
   </div>
+
+  <!-- Error Alert -->
+  {#if error}
+    <div class="flex justify-center">
+      <Alert variant="destructive" class="max-w-lg">
+        <AlertTitle>오류 발생</AlertTitle>
+        <AlertDescription class="flex flex-col gap-3">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onclick={() => loadBranches(true)} class="self-start">
+            다시 시도
+          </Button>
+        </AlertDescription>
+      </Alert>
+    </div>
+  {/if}
 
   <!-- Table Container -->
   <div class="bg-background border border-border rounded-xl overflow-hidden shadow-sm">
