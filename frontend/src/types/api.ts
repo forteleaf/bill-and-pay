@@ -362,3 +362,88 @@ export interface DailyStatementRow {
   feeAmount: number;
   netAmount: number;
 }
+
+export interface OrgDailySettlementSummary {
+  settlementDate: string;
+  periodStart: string;
+  periodEnd: string;
+  orgCount: number;
+  transactionCount: number;
+  approvalCount: number;
+  approvalAmount: number;
+  cancelCount: number;
+  cancelAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  status: string;
+}
+
+export interface OrgDailySettlementDetail {
+  settlementDate: string;
+  batchNumber?: string;
+  periodStart: string;
+  periodEnd: string;
+  summary: {
+    transactionCount: number;
+    approvalAmount: number;
+    cancelAmount: number;
+    feeAmount: number;
+    netAmount: number;
+  };
+  orgBreakdown: OrgSettlementBreakdown[];
+  settlements: Settlement[];
+}
+
+export interface OrgSettlementBreakdown {
+  orgId: string;
+  orgName: string;
+  orgType: string;
+  orgCode: string;
+  transactionCount: number;
+  approvalCount: number;
+  approvalAmount: number;
+  cancelCount: number;
+  cancelAmount: number;
+  feeRate: number;
+  feeAmount: number;
+  netAmount: number;
+}
+
+export interface OrgStatement {
+  orgId: string;
+  orgName: string;
+  orgCode: string;
+  orgType: string;
+  businessNumber?: string;
+  representativeName?: string;
+  settlementCycle?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+  periodStart: string;
+  periodEnd: string;
+  summary: {
+    totalApprovalAmount: number;
+    totalApprovalCount: number;
+    totalCancelAmount: number;
+    totalCancelCount: number;
+    grossAmount: number;
+    feeRate: number;
+    feeAmount: number;
+    netAmount: number;
+    transactionCount: number;
+  };
+  dailyDetails: DailyOrgStatementRow[];
+}
+
+export interface DailyOrgStatementRow {
+  settlementDate: string;
+  transactionDate: string;
+  transactionCount: number;
+  approvalCount: number;
+  approvalAmount: number;
+  cancelCount: number;
+  cancelAmount: number;
+  feeAmount: number;
+  netAmount: number;
+}

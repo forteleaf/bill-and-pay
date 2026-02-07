@@ -89,12 +89,6 @@
        icon: "💰",
        children: [
          {
-           id: "branch-settlement",
-           title: "영업점 정산내역",
-           icon: "📈",
-           component: "BranchSettlement",
-         },
-         {
            id: "merchant-daily-settlement",
            title: "가맹점 일자별 정산",
            icon: "📊",
@@ -105,6 +99,24 @@
            title: "가맹점 정산내역서",
            icon: "📄",
            component: "MerchantStatement",
+         },
+         {
+           id: "org-daily-settlement",
+           title: "영업점 일자별 정산",
+           icon: "📈",
+           component: "OrgDailySettlement",
+         },
+         {
+           id: "org-statement",
+           title: "영업점 정산내역서",
+           icon: "📋",
+           component: "OrgStatement",
+         },
+         {
+           id: "branch-settlement",
+           title: "영업점 정산내역(구)",
+           icon: "📑",
+           component: "BranchSettlement",
          },
        ],
      },

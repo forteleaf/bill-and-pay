@@ -11,7 +11,12 @@ import type {
   DailySettlementDetail,
   MerchantSettlementBreakdown,
   MerchantStatement,
-  DailyStatementRow
+  DailyStatementRow,
+  OrgDailySettlementSummary,
+  OrgDailySettlementDetail,
+  OrgSettlementBreakdown,
+  OrgStatement,
+  DailyOrgStatementRow
 } from '../types/api';
 import type {
   SettlementListParams,
@@ -19,7 +24,9 @@ import type {
   SettlementBatchListParams,
   OrganizationSettlementParams,
   DailySettlementParams,
-  MerchantStatementParams
+  MerchantStatementParams,
+  OrgDailySettlementParams,
+  OrgStatementParams
 } from '../types/settlement';
 import { toApiDateTime } from './utils';
 
@@ -30,7 +37,9 @@ export type {
   SettlementBatchListParams,
   OrganizationSettlementParams,
   DailySettlementParams,
-  MerchantStatementParams
+  MerchantStatementParams,
+  OrgDailySettlementParams,
+  OrgStatementParams
 };
 
 class SettlementApi {
@@ -162,6 +171,28 @@ class SettlementApi {
     if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
     const queryString = queryParams.toString();
     return apiClient.get<MerchantStatement>(`/settlements/merchant-statement/${params.merchantId}${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getOrgDailySummary(params: OrgDailySettlementParams = {}): Promise<ApiResponse<OrgDailySettlementSummary[]>> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
+    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
+    if (params.status) queryParams.set('status', params.status);
+    const queryString = queryParams.toString();
+    return apiClient.get<OrgDailySettlementSummary[]>(`/settlements/org-daily${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getOrgDailyDetail(date: string): Promise<ApiResponse<OrgDailySettlementDetail>> {
+    const dateApi = date.replace(/\//g, '-');
+    return apiClient.get<OrgDailySettlementDetail>(`/settlements/org-daily/${dateApi}`);
+  }
+
+  async getOrgStatement(params: OrgStatementParams): Promise<ApiResponse<OrgStatement>> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
+    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
+    const queryString = queryParams.toString();
+    return apiClient.get<OrgStatement>(`/settlements/org-statement/${params.orgId}${queryString ? `?${queryString}` : ''}`);
   }
 }
 

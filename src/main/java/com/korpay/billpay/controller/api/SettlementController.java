@@ -12,6 +12,9 @@ import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.dto.response.DailySettlementDetailDto;
 import com.korpay.billpay.dto.response.DailySettlementSummaryDto;
 import com.korpay.billpay.dto.response.MerchantStatementDto;
+import com.korpay.billpay.dto.response.OrgDailySettlementDetailDto;
+import com.korpay.billpay.dto.response.OrgDailySettlementSummaryDto;
+import com.korpay.billpay.dto.response.OrgStatementDto;
 import com.korpay.billpay.dto.response.OrganizationSettlementDetailDto;
 import com.korpay.billpay.dto.response.OrganizationSettlementSummaryDto;
 import com.korpay.billpay.dto.response.PagedResponse;
@@ -292,6 +295,34 @@ public class SettlementController {
         if (startDate == null) startDate = LocalDate.now().minusDays(30);
         if (endDate == null) endDate = LocalDate.now();
         var result = dailySettlementService.getMerchantStatement(merchantId, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/org-daily")
+    public ResponseEntity<ApiResponse<List<OrgDailySettlementSummaryDto>>> getOrgDailySummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(30);
+        if (endDate == null) endDate = LocalDate.now();
+        var result = dailySettlementService.getOrgDailySettlementSummary(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/org-daily/{date}")
+    public ResponseEntity<ApiResponse<OrgDailySettlementDetailDto>> getOrgDailyDetail(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        var result = dailySettlementService.getOrgDailySettlementDetail(date);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/org-statement/{orgId}")
+    public ResponseEntity<ApiResponse<OrgStatementDto>> getOrgStatement(
+            @PathVariable UUID orgId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(30);
+        if (endDate == null) endDate = LocalDate.now();
+        var result = dailySettlementService.getOrgStatement(orgId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

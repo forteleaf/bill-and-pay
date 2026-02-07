@@ -45,3 +45,15 @@ export interface MerchantStatementParams {
   startDate?: string;
   endDate?: string;
 }
+
+export interface OrgDailySettlementParams {
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+}
+
+export interface OrgStatementParams {
+  orgId: string;
+  startDate?: string;
+  endDate?: string;
+}
