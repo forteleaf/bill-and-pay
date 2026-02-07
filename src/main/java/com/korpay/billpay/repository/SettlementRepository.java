@@ -82,6 +82,8 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
 
     List<Settlement> findByTransactionEventId(UUID transactionEventId);
 
+    boolean existsByTransactionEventId(UUID transactionEventId);
+
     List<Settlement> findByTransactionEventIdAndStatusIn(UUID transactionEventId, List<SettlementStatus> statuses);
 
     List<Settlement> findByEntityIdAndStatus(UUID entityId, SettlementStatus status);

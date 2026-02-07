@@ -23,6 +23,10 @@ import com.korpay.billpay.service.settlement.DailySettlementService;
 import com.korpay.billpay.service.settlement.SettlementBatchService;
 import com.korpay.billpay.service.settlement.SettlementQueryService;
 import com.korpay.billpay.service.settlement.SettlementResettlementService;
+import com.korpay.billpay.service.settlement.SettlementService;
+import com.korpay.billpay.repository.TransactionEventRepository;
+import com.korpay.billpay.repository.SettlementRepository;
+import com.korpay.billpay.domain.entity.TransactionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -52,6 +56,9 @@ public class SettlementController {
     private final SettlementBatchService settlementBatchService;
     private final SettlementResettlementService settlementResettlementService;
     private final DailySettlementService dailySettlementService;
+    private final SettlementService settlementService;
+    private final TransactionEventRepository transactionEventRepository;
+    private final SettlementRepository settlementRepository;
     private final UserContextHolder userContextHolder;
 
     @GetMapping
@@ -227,6 +234,36 @@ public class SettlementController {
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "batchesCreated", batchesCreated
+        )));
+    }
+
+    @PostMapping("/process-unsettled")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> processUnsettledEvents() {
+        log.info("Processing unsettled transaction events");
+
+        List<TransactionEvent> allEvents = transactionEventRepository.findAll();
+        int processed = 0;
+        int skipped = 0;
+
+        for (TransactionEvent event : allEvents) {
+            boolean hasSettlement = settlementRepository.existsByTransactionEventId(event.getId());
+            if (!hasSettlement) {
+                try {
+                    settlementService.processTransactionEvent(event);
+                    processed++;
+                } catch (Exception e) {
+                    log.warn("Failed to process event {}: {}", event.getId(), e.getMessage());
+                    skipped++;
+                }
+            } else {
+                skipped++;
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "totalEvents", allEvents.size(),
+                "processed", processed,
+                "skipped", skipped
         )));
     }
 
