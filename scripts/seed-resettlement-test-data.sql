@@ -51,6 +51,38 @@ BEGIN
   SELECT id INTO v_ss_card_id FROM card_companies WHERE company_code = 'SS';
 
   -- =========================================================================
+  -- 0. 누락된 수수료 설정 추가 (재정산 시 FeeConfigResolver에 필요)
+  -- =========================================================================
+  -- 분식점(vend_002) 수수료: 신용 3.5%, 체크 3.0%
+  INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
+  SELECT '01960000-0000-7000-0006-000000000011', '01960000-0000-7000-0001-000000000009', 'VENDOR', 'dist_001.agcy_001.deal_001.sell_001.vend_002', v_credit_method_id, NULL, 'PERCENTAGE', 0.035000, NULL, 60, 'ACTIVE'
+  WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000011');
+
+  INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
+  SELECT '01960000-0000-7000-0006-000000000012', '01960000-0000-7000-0001-000000000009', 'VENDOR', 'dist_001.agcy_001.deal_001.sell_001.vend_002', v_debit_method_id, NULL, 'PERCENTAGE', 0.030000, NULL, 60, 'ACTIVE'
+  WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000012');
+
+  -- 삼성판매점(sell_002) 수수료: 신용 3.2%, 체크 2.7%
+  INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
+  SELECT '01960000-0000-7000-0006-000000000013', '01960000-0000-7000-0001-000000000007', 'SELLER', 'dist_001.agcy_001.deal_001.sell_002', v_credit_method_id, NULL, 'PERCENTAGE', 0.032000, NULL, 70, 'ACTIVE'
+  WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000013');
+
+  INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
+  SELECT '01960000-0000-7000-0006-000000000014', '01960000-0000-7000-0001-000000000007', 'SELLER', 'dist_001.agcy_001.deal_001.sell_002', v_debit_method_id, NULL, 'PERCENTAGE', 0.027000, NULL, 70, 'ACTIVE'
+  WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000014');
+
+  -- 프리미엄마트(vend_003) 수수료: 신용 3.5%, 체크 3.0%
+  INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
+  SELECT '01960000-0000-7000-0006-000000000015', '01960000-0000-7000-0001-000000000010', 'VENDOR', 'dist_001.agcy_001.deal_001.sell_002.vend_003', v_credit_method_id, NULL, 'PERCENTAGE', 0.035000, NULL, 60, 'ACTIVE'
+  WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000015');
+
+  INSERT INTO fee_configurations (id, entity_id, entity_type, entity_path, payment_method_id, card_company_id, fee_type, fee_rate, fixed_fee, priority, status)
+  SELECT '01960000-0000-7000-0006-000000000016', '01960000-0000-7000-0001-000000000010', 'VENDOR', 'dist_001.agcy_001.deal_001.sell_002.vend_003', v_debit_method_id, NULL, 'PERCENTAGE', 0.030000, NULL, 60, 'ACTIVE'
+  WHERE NOT EXISTS (SELECT 1 FROM fee_configurations WHERE id = '01960000-0000-7000-0006-000000000016');
+
+  RAISE NOTICE '✅ 누락 수수료 설정 추가 완료 (vend_002, sell_002, vend_003)';
+
+  -- =========================================================================
   -- 1. FAILED 상태 정산 - 커피숍 거래 (신용카드 25,000원)
   -- =========================================================================
   SELECT EXISTS(SELECT 1 FROM transactions WHERE id = v_txn_id_f1) INTO v_exists;
