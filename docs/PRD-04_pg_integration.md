@@ -1,5 +1,14 @@
 # PRD-04: PG 연동 및 알림 시스템
 
+## 관련 문서
+- [PRD-00: 용어 사전](PRD-00_glossary.md) - 용어 정의 및 표준화
+- [PRD-01: 아키텍처](PRD-01_architecture.md) - 전체 시스템 아키텍처
+- [PRD-03: 원장/정산](PRD-03_ledger.md) - 정산 생성 로직
+- [PRD-05: DB 스키마](PRD-05_database_schema.md) - pg_connections, webhook_logs 테이블
+- [PRD-06: KORPAY](PRD-06_korpay.md) - KORPAY PG 연동 상세 명세
+
+---
+
 ## 1. 개요
 
 Bill&Pay는 외부 PG사(Payment Gateway)로부터 결제 데이터를 수신하여 정산하는 플랫폼입니다. 본 문서에서는 PG 연동 구조와 알림 시스템을 정의합니다.
@@ -559,7 +568,7 @@ CREATE TABLE unmapped_transactions (
     received_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT chk_unmapped_status CHECK (
-        status IN ('PENDING', 'MAPPED', 'IGNORED', 'EXPIRED')
+        status IN ('PENDING', 'MAPPED', 'IGNORED', 'HELD')
     )
 );
 
@@ -589,7 +598,7 @@ CREATE INDEX idx_unmapped_pg ON unmapped_transactions (pg_connection_id, pg_merc
 │ 3. 관리자 수동 처리              │
 │    ├─ 가맹점 매핑 → MAPPED       │
 │    ├─ 무시 → IGNORED             │
-│    └─ 30일 경과 → EXPIRED        │
+│    └─ 30일 경과 → HELD (보류)    │
 └──────────────────────────────────┘
        │ (MAPPED인 경우)
        ▼
@@ -598,6 +607,8 @@ CREATE INDEX idx_unmapped_pg ON unmapped_transactions (pg_connection_id, pg_merc
 │    - 정상 처리 플로우 재수행      │
 └──────────────────────────────────┘
 ```
+
+> **주의**: 미매핑 거래는 EXPIRED(삭제) 대신 HELD(보류) 상태로 전환하여 데이터 손실을 방지합니다. HELD 상태의 거래는 별도 아카이브 테이블로 이동할 수 있습니다.
 
 ---
 
@@ -805,7 +816,92 @@ public class NotificationService {
 | DB 저장 실패 | 500 | Yes | 로깅 + PG 재시도 유도 |
 | 타임아웃 | 504 | Yes | 로깅 + PG 재시도 유도 |
 
-### 8.2 알림 발송 재시도
+### 8.3 Webhook 재시도 정책
+
+PG사가 Bill&Pay로부터 500/504 응답을 받은 경우, PG사 측에서 재시도합니다.
+
+#### 8.3.1 PG사별 재시도 정책
+
+| PG사 | 최대 재시도 | 간격 | 최대 대기 |
+|------|-----------|------|---------|
+| KORPAY | 3회 | 즉시, 30초, 5분 | 5분 |
+| NICE | 5회 | 1분, 5분, 30분, 1시간, 6시간 | 6시간 |
+| 기타 | PG사 정책 따름 | - | - |
+
+#### 8.3.2 Bill&Pay 내부 재시도 (알림 발송)
+
+알림 발송 실패 시 내부 재시도 정책:
+
+```
+1차 재시도: 즉시 (1초 후)
+2차 재시도: 5초 후
+3차 재시도: 30초 후
+최종 실패: failed_notifications 테이블 저장
+         → 5분마다 배치 재처리 (최대 24시간)
+         → 최종 포기 시 로깅만 (무한 루프 방지)
+```
+
+#### 8.3.3 멱등성 보장 (Idempotency)
+
+```sql
+-- 멱등성 키 테이블
+CREATE TABLE webhook_idempotency_keys (
+    pg_connection_id BIGINT NOT NULL,
+    pg_tid VARCHAR(200) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PROCESSING',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (pg_connection_id, pg_tid),
+    CONSTRAINT webhook_idempotency_status_check CHECK (
+        status IN ('PROCESSING', 'COMPLETED', 'FAILED')
+    )
+);
+```
+
+```java
+// 멱등성 보장 처리
+public WebhookResult processWithIdempotency(String pgTid, Long pgConnectionId, Supplier<WebhookResult> processor) {
+    // 1. 멱등성 키 삽입 시도 (INSERT ON CONFLICT)
+    boolean isNew = idempotencyKeyRepository.tryInsert(pgConnectionId, pgTid);
+
+    if (!isNew) {
+        // 이미 처리된 Webhook → 200 OK 반환 (무시)
+        return WebhookResult.duplicate();
+    }
+
+    try {
+        WebhookResult result = processor.get();
+        idempotencyKeyRepository.markCompleted(pgConnectionId, pgTid);
+        return result;
+    } catch (Exception e) {
+        idempotencyKeyRepository.markFailed(pgConnectionId, pgTid);
+        throw e;
+    }
+}
+```
+
+### 8.4 Webhook 처리 타임아웃
+
+```
+Webhook 수신 → 동기 처리 (3초 이내)
+    ├─ 서명 검증 + 중복 체크 + 가맹점 매핑: ~100ms
+    ├─ Transaction/Event 저장: ~200ms
+    ├─ Settlement 생성: ~500ms
+    └─ 200 OK 응답 반환
+         │
+         └─ 비동기 처리 (@Async)
+              ├─ 알림 발송
+              └─ Webhook 로그 업데이트
+```
+
+**타임아웃 설정**:
+| 항목 | 값 | 설명 |
+|------|-----|------|
+| HTTP 응답 타임아웃 | 30초 | Spring 기본값 유지 |
+| DB 쿼리 타임아웃 | 5초 | HikariCP statement timeout |
+| 알림 발송 | 비동기 | 응답 반환 후 처리 |
+
+### 8.5 알림 발송 재시도
 
 ```java
 @Service
@@ -888,3 +984,4 @@ ORDER BY notification_type, channel;
 | v2.0 | 2026-01-29 | KORPAY 연동 추가 - Webhook Adapter, 필드 매핑, MID/단말기 관계 설명 |
 | v3.0 | 2026-02-03 | 테넌트 인식 Webhook URL 구현 - URL 경로에 tenantId 포함 |
 | v4.0 | 2026-02-06 | Legacy Webhook URL 제거 - 테넌트 인식 URL만 지원 |
+| v4.1 | 2026-02-07 | Webhook 재시도 정책 추가, 멱등성 보장 테이블 추가, 타임아웃 처리 추가, 미매핑 거래 HELD 상태 변경, 상호 참조 링크 추가 |
