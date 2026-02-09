@@ -31,6 +31,7 @@
   import MerchantSettlements from "./MerchantSettlements.svelte";
   import SettlementAccountManager from "../../components/SettlementAccountManager.svelte";
   import MerchantPgMappingManager from "../../components/MerchantPgMappingManager.svelte";
+  import FeeConfigurationManager from "../../components/FeeConfigurationManager.svelte";
 
   interface Props {
     merchantId: string;
@@ -702,6 +703,8 @@
           entityType={SettlementAccountEntityType.MERCHANT}
           entityId={merchant.id}
         />
+
+        <FeeConfigurationManager merchantId={merchant.id} />
 
         <MerchantPgMappingManager merchantId={merchant.id} />
       {:else if activeSection === "transaction"}

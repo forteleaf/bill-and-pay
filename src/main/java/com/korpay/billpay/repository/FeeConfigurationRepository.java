@@ -52,4 +52,8 @@ public interface FeeConfigurationRepository extends JpaRepository<FeeConfigurati
             UUID entityId, OrganizationType entityType, UUID paymentMethodId, FeeConfigStatus status);
 
     List<FeeConfiguration> findByEntityIdAndStatus(UUID entityId, FeeConfigStatus status);
+
+    List<FeeConfiguration> findByEntityIdAndEntityTypeOrderByPriorityAsc(UUID entityId, OrganizationType entityType);
+
+    List<FeeConfiguration> findByEntityIdOrderByPriorityAsc(UUID entityId);
 }
