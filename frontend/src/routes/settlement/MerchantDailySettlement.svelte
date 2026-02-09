@@ -3,7 +3,7 @@
   import { settlementApi } from '../../lib/settlementApi';
   import type { DailySettlementSummary, DailySettlementDetail } from '../../types/api';
   import { format } from 'date-fns';
-  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Card, CardContent } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
@@ -131,6 +131,32 @@
 
   function getEntryTypeLabel(type: string): string {
     return type === 'CREDIT' ? '승인(입금)' : '취소(출금)';
+  }
+
+  function getSettlementCycleLabel(cycle?: string): string {
+    if (!cycle) return '-';
+    const labels: Record<string, string> = {
+      'D_PLUS_1': 'D+1',
+      'D_PLUS_3': 'D+3',
+      'REALTIME': '실시간',
+    };
+    return labels[cycle] || cycle;
+  }
+
+  function getPaymentTypeLabel(type?: string): string {
+    if (!type) return '-';
+    const typeMap: Record<string, string> = {
+      'CAT': '단말기',
+      'POS': '단말기',
+      'MOBILE': '수기',
+      'KIOSK': '키오스크',
+      'ONLINE': '인증결제',
+    };
+    return type.split(',').map(t => typeMap[t.trim()] || t.trim()).filter((v, i, a) => a.indexOf(v) === i).join('/');
+  }
+
+  function formatRate(rate: number): string {
+    return rate ? `${(rate * 100).toFixed(2)}%` : '-';
   }
 
   function formatShortDate(dateStr: string): string {
@@ -369,30 +395,41 @@
           <div class="p-6 space-y-6">
             <div>
               <h3 class="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">가맹점별 집계</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>가맹점</TableHead>
-                    <TableHead class="text-right">건수</TableHead>
-                    <TableHead class="text-right">승인금액</TableHead>
-                    <TableHead class="text-right">취소금액</TableHead>
-                    <TableHead class="text-right">수수료</TableHead>
-                    <TableHead class="text-right">정산금액</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {#each Array(3) as _}
+              <div class="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell><Skeleton class="h-4 w-28" /></TableCell>
-                      <TableCell class="text-right"><Skeleton class="h-4 w-12 ml-auto" /></TableCell>
-                      <TableCell class="text-right"><Skeleton class="h-4 w-24 ml-auto" /></TableCell>
-                      <TableCell class="text-right"><Skeleton class="h-4 w-20 ml-auto" /></TableCell>
-                      <TableCell class="text-right"><Skeleton class="h-4 w-20 ml-auto" /></TableCell>
-                      <TableCell class="text-right"><Skeleton class="h-4 w-24 ml-auto" /></TableCell>
+                      <TableHead>가맹점코드</TableHead>
+                      <TableHead>가맹점</TableHead>
+                      <TableHead class="text-right">승인건수</TableHead>
+                      <TableHead class="text-right">취소건수</TableHead>
+                      <TableHead class="text-right">결제건수</TableHead>
+                      <TableHead class="text-right">승인금액</TableHead>
+                      <TableHead class="text-right">취소금액</TableHead>
+                      <TableHead class="text-right">결제금액</TableHead>
+                      <TableHead class="text-right">수수료율</TableHead>
+                      <TableHead class="text-right">정산수수료</TableHead>
+                      <TableHead class="text-right">정산금액</TableHead>
+                      <TableHead>영업점코드</TableHead>
+                      <TableHead>정산주기</TableHead>
+                      <TableHead>결제유형</TableHead>
+                      <TableHead>입금은행</TableHead>
+                      <TableHead>계좌번호</TableHead>
+                      <TableHead>예금주</TableHead>
+                      <TableHead class="text-center">상태</TableHead>
                     </TableRow>
-                  {/each}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {#each Array(3) as _}
+                      <TableRow>
+                        {#each Array(18) as __}
+                          <TableCell><Skeleton class="h-4 w-16" /></TableCell>
+                        {/each}
+                      </TableRow>
+                    {/each}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
         {:else if selectedDetail}
@@ -400,62 +437,102 @@
             <!-- Merchant Breakdown -->
             <div>
               <h3 class="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">가맹점별 집계</h3>
-              <div class="border border-border rounded-lg overflow-hidden">
-                <Table>
+              <div class="border border-border rounded-lg overflow-x-auto">
+                <Table class="min-w-[1600px]">
                   <TableHeader>
                     <TableRow class="bg-muted/50">
-                      <TableHead class="font-bold text-xs">가맹점</TableHead>
-                      <TableHead class="text-right font-bold text-xs">건수</TableHead>
-                      <TableHead class="text-right font-bold text-xs">승인금액</TableHead>
-                      <TableHead class="text-right font-bold text-xs">취소금액</TableHead>
-                      <TableHead class="text-right font-bold text-xs">수수료</TableHead>
-                      <TableHead class="text-right font-bold text-xs">정산금액</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap sticky left-0 bg-muted/50 z-10">가맹점코드</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">가맹점</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">승인건수</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">취소건수</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">결제건수</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">승인금액</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">취소금액</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">결제금액</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">수수료율</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">정산수수료</TableHead>
+                      <TableHead class="text-right font-bold text-xs whitespace-nowrap">정산금액</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">영업점코드</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">정산주기</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">결제유형</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">입금은행</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">계좌번호</TableHead>
+                      <TableHead class="font-bold text-xs whitespace-nowrap">예금주</TableHead>
+                      <TableHead class="text-center font-bold text-xs whitespace-nowrap">상태</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {#each selectedDetail.merchantBreakdown as merchant (merchant.merchantId)}
                       <TableRow class="even:bg-muted/30">
-                        <TableCell class="font-medium">{merchant.merchantName}</TableCell>
-                        <TableCell class="text-right">{formatNumber(merchant.transactionCount)}</TableCell>
-                        <TableCell class="text-right text-emerald-600 font-medium">
+                        <TableCell class="font-mono text-sm whitespace-nowrap sticky left-0 bg-background z-10">{merchant.merchantCode || '-'}</TableCell>
+                        <TableCell class="font-medium whitespace-nowrap">{merchant.merchantName}</TableCell>
+                        <TableCell class="text-right">{formatNumber(merchant.approvalCount)}</TableCell>
+                        <TableCell class="text-right text-rose-600">{formatNumber(merchant.cancelCount)}</TableCell>
+                        <TableCell class="text-right font-medium">{formatNumber(merchant.approvalCount - merchant.cancelCount)}</TableCell>
+                        <TableCell class="text-right text-emerald-600 font-medium whitespace-nowrap">
                           {formatCurrency(merchant.approvalAmount)}
                         </TableCell>
-                        <TableCell class="text-right text-rose-600">
+                        <TableCell class="text-right text-rose-600 whitespace-nowrap">
                           {merchant.cancelAmount !== 0 ? formatCurrency(merchant.cancelAmount) : '-'}
                         </TableCell>
-                        <TableCell class="text-right text-rose-600">
+                        <TableCell class="text-right font-medium whitespace-nowrap">
+                          {formatCurrency(merchant.approvalAmount - merchant.cancelAmount)}
+                        </TableCell>
+                        <TableCell class="text-right whitespace-nowrap">{formatRate(merchant.feeRate)}</TableCell>
+                        <TableCell class="text-right text-rose-600 whitespace-nowrap">
                           {formatCurrency(merchant.feeAmount)}
                         </TableCell>
-                        <TableCell class="text-right font-bold">
+                        <TableCell class="text-right font-bold whitespace-nowrap">
                           {formatCurrency(merchant.netAmount)}
+                        </TableCell>
+                        <TableCell class="font-mono text-sm whitespace-nowrap">{merchant.orgCode || '-'}</TableCell>
+                        <TableCell class="whitespace-nowrap">{getSettlementCycleLabel(merchant.settlementCycle)}</TableCell>
+                        <TableCell class="whitespace-nowrap">{getPaymentTypeLabel(merchant.paymentType)}</TableCell>
+                        <TableCell class="whitespace-nowrap">{merchant.bankName || '-'}</TableCell>
+                        <TableCell class="font-mono text-sm whitespace-nowrap">{merchant.accountNumber || '-'}</TableCell>
+                        <TableCell class="whitespace-nowrap">{merchant.accountHolder || '-'}</TableCell>
+                        <TableCell class="text-center">
+                          <Badge variant={getStatusVariant(merchant.status || 'PENDING')}>
+                            {getStatusLabel(merchant.status || 'PENDING')}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     {/each}
 
                     {#if selectedDetail.merchantBreakdown.length === 0}
                       <TableRow>
-                        <TableCell colspan={6} class="text-center py-8 text-muted-foreground">
+                        <TableCell colspan={18} class="text-center py-8 text-muted-foreground">
                           가맹점 데이터가 없습니다.
                         </TableCell>
                       </TableRow>
                     {/if}
 
                     {#if selectedDetail.merchantBreakdown.length > 0}
+                      {@const summaryApprovalCount = selectedDetail.merchantBreakdown.reduce((sum, m) => sum + m.approvalCount, 0)}
+                      {@const summaryCancelCount = selectedDetail.merchantBreakdown.reduce((sum, m) => sum + m.cancelCount, 0)}
                       <TableRow class="bg-muted/60 font-bold border-t-2 border-border">
-                        <TableCell>합계</TableCell>
-                        <TableCell class="text-right">{formatNumber(selectedDetail.summary.transactionCount)}</TableCell>
-                        <TableCell class="text-right text-emerald-600">
+                        <TableCell class="sticky left-0 bg-muted/60 z-10">합계</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell class="text-right">{formatNumber(summaryApprovalCount)}</TableCell>
+                        <TableCell class="text-right text-rose-600">{formatNumber(summaryCancelCount)}</TableCell>
+                        <TableCell class="text-right">{formatNumber(summaryApprovalCount - summaryCancelCount)}</TableCell>
+                        <TableCell class="text-right text-emerald-600 whitespace-nowrap">
                           {formatCurrency(selectedDetail.summary.approvalAmount)}
                         </TableCell>
-                        <TableCell class="text-right text-rose-600">
+                        <TableCell class="text-right text-rose-600 whitespace-nowrap">
                           {selectedDetail.summary.cancelAmount !== 0 ? formatCurrency(selectedDetail.summary.cancelAmount) : '-'}
                         </TableCell>
-                        <TableCell class="text-right text-rose-600">
+                        <TableCell class="text-right whitespace-nowrap">
+                          {formatCurrency(selectedDetail.summary.approvalAmount - selectedDetail.summary.cancelAmount)}
+                        </TableCell>
+                        <TableCell class="text-right">-</TableCell>
+                        <TableCell class="text-right text-rose-600 whitespace-nowrap">
                           {formatCurrency(selectedDetail.summary.feeAmount)}
                         </TableCell>
-                        <TableCell class="text-right">
+                        <TableCell class="text-right whitespace-nowrap">
                           {formatCurrency(selectedDetail.summary.netAmount)}
                         </TableCell>
+                        <TableCell colspan={7}></TableCell>
                       </TableRow>
                     {/if}
                   </TableBody>

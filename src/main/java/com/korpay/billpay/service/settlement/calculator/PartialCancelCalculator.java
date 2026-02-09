@@ -47,6 +47,11 @@ public class PartialCancelCalculator {
         List<Settlement> cancelSettlements = new ArrayList<>();
         for (Settlement original : originalSettlements) {
             long cancelAmountAbs = calculateProportionalAmount(original.getAmount(), cancelRatio);
+            long cancelFeeAmount = calculateProportionalAmount(original.getFeeAmount(), cancelRatio);
+
+            long debitAmount = -cancelAmountAbs;
+            long debitFee = -cancelFeeAmount;
+            long debitNet = debitAmount + debitFee;
 
             Settlement cancelSettlement = Settlement.builder()
                     .transactionEventId(cancelEvent.getId())
@@ -57,9 +62,9 @@ public class PartialCancelCalculator {
                     .entityType(original.getEntityType())
                     .entityPath(original.getEntityPath())
                     .entryType(EntryType.DEBIT)
-                    .amount(-cancelAmountAbs)
-                    .feeAmount(0L)
-                    .netAmount(-cancelAmountAbs)
+                    .amount(debitAmount)
+                    .feeAmount(debitFee)
+                    .netAmount(debitNet)
                     .currency(original.getCurrency())
                     .feeRate(original.getFeeRate())
                     .feeConfig(original.getFeeConfig())
@@ -110,7 +115,7 @@ public class PartialCancelCalculator {
         Settlement masterSettlement = findMasterSettlement(cancelSettlements);
         long newMasterAmount = masterSettlement.getAmount() + difference;
         masterSettlement.setAmount(newMasterAmount);
-        masterSettlement.setNetAmount(newMasterAmount);
+        masterSettlement.setNetAmount(newMasterAmount + masterSettlement.getFeeAmount());
 
         log.info("Adjusted {} rounding difference to MASTER: {} -> {}",
                 difference, masterSettlement.getAmount() - difference, newMasterAmount);

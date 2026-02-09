@@ -6,6 +6,7 @@ import java.util.UUID;
 public record MerchantSettlementBreakdownDto(
     UUID merchantId,
     String merchantName,
+    String merchantCode,
     long transactionCount,
     long approvalCount,
     long approvalAmount,
@@ -13,5 +14,12 @@ public record MerchantSettlementBreakdownDto(
     long cancelAmount,
     BigDecimal feeRate,
     long feeAmount,
-    long netAmount
+    long netAmount,
+    String orgCode,
+    String settlementCycle,
+    String paymentType,
+    String bankName,
+    String accountNumber,
+    String accountHolder,
+    String status
 ) {}

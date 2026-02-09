@@ -104,6 +104,9 @@ public class DailySettlementService {
             SELECT
                 s.merchant_id,
                 m.name as merchant_name,
+                m.merchant_code,
+                m.settlement_cycle,
+                o.org_code,
                 COUNT(s.id) as transaction_count,
                 COUNT(CASE WHEN s.entry_type = 'CREDIT' THEN 1 END) as approval_count,
                 COALESCE(SUM(CASE WHEN s.entry_type = 'CREDIT' THEN s.amount ELSE 0 END), 0) as approval_amount,
@@ -111,13 +114,33 @@ public class DailySettlementService {
                 COALESCE(SUM(CASE WHEN s.entry_type = 'DEBIT' THEN ABS(s.amount) ELSE 0 END), 0) as cancel_amount,
                 COALESCE(AVG(s.fee_rate), 0) as fee_rate,
                 COALESCE(SUM(s.fee_amount), 0) as fee_amount,
-                COALESCE(SUM(s.net_amount), 0) as net_amount
+                COALESCE(SUM(s.net_amount), 0) as net_amount,
+                CASE WHEN bool_and(s.status = 'COMPLETED') THEN 'COMPLETED'
+                     WHEN bool_or(s.status = 'FAILED') THEN 'FAILED'
+                     WHEN bool_or(s.status = 'ON_HOLD') THEN 'ON_HOLD'
+                     ELSE 'PENDING' END as status,
+                sa.bank_name,
+                sa.account_number,
+                sa.account_holder,
+                string_agg(DISTINCT term.terminal_type::text, ',' ORDER BY term.terminal_type::text) as payment_type
             FROM settlements s
             JOIN settlement_batches sb ON s.settlement_batch_id = sb.id
             JOIN merchants m ON s.merchant_id = m.id
+            LEFT JOIN organizations o ON m.org_id = o.id
+            LEFT JOIN LATERAL (
+                SELECT sa2.bank_name, sa2.account_number, sa2.account_holder
+                FROM settlement_accounts sa2
+                WHERE sa2.entity_type = 'MERCHANT'::contact_entity_type AND sa2.entity_id = s.merchant_id
+                  AND sa2.deleted_at IS NULL
+                ORDER BY sa2.is_primary DESC, sa2.created_at DESC
+                LIMIT 1
+            ) sa ON true
+            LEFT JOIN transactions t ON s.transaction_id = t.id
+            LEFT JOIN terminals term ON t.cat_id = term.cat_id
             WHERE s.entity_id = s.merchant_id
               AND sb.settlement_date = ?
-            GROUP BY s.merchant_id, m.name
+            GROUP BY s.merchant_id, m.name, m.merchant_code, m.settlement_cycle,
+                     o.org_code, sa.bank_name, sa.account_number, sa.account_holder
             ORDER BY approval_amount DESC
             """;
 
@@ -125,6 +148,7 @@ public class DailySettlementService {
                 new MerchantSettlementBreakdownDto(
                         rs.getObject("merchant_id", UUID.class),
                         rs.getString("merchant_name"),
+                        rs.getString("merchant_code"),
                         rs.getLong("transaction_count"),
                         rs.getLong("approval_count"),
                         rs.getLong("approval_amount"),
@@ -132,7 +156,14 @@ public class DailySettlementService {
                         rs.getLong("cancel_amount"),
                         rs.getBigDecimal("fee_rate"),
                         rs.getLong("fee_amount"),
-                        rs.getLong("net_amount")
+                        rs.getLong("net_amount"),
+                        rs.getString("org_code"),
+                        rs.getString("settlement_cycle"),
+                        rs.getString("payment_type"),
+                        rs.getString("bank_name"),
+                        rs.getString("account_number"),
+                        rs.getString("account_holder"),
+                        rs.getString("status")
                 ), date);
 
         String settlementsSql = """

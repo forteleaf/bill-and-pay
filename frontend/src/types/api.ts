@@ -315,6 +315,7 @@ export interface DailySettlementDetail {
 export interface MerchantSettlementBreakdown {
   merchantId: string;
   merchantName: string;
+  merchantCode: string;
   transactionCount: number;
   approvalCount: number;
   approvalAmount: number;
@@ -323,6 +324,13 @@ export interface MerchantSettlementBreakdown {
   feeRate: number;
   feeAmount: number;
   netAmount: number;
+  orgCode?: string;
+  settlementCycle?: string;
+  paymentType?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+  status?: string;
 }
 
 export interface MerchantStatement {

@@ -241,22 +241,26 @@ public class SettlementController {
     }
 
     @PostMapping("/process-unsettled")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> processUnsettledEvents() {
-        log.info("Processing unsettled transaction events");
+    public ResponseEntity<ApiResponse<Map<String, Object>>> processUnsettledEvents(
+            @RequestParam(defaultValue = "false") boolean force) {
+        log.info("Processing unsettled transaction events (force={})", force);
 
         List<TransactionEvent> allEvents = transactionEventRepository.findAll();
         int processed = 0;
         int skipped = 0;
+        int failed = 0;
 
         for (TransactionEvent event : allEvents) {
             boolean hasSettlement = settlementRepository.existsByTransactionEventId(event.getId());
-            if (!hasSettlement) {
+            log.debug("Event {}: existsByTransactionEventId={}", event.getId(), hasSettlement);
+
+            if (force || !hasSettlement) {
                 try {
                     settlementService.processTransactionEvent(event);
                     processed++;
                 } catch (Exception e) {
-                    log.warn("Failed to process event {}: {}", event.getId(), e.getMessage());
-                    skipped++;
+                    log.warn("Failed to process event {}: {}", event.getId(), e.getMessage(), e);
+                    failed++;
                 }
             } else {
                 skipped++;
@@ -266,7 +270,8 @@ public class SettlementController {
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "totalEvents", allEvents.size(),
                 "processed", processed,
-                "skipped", skipped
+                "skipped", skipped,
+                "failed", failed
         )));
     }
 

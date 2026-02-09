@@ -147,6 +147,11 @@ public class FeeCalculationService {
             long feeAmount,
             BigDecimal feeRate) {
 
+        // DB constraint: CREDIT → net = amount - fee, DEBIT → net = amount + fee
+        long netAmount = (entryType == EntryType.CREDIT)
+                ? settlementAmount - feeAmount
+                : settlementAmount + feeAmount;
+
         return Settlement.builder()
                 .transactionEventId(event.getId())
                 .transactionId(event.getTransactionId())
@@ -157,8 +162,8 @@ public class FeeCalculationService {
                 .entityPath(merchant.getOrgPath())
                 .entryType(entryType)
                 .amount(settlementAmount)
-                .feeAmount(0L)
-                .netAmount(settlementAmount)
+                .feeAmount(feeAmount)
+                .netAmount(netAmount)
                 .currency(event.getCurrency())
                 .feeRate(feeRate)
                 .status(SettlementStatus.PENDING)
