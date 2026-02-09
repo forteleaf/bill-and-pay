@@ -7,7 +7,7 @@ services:
     network_mode: "host"
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: 8081
+      SERVER_PORT: 8100
       SPRING_DATASOURCE_PUBLIC_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/billpay
       SPRING_DATASOURCE_PUBLIC_USERNAME: billpay
       SPRING_DATASOURCE_PUBLIC_PASSWORD: ${DB_PASSWORD}
