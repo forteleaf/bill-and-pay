@@ -4,7 +4,8 @@ import type {
 	FeeConfigurationDto,
 	FeeConfigurationCreateRequest,
 	FeeConfigurationUpdateRequest,
-	FeeConfigHistoryDto
+	FeeConfigHistoryDto,
+	PaymentMethodDto
 } from '../types/feeConfiguration';
 
 class FeeConfigApi {
@@ -48,6 +49,10 @@ class FeeConfigApi {
 		return apiClient.get<FeeConfigHistoryDto[]>(
 			`/fee-configurations/merchant/${merchantId}/history`
 		);
+	}
+
+	async getPaymentMethods(): Promise<ApiResponse<PaymentMethodDto[]>> {
+		return apiClient.get<PaymentMethodDto[]>('/payment-methods');
 	}
 }
 

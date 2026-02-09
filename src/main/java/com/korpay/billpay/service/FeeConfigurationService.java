@@ -201,6 +201,10 @@ public class FeeConfigurationService {
                 .orElse(null);
     }
 
+    public List<PaymentMethod> getActivePaymentMethods() {
+        return paymentMethodRepository.findByStatusOrderByDisplayOrderAsc("ACTIVE");
+    }
+
     private Merchant findMerchant(UUID merchantId) {
         return merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));

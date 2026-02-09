@@ -102,4 +102,5 @@ public class FeeConfigurationController {
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
+
 }

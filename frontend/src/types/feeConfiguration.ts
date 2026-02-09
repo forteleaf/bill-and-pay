@@ -79,6 +79,13 @@ export interface FeeConfigHistoryDto {
 	createdAt: string;
 }
 
+export interface PaymentMethodDto {
+	id: string;
+	methodCode: string;
+	name: string;
+	category: string;
+}
+
 export const FEE_TYPE_LABELS: Record<FeeType, string> = {
 	[FeeType.PERCENTAGE]: '정률',
 	[FeeType.FIXED]: '정액',

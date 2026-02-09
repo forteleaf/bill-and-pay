@@ -13,6 +13,7 @@
     type FeeConfigHistoryDto,
     type FeeConfigurationCreateRequest,
     type FeeConfigurationUpdateRequest,
+    type PaymentMethodDto,
   } from "../types/feeConfiguration";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
@@ -51,16 +52,31 @@
   let formFixedFee = $state("");
   let formReason = $state("");
 
+  // Payment methods
+  let paymentMethods = $state<PaymentMethodDto[]>([]);
+
   // History state
   let historyOpen = $state(false);
   let historyList = $state<FeeConfigHistoryDto[]>([]);
   let historyLoading = $state(false);
 
   onMount(() => {
+    loadPaymentMethods();
     if (merchantId) {
       loadConfigs();
     }
   });
+
+  async function loadPaymentMethods() {
+    try {
+      const response = await feeConfigApi.getPaymentMethods();
+      if (response.success && response.data) {
+        paymentMethods = response.data;
+      }
+    } catch (err) {
+      // silent - fallback to ID display
+    }
+  }
 
   async function loadConfigs() {
     loading = true;
@@ -635,16 +651,23 @@
       <div class="px-6 py-5 space-y-5">
         
         <div class="space-y-2">
-          <Label for="payment-method" class="text-sm font-medium"
+          <Label class="text-sm font-medium"
             >결제수단 <span class="text-destructive">*</span></Label
           >
-          <Input
-            id="payment-method"
-            type="text"
-            placeholder="결제수단 ID를 입력하세요"
-            value={formPaymentMethodId}
-            oninput={(e) => (formPaymentMethodId = e.currentTarget.value)}
-          />
+          <Select.Root type="single" bind:value={formPaymentMethodId}>
+            <Select.Trigger class="w-full">
+              {#if formPaymentMethodId}
+                {paymentMethods.find((pm) => pm.id === formPaymentMethodId)?.name || formPaymentMethodId}
+              {:else}
+                <span class="text-muted-foreground">결제수단을 선택하세요</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              {#each paymentMethods as pm (pm.id)}
+                <Select.Item value={pm.id}>{pm.name}</Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
         </div>
 
         
