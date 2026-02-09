@@ -104,6 +104,13 @@ public class MerchantController {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteMerchant(@PathVariable UUID id) {
+        User currentUser = userContextHolder.getCurrentUser();
+        merchantService.delete(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @PutMapping("/{id}/move")
     public ResponseEntity<ApiResponse<MerchantDto>> moveMerchant(
             @PathVariable UUID id,

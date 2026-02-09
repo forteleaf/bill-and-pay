@@ -27,6 +27,8 @@ public class MerchantDto {
     private String orgPath;
     private String businessNumber;
     private String businessType;
+    private String corporateNumber;
+    private String representativeName;
     private String address;
     private MerchantStatus status;
     private Map<String, Object> config;
@@ -46,6 +48,8 @@ public class MerchantDto {
                 .orgPath(merchant.getOrgPath())
                 .businessNumber(merchant.getBusinessNumber())
                 .businessType(merchant.getBusinessType())
+                .corporateNumber(merchant.getCorporateNumber())
+                .representativeName(merchant.getRepresentativeName())
                 .address(merchant.getAddress())
                 .status(merchant.getStatus())
                 .config(merchant.getConfig())

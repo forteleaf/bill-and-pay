@@ -2,6 +2,7 @@ package com.korpay.billpay.exception.handler;
 
 import com.korpay.billpay.dto.response.ApiResponse;
 import com.korpay.billpay.exception.AccessDeniedException;
+import com.korpay.billpay.exception.DuplicateResourceException;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.TenantNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
@@ -43,6 +44,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error("ENTITY_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateResource(DuplicateResourceException ex) {
+        log.warn("Duplicate resource: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("DUPLICATE_RESOURCE", ex.getMessage()));
     }
 
     @ExceptionHandler(ValidationException.class)

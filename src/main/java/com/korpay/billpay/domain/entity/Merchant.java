@@ -49,6 +49,12 @@ public class Merchant {
     @Column(name = "business_type", length = 50)
     private String businessType;
 
+    @Column(name = "corporate_number", length = 20)
+    private String corporateNumber;
+
+    @Column(name = "representative_name", length = 100)
+    private String representativeName;
+
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 

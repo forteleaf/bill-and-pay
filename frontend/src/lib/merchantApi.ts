@@ -45,6 +45,10 @@ class MerchantApi {
   async update(id: string, data: MerchantUpdateRequest): Promise<ApiResponse<MerchantDto>> {
     return apiClient.put<MerchantDto>(`/merchants/${id}`, data);
   }
+
+  async delete(id: string): Promise<ApiResponse<void>> {
+    return apiClient.delete<void>(`/merchants/${id}`);
+  }
 }
 
 export const merchantApi = new MerchantApi();

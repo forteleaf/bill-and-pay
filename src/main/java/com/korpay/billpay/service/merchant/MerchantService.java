@@ -14,6 +14,7 @@ import com.korpay.billpay.dto.response.BlacklistCheckResponse;
 import com.korpay.billpay.dto.response.MerchantDto;
 import com.korpay.billpay.dto.response.MerchantStatisticsDto;
 import com.korpay.billpay.dto.response.OrganizationDto;
+import com.korpay.billpay.exception.DuplicateResourceException;
 import com.korpay.billpay.exception.EntityNotFoundException;
 import com.korpay.billpay.exception.ValidationException;
 import com.korpay.billpay.domain.entity.MerchantOrgHistory;
@@ -115,7 +116,7 @@ public class MerchantService {
         accessControlService.validateOrganizationAccess(user, organization);
         
         if (merchantRepository.findByMerchantCode(request.getMerchantCode()).isPresent()) {
-            throw new ValidationException("Merchant code already exists: " + request.getMerchantCode());
+            throw new DuplicateResourceException("Merchant code already exists: " + request.getMerchantCode());
         }
         
         Merchant merchant = Merchant.builder()
@@ -125,6 +126,8 @@ public class MerchantService {
                 .orgPath(organization.getPath())
                 .businessNumber(request.getBusinessNumber())
                 .businessType(request.getBusinessType())
+                .corporateNumber(request.getCorporateNumber())
+                .representativeName(request.getRepresentative())
                 .address(request.getAddress())
                 .status(MerchantStatus.ACTIVE)
                 .config(request.getConfig())
@@ -163,6 +166,12 @@ public class MerchantService {
         }
         if (request.getAddress() != null) {
             merchant.setAddress(request.getAddress());
+        }
+        if (request.getCorporateNumber() != null) {
+            merchant.setCorporateNumber(request.getCorporateNumber());
+        }
+        if (request.getRepresentative() != null) {
+            merchant.setRepresentativeName(request.getRepresentative());
         }
         if (request.getStatus() != null) {
             merchant.setStatus(request.getStatus());
@@ -301,6 +310,15 @@ public class MerchantService {
                 .filter(org -> accessControlService.hasAccessToOrganization(user, org.getPath()))
                 .map(OrganizationDto::from)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void delete(UUID id, User user) {
+        Merchant merchant = findById(id, user);
+        merchant.setStatus(MerchantStatus.DELETED);
+        merchant.setDeletedAt(OffsetDateTime.now());
+        merchantRepository.save(merchant);
+        log.info("Soft deleted merchant: {} ({})", merchant.getMerchantCode(), id);
     }
 
     public BlacklistCheckResponse checkBlacklist(String businessNumber) {

@@ -28,6 +28,8 @@ public class MerchantCreateRequest {
     
     private String businessNumber;
     private String businessType;
+    private String corporateNumber;
+    private String representative;
     private String contactName;
     
     @Email(message = "Invalid email format")
