@@ -662,7 +662,7 @@
                 <span class="text-muted-foreground">결제수단을 선택하세요</span>
               {/if}
             </Select.Trigger>
-            <Select.Content>
+            <Select.Content class="z-[60]">
               {#each paymentMethods as pm (pm.id)}
                 <Select.Item value={pm.id}>{pm.name}</Select.Item>
               {/each}
@@ -685,7 +685,7 @@
                 <span class="text-muted-foreground">수수료 유형 선택</span>
               {/if}
             </Select.Trigger>
-            <Select.Content>
+            <Select.Content class="z-[60]">
               <Select.Item value={FeeType.PERCENTAGE}>정률 (%)</Select.Item>
               <Select.Item value={FeeType.FIXED}>정액 (원)</Select.Item>
             </Select.Content>
