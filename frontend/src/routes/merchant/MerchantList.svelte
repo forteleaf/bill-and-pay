@@ -144,6 +144,18 @@
     });
   }
 
+  function handleOrgClick(merchant: MerchantDto) {
+    if (!merchant.organizationId) return;
+    tabStore.openTab({
+      id: `branch-${merchant.organizationId}`,
+      title: merchant.organizationName || '영업점 상세',
+      icon: '🏢',
+      component: 'BranchDetail',
+      closeable: true,
+      props: { branchId: merchant.organizationId }
+    });
+  }
+
   function handleNewMerchant() {
     tabStore.openTab({
       id: 'merchant-registration',
@@ -330,8 +342,19 @@
               <TableCell>
                 <span class="font-medium text-foreground">{merchant.name}</span>
               </TableCell>
-               <TableCell>
-                 <span class="text-sm text-muted-foreground">{merchant.organizationName || '-'}</span>
+               <TableCell onclick={(e: MouseEvent) => {
+                 if (merchant.organizationId) {
+                   e.stopPropagation();
+                   handleOrgClick(merchant);
+                 }
+               }}>
+                 {#if merchant.organizationId}
+                   <span class="text-sm text-primary hover:underline cursor-pointer">
+                     {merchant.organizationName || '-'}
+                   </span>
+                 {:else}
+                   <span class="text-sm text-muted-foreground">-</span>
+                 {/if}
                </TableCell>
                <TableCell>
                  <span class="text-sm">{merchant.primaryContact?.name || '-'}</span>

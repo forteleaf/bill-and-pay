@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { Dialog as DialogPrimitive, Popover as PopoverPrimitive } from "bits-ui";
+  import {
+    Dialog as DialogPrimitive,
+    Popover as PopoverPrimitive,
+  } from "bits-ui";
   import { onMount } from "svelte";
   import { settlementAccountApi } from "../lib/settlementAccountApi";
   import {
@@ -66,9 +69,9 @@
   const filteredBankCodes = $derived(
     bankSearch.trim()
       ? sortedBankCodes.filter(([_, name]) =>
-          name.toLowerCase().includes(bankSearch.trim().toLowerCase())
+          name.toLowerCase().includes(bankSearch.trim().toLowerCase()),
         )
-      : sortedBankCodes
+      : sortedBankCodes,
   );
 
   onMount(() => {
@@ -535,18 +538,20 @@
           >
           <PopoverPrimitive.Root bind:open={bankPopoverOpen}>
             <PopoverPrimitive.Trigger>
-               <button
-                 id="bank-select"
-                 type="button"
-                 class={cn(
-                   "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none select-none disabled:cursor-not-allowed disabled:opacity-50",
-                   "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                   "dark:bg-input/30 dark:hover:bg-input/50",
-                   !formBankCode && "text-muted-foreground"
-                 )}
-               >
+              <button
+                id="bank-select"
+                type="button"
+                class={cn(
+                  "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none select-none disabled:cursor-not-allowed disabled:opacity-50",
+                  "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                  "dark:bg-input/30 dark:hover:bg-input/50",
+                  !formBankCode && "text-muted-foreground",
+                )}
+              >
                 <span class="truncate">
-                  {formBankCode ? KOREAN_BANK_CODES[formBankCode] : "은행을 선택하세요"}
+                  {formBankCode
+                    ? KOREAN_BANK_CODES[formBankCode]
+                    : "은행을 선택하세요"}
                 </span>
                 <svg
                   class="h-4 w-4 shrink-0 opacity-50"
@@ -589,7 +594,8 @@
                       type="button"
                       class={cn(
                         "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-muted",
-                        formBankCode === code && "bg-primary/10 text-primary font-medium"
+                        formBankCode === code &&
+                          "bg-primary/10 text-primary font-medium",
                       )}
                       onclick={() => {
                         formBankCode = code;
@@ -600,7 +606,7 @@
                       <svg
                         class={cn(
                           "h-4 w-4 shrink-0",
-                          formBankCode === code ? "opacity-100" : "opacity-0"
+                          formBankCode === code ? "opacity-100" : "opacity-0",
                         )}
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
@@ -634,7 +640,9 @@
             placeholder="'-' 없이 숫자만 입력"
             value={formAccountNumber}
             oninput={(e) => {
-              const numericValue = e.currentTarget.value.replace(/\D/g, "").slice(0, 20);
+              const numericValue = e.currentTarget.value
+                .replace(/\D/g, "")
+                .slice(0, 20);
               e.currentTarget.value = numericValue;
               formAccountNumber = numericValue;
             }}
@@ -670,7 +678,7 @@
 
         <!-- Set as Primary -->
         <label
-          class="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+          class="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors select-none"
         >
           <input
             type="checkbox"
