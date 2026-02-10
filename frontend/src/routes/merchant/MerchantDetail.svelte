@@ -1,21 +1,21 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { merchantApi } from "../../lib/merchantApi";
-  import { branchApi } from "../../lib/branchApi";
+  import { merchantApi } from "@/api/merchant";
+  import { branchApi } from "@/api/branch";
   import {
     type MerchantDto,
     type MerchantUpdateRequest,
     MerchantStatus,
     MERCHANT_BUSINESS_TYPE_LABELS,
-  } from "../../types/merchant";
+  } from "@/types/merchant";
   import {
     BusinessType,
     type Branch,
     BRANCH_TYPE_LABELS,
     OrgStatus,
-  } from "../../types/branch";
-  import { formatBusinessNumber } from "$lib/formatters";
+  } from "@/types/branch";
+  import { formatBusinessNumber } from "@/utils/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
   import {
@@ -26,12 +26,10 @@
   } from "$lib/components/ui/card";
   import { Skeleton } from "$lib/components/ui/skeleton";
   import * as Sheet from "$lib/components/ui/sheet";
-  import { SettlementAccountEntityType } from "../../types/settlementAccount";
-  import MerchantTransactions from "./MerchantTransactions.svelte";
-  import MerchantSettlements from "./MerchantSettlements.svelte";
-  import SettlementAccountManager from "../../components/SettlementAccountManager.svelte";
-  import MerchantPgMappingManager from "../../components/MerchantPgMappingManager.svelte";
-  import FeeConfigurationManager from "../../components/FeeConfigurationManager.svelte";
+  import { SettlementAccountEntityType } from "@/types/settlementAccount";
+  import SettlementAccountManager from "@/components/settlement/SettlementAccountManager.svelte";
+  import MerchantPgMappingManager from "@/components/merchant/MerchantPgMappingManager.svelte";
+  import FeeConfigurationManager from "@/components/merchant/FeeConfigurationManager.svelte";
 
   interface Props {
     merchantId: string;

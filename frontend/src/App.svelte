@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { authStore } from './lib/authStore';
-  import { tenantStore } from './lib/stores';
-  import { tabStore } from './lib/tabStore';
-  import NewLayout from './components/NewLayout.svelte';
-  import Login from './routes/Login.svelte';
-  import Landing from './routes/Landing.svelte';
-  import DemoRequest from './routes/DemoRequest.svelte';
+  import { authStore } from '@/stores/auth';
+  import { tenantStore } from '@/stores/tenant';
+  import { tabStore } from '@/stores/tab';
+  import Layout from '@/components/layout/Layout.svelte';
+  import Login from '@/routes/auth/Login.svelte';
+  import Landing from '@/routes/auth/Landing.svelte';
+  import DemoRequest from '@/routes/misc/DemoRequest.svelte';
   
   type Page = 'landing' | 'login' | 'demo';
   
@@ -42,7 +42,7 @@
 </script>
 
 {#if isAuthenticated}
-  <NewLayout />
+  <Layout />
 {:else if currentPage === 'login'}
   <Login />
 {:else if currentPage === 'demo'}

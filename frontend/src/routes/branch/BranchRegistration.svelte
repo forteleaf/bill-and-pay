@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { branchApi, businessEntityApi } from "../../lib/branchApi";
+  import { branchApi, businessEntityApi } from "@/api/branch";
   import {
     OrgType,
     BusinessType,
@@ -11,8 +11,8 @@
     type LimitConfig,
     type BusinessEntity,
     type BusinessEntityCreateRequest,
-  } from "../../types/branch";
-  import { formatBusinessNumberInput } from "$lib/formatters";
+  } from "@/types/branch";
+  import { formatBusinessNumberInput } from "@/utils/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Label } from "$lib/components/ui/label";

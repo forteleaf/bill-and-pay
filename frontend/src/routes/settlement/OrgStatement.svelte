@@ -15,13 +15,12 @@
 	} from '$lib/components/ui/table';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { Separator } from '$lib/components/ui/separator';
-	import { branchApi } from '../../lib/branchApi';
-	import { settlementApi } from '../../lib/settlementApi';
-	import { tenantStore } from '../../lib/stores';
-	import { format } from 'date-fns';
-	import type { Branch } from '../../types/branch';
-	import type { OrgStatement, DailyOrgStatementRow } from '../../types/api';
-	import type { OrgStatementParams } from '../../types/settlement';
+	import { branchApi } from '@/api/branch';
+	import { settlementApi } from '@/api/settlement';
+	import { tenantStore } from '@/stores/tenant';
+	import type { Branch } from '@/types/branch';
+	import type { OrgStatement, DailyOrgStatementRow } from '@/types/api';
+	import type { OrgStatementParams } from '@/types/settlement';
 
 	// --- State ---
 	let searchQuery = $state('');

@@ -17,9 +17,9 @@
     OrgTree as OrgTreeType,
     CreateOrgRequest,
     OrgType,
-  } from "../../types/api";
-  import { apiClient } from "../../lib/api";
-  import { tabStore } from "../../lib/tabStore";
+  } from "@/types/api";
+  import { apiClient } from "@/api/client";
+  import { tabStore } from "@/stores/tab";
   import {
     Card,
     CardContent,
@@ -33,7 +33,7 @@
   import * as Select from "$lib/components/ui/select";
   import OrgFlowNode, {
     type OrgNodeData,
-  } from "../../components/OrgFlowNode.svelte";
+  } from "@/components/organization/OrgFlowNode.svelte";
 
   const NODE_WIDTH = 200;
   const NODE_HEIGHT = 80;

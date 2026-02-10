@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { settlementApi, type OrganizationSettlementParams } from '../../lib/settlementApi';
-  import type { OrganizationSettlementSummary } from '../../types/api';
+  import { settlementApi, type OrganizationSettlementParams } from '@/api/settlement';
+  import type { OrganizationSettlementSummary } from '@/types/api';
   import { format } from 'date-fns';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -16,7 +16,7 @@
     TableHeader,
     TableRow
   } from '$lib/components/ui/table';
-  import OrganizationSettlementDetailModal from '../../components/OrganizationSettlementDetailModal.svelte';
+  import OrganizationSettlementDetailModal from '@/components/settlement/OrganizationSettlementDetailModal.svelte';
 
   let organizations = $state<OrganizationSettlementSummary[]>([]);
   let loading = $state(false);

@@ -1,18 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
-  import { branchApi } from '../../lib/branchApi';
+  import { branchApi } from '@/api/branch';
   import {
     BRANCH_TYPE_LABELS,
     OrgType,
     type Branch,
     type BranchUpdateRequest
-  } from '../../types/branch';
+  } from '@/types/branch';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-  import { SettlementAccountEntityType } from '../../types/settlementAccount';
-  import SettlementAccountManager from '../../components/SettlementAccountManager.svelte';
+  import { SettlementAccountEntityType } from '@/types/settlementAccount';
+  import SettlementAccountManager from '@/components/settlement/SettlementAccountManager.svelte';
 
   interface Props {
     branchId: string;

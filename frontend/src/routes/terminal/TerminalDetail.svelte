@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
-  import { terminalApi } from '../../lib/terminalApi';
-  import { tabStore } from '../../lib/tabStore';
+  import { terminalApi } from '@/api/terminal';
+  import { tabStore } from '@/stores/tab';
   import {
     type TerminalDto,
     type TerminalUpdateRequest,
     TerminalStatus,
     TERMINAL_STATUS_LABELS,
     TERMINAL_TYPE_LABELS
-  } from '../../types/terminal';
+  } from '@/types/terminal';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';

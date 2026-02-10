@@ -1,20 +1,20 @@
 <script lang="ts">
-  import { merchantApi } from "../../lib/merchantApi";
-  import { businessEntityApi } from "../../lib/branchApi";
+  import { merchantApi } from "@/api/merchant";
+  import { businessEntityApi } from "@/api/branch";
   import {
     MerchantBusinessType,
     MERCHANT_BUSINESS_TYPE_LABELS,
     type MerchantCreateRequest,
     type BlacklistCheckResponse,
-  } from "../../types/merchant";
-  import type { BusinessEntity } from "../../types/branch";
-  import type { Organization } from "../../types/api";
-  import { formatBusinessNumberInput } from "$lib/formatters";
+  } from "@/types/merchant";
+  import type { BusinessEntity } from "@/types/branch";
+  import type { Organization } from "@/types/api";
+  import { formatBusinessNumberInput } from "@/utils/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Label } from "$lib/components/ui/label";
   import { Badge } from "$lib/components/ui/badge";
-  import OrganizationPickerDialog from "../../components/OrganizationPickerDialog.svelte";
+  import OrganizationPickerDialog from "@/components/organization/OrganizationPickerDialog.svelte";
 
   let businessType = $state<MerchantBusinessType>(
     MerchantBusinessType.INDIVIDUAL,

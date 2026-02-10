@@ -82,8 +82,8 @@ export interface SettlementAccountPrimaryResponse {
 	updatedAt: string;
 }
 
-// Helper functions and bank codes moved to src/lib/formatters.ts
-export { getBankName, maskAccountNumber, KOREAN_BANK_CODES } from '../lib/formatters';
+// Helper functions and bank codes moved to src/utils/formatters.ts
+export { getBankName, maskAccountNumber, KOREAN_BANK_CODES } from '@/utils/formatters';
 
 // Status label mapping
 export const SETTLEMENT_ACCOUNT_STATUS_LABELS: Record<SettlementAccountStatus, string> = {

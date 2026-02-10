@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { merchantApi } from '../../lib/merchantApi';
-  import { tabStore } from '../../lib/tabStore';
+  import { merchantApi } from '@/api/merchant';
+  import { tabStore } from '@/stores/tab';
   import {
     type MerchantDto,
     type MerchantListParams,
     MerchantStatus,
     MERCHANT_BUSINESS_TYPE_LABELS
-  } from '../../types/merchant';
-  import { BusinessType } from '../../types/branch';
+  } from '@/types/merchant';
+  import { BusinessType } from '@/types/branch';
   import { format } from 'date-fns';
-  import { formatBusinessNumber } from '$lib/formatters';
+  import { formatBusinessNumber } from '@/utils/formatters';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';

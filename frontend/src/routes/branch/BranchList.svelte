@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { branchApi } from '../../lib/branchApi';
-  import { tabStore } from '../../lib/tabStore';
+  import { branchApi } from '@/api/branch';
+  import { tabStore } from '@/stores/tab';
   import {
     type Branch,
     type BranchListParams,
     BRANCH_TYPE_LABELS,
     OrgType,
     OrgStatus
-  } from '../../types/branch';
+  } from '@/types/branch';
   import { format } from 'date-fns';
-  import { formatBusinessNumber } from '$lib/formatters';
+  import { formatBusinessNumber } from '@/utils/formatters';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';

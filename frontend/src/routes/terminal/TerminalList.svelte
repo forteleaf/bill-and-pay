@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { terminalApi } from '../../lib/terminalApi';
-  import { tabStore } from '../../lib/tabStore';
+  import { terminalApi } from '@/api/terminal';
+  import { tabStore } from '@/stores/tab';
   import {
     type TerminalDto,
     type TerminalListParams,
@@ -9,7 +9,7 @@
     TerminalType,
     TERMINAL_STATUS_LABELS,
     TERMINAL_TYPE_LABELS
-  } from '../../types/terminal';
+  } from '@/types/terminal';
   import { format } from 'date-fns';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';

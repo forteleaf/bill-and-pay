@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { settlementApi } from '../../lib/settlementApi';
-  import { merchantApi } from '../../lib/merchantApi';
-  import { tenantStore } from '../../lib/stores';
+  import { settlementApi } from '@/api/settlement';
+  import { merchantApi } from '@/api/merchant';
+  import { tenantStore } from '@/stores/tenant';
   import { format } from 'date-fns';
-  import type { MerchantStatement as MerchantStatementType, DailyStatementRow } from '../../types/api';
-  import type { MerchantDto } from '../../types/merchant';
+  import type { MerchantStatement as MerchantStatementType, DailyStatementRow } from '@/types/api';
+  import type { MerchantDto } from '@/types/merchant';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';

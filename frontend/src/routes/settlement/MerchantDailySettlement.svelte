@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { settlementApi } from '../../lib/settlementApi';
-  import type { DailySettlementSummary, DailySettlementDetail } from '../../types/api';
+  import { settlementApi } from '@/api/settlement';
+  import type { DailySettlementSummary, DailySettlementDetail } from '@/types/api';
   import { format } from 'date-fns';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';

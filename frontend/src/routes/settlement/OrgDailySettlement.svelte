@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { format } from 'date-fns';
-  import { settlementApi } from '../../lib/settlementApi';
+  import { settlementApi } from '@/api/settlement';
   import type {
     OrgDailySettlementSummary,
     OrgDailySettlementDetail
-  } from '../../types/api';
+  } from '@/types/api';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
