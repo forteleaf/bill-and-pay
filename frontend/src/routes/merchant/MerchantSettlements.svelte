@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiClient } from '../../lib/api';
+  import { apiClient } from '@/api/client';
   import { format } from 'date-fns';
-  import type { Settlement, PagedResponse } from '../../types/api';
+  import type { Settlement, PagedResponse } from '@/types/api';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';

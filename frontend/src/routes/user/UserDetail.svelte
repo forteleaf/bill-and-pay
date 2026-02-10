@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { userApi } from '../../lib/userApi';
+  import { userApi } from '@/api/user';
   import {
     type UserDto,
     type UserUpdateRequest,
@@ -9,7 +9,7 @@
     UserRole,
     USER_STATUS_LABELS,
     USER_ROLE_LABELS
-  } from '../../types/user';
+  } from '@/types/user';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';

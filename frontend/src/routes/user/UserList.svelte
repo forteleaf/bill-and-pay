@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { userApi } from '../../lib/userApi';
+  import { userApi } from '@/api/user';
   import {
     type UserDto,
     type UserListParams,
@@ -8,7 +8,7 @@
     UserRole,
     USER_STATUS_LABELS,
     USER_ROLE_LABELS
-  } from '../../types/user';
+  } from '@/types/user';
   import { format } from 'date-fns';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';

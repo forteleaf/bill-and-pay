@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { userApi } from '../../lib/userApi';
-  import { branchApi } from '../../lib/branchApi';
+  import { userApi } from '@/api/user';
+  import { branchApi } from '@/api/branch';
   import {
     type UserCreateRequest,
     UserRole,
     USER_ROLE_LABELS
-  } from '../../types/user';
-  import type { Branch } from '../../types/branch';
+  } from '@/types/user';
+  import type { Branch } from '@/types/branch';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
