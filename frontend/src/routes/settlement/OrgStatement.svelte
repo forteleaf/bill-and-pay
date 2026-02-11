@@ -233,6 +233,7 @@
 								<button
 									type="button"
 									class="ml-1 rounded-full p-0.5 hover:bg-muted"
+									aria-label="선택 해제"
 									onclick={clearOrganization}
 								>
 									<svg
