@@ -7,58 +7,35 @@
   import * as SidebarUI from "$lib/components/ui/sidebar";
   import { tabStore } from "@/stores/tab";
 
-  import Dashboard from "@/routes/dashboard/Dashboard.svelte";
-  import Transactions from "@/routes/transaction/Transactions.svelte";
-  import Settlements from "@/routes/settlement/Settlements.svelte";
-  import SettlementBatches from "@/routes/settlement/SettlementBatches.svelte";
-  import SettlementSummary from "@/routes/settlement/SettlementSummary.svelte";
-  import MerchantManagement from "@/routes/merchant/MerchantManagement.svelte";
-  import Organizations from "@/routes/organization/Organizations.svelte";
-  import BranchRegistration from "@/routes/branch/BranchRegistration.svelte";
-  import BranchList from "@/routes/branch/BranchList.svelte";
-  import BranchDetail from "@/routes/branch/BranchDetail.svelte";
-  import BranchOrganization from "@/routes/branch/BranchOrganization.svelte";
-  import PreferentialBusinessInquiry from "@/routes/misc/PreferentialBusinessInquiry.svelte";
-  import MerchantRegistration from "@/routes/merchant/MerchantRegistration.svelte";
-  import MerchantList from "@/routes/merchant/MerchantList.svelte";
-  import MerchantDetail from "@/routes/merchant/MerchantDetail.svelte";
-  import TerminalList from "@/routes/terminal/TerminalList.svelte";
-  import TerminalDetail from "@/routes/terminal/TerminalDetail.svelte";
-import PgConnectionList from "@/routes/pg-connection/PgConnectionList.svelte";
-import PgConnectionDetail from "@/routes/pg-connection/PgConnectionDetail.svelte";
-import BranchSettlement from "@/routes/settlement/BranchSettlement.svelte";
-import MerchantDailySettlement from "@/routes/settlement/MerchantDailySettlement.svelte";
-import MerchantStatement from "@/routes/settlement/MerchantStatement.svelte";
-import OrgDailySettlement from "@/routes/settlement/OrgDailySettlement.svelte";
-import OrgStatement from "@/routes/settlement/OrgStatement.svelte";
+  import type { Component } from "svelte";
 
-import type { Component } from "svelte";
+  type LazyModule = () => Promise<{ default: Component<any> }>;
 
-  const componentMap: Record<string, Component<any> | null> = {
-    Dashboard: Dashboard,
-    Transactions: Transactions,
-    Settlements: Settlements,
-    SettlementBatches: SettlementBatches,
-    SettlementSummary: SettlementSummary,
-    MerchantManagement: MerchantManagement,
-    Organizations: Organizations,
-    BranchRegistration: BranchRegistration,
-    BranchList: BranchList,
-    BranchDetail: BranchDetail,
-    BranchOrganization: BranchOrganization,
-    PreferentialBusinessInquiry: PreferentialBusinessInquiry,
-    MerchantRegistration: MerchantRegistration,
-    MerchantList: MerchantList,
-    MerchantDetail: MerchantDetail,
-    TerminalList: TerminalList,
-    TerminalDetail: TerminalDetail,
-    PgConnectionList: PgConnectionList,
-    PgConnectionDetail: PgConnectionDetail,
-    BranchSettlement: BranchSettlement,
-    MerchantDailySettlement: MerchantDailySettlement,
-    MerchantStatement: MerchantStatement,
-    OrgDailySettlement: OrgDailySettlement,
-    OrgStatement: OrgStatement,
+  const componentMap: Record<string, LazyModule | null> = {
+    Dashboard: () => import("@/routes/dashboard/Dashboard.svelte"),
+    Transactions: () => import("@/routes/transaction/Transactions.svelte"),
+    Settlements: () => import("@/routes/settlement/Settlements.svelte"),
+    SettlementBatches: () => import("@/routes/settlement/SettlementBatches.svelte"),
+    SettlementSummary: () => import("@/routes/settlement/SettlementSummary.svelte"),
+    MerchantManagement: () => import("@/routes/merchant/MerchantManagement.svelte"),
+    Organizations: () => import("@/routes/organization/Organizations.svelte"),
+    BranchRegistration: () => import("@/routes/branch/BranchRegistration.svelte"),
+    BranchList: () => import("@/routes/branch/BranchList.svelte"),
+    BranchDetail: () => import("@/routes/branch/BranchDetail.svelte"),
+    BranchOrganization: () => import("@/routes/branch/BranchOrganization.svelte"),
+    PreferentialBusinessInquiry: () => import("@/routes/misc/PreferentialBusinessInquiry.svelte"),
+    MerchantRegistration: () => import("@/routes/merchant/MerchantRegistration.svelte"),
+    MerchantList: () => import("@/routes/merchant/MerchantList.svelte"),
+    MerchantDetail: () => import("@/routes/merchant/MerchantDetail.svelte"),
+    TerminalList: () => import("@/routes/terminal/TerminalList.svelte"),
+    TerminalDetail: () => import("@/routes/terminal/TerminalDetail.svelte"),
+    PgConnectionList: () => import("@/routes/pg-connection/PgConnectionList.svelte"),
+    PgConnectionDetail: () => import("@/routes/pg-connection/PgConnectionDetail.svelte"),
+    BranchSettlement: () => import("@/routes/settlement/BranchSettlement.svelte"),
+    MerchantDailySettlement: () => import("@/routes/settlement/MerchantDailySettlement.svelte"),
+    MerchantStatement: () => import("@/routes/settlement/MerchantStatement.svelte"),
+    OrgDailySettlement: () => import("@/routes/settlement/OrgDailySettlement.svelte"),
+    OrgStatement: () => import("@/routes/settlement/OrgStatement.svelte"),
     ComingSoon: null,
   };
 
@@ -73,8 +50,7 @@ import type { Component } from "svelte";
     return () => clearInterval(interval);
   });
 
-  // Get active component
-  const activeComponent = $derived(
+  const activeLoader = $derived(
     activeTab ? componentMap[activeTab.component] : null,
   );
 </script>
@@ -91,9 +67,24 @@ import type { Component } from "svelte";
 
       <main class="flex-1 min-h-0 p-6 pb-12 bg-neutral-100 overflow-y-auto">
         {#key activeTab?.id}
-          {#if activeComponent}
-            {@const DynamicComponent = activeComponent}
-            <DynamicComponent {...activeTab?.props || {}} />
+          {#if activeLoader}
+            {#await activeLoader()}
+              <div class="flex items-center justify-center h-full min-h-[400px]">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <p class="text-sm text-muted-foreground">로딩 중...</p>
+                </div>
+              </div>
+            {:then module}
+              {@const Comp = module.default}
+              <Comp {...activeTab?.props || {}} />
+            {:catch}
+              <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
+                <div class="text-5xl mb-4">!</div>
+                <h2 class="text-xl font-semibold text-slate-700 mb-2">페이지를 불러올 수 없습니다</h2>
+                <p class="text-sm text-slate-400">잠시 후 다시 시도해주세요.</p>
+              </div>
+            {/await}
           {:else if activeTab}
             <div
               class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500"

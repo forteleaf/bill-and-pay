@@ -7,26 +7,19 @@
   import * as SidebarUI from "$lib/components/ui/sidebar";
   import { tabStore } from "@/stores/tab";
 
-  import PlatformDashboard from "@/routes/platform/PlatformDashboard.svelte";
-  import TenantList from "@/routes/platform/TenantList.svelte";
-  import TenantDetail from "@/routes/platform/TenantDetail.svelte";
-  import TenantCreate from "@/routes/platform/TenantCreate.svelte";
-  import PlatformAdminList from "@/routes/platform/PlatformAdminList.svelte";
-  import PlatformAuditLog from "@/routes/platform/PlatformAuditLog.svelte";
-  import PlatformAnnouncementList from "@/routes/platform/PlatformAnnouncementList.svelte";
-  import PlatformMonitoring from "@/routes/platform/PlatformMonitoring.svelte";
-
   import type { Component } from "svelte";
 
-  const componentMap: Record<string, Component<any> | null> = {
-    PlatformDashboard: PlatformDashboard,
-    PlatformTenantList: TenantList,
-    PlatformTenantDetail: TenantDetail,
-    PlatformTenantCreate: TenantCreate,
-    PlatformAdminList: PlatformAdminList,
-    PlatformAuditLog: PlatformAuditLog,
-    PlatformAnnouncementList: PlatformAnnouncementList,
-    PlatformMonitoring: PlatformMonitoring,
+  type LazyModule = () => Promise<{ default: Component<any> }>;
+
+  const componentMap: Record<string, LazyModule | null> = {
+    PlatformDashboard: () => import("@/routes/platform/PlatformDashboard.svelte"),
+    PlatformTenantList: () => import("@/routes/platform/TenantList.svelte"),
+    PlatformTenantDetail: () => import("@/routes/platform/TenantDetail.svelte"),
+    PlatformTenantCreate: () => import("@/routes/platform/TenantCreate.svelte"),
+    PlatformAdminList: () => import("@/routes/platform/PlatformAdminList.svelte"),
+    PlatformAuditLog: () => import("@/routes/platform/PlatformAuditLog.svelte"),
+    PlatformAnnouncementList: () => import("@/routes/platform/PlatformAnnouncementList.svelte"),
+    PlatformMonitoring: () => import("@/routes/platform/PlatformMonitoring.svelte"),
   };
 
   let activeTab = $state(tabStore.getActiveTab());
@@ -38,7 +31,7 @@
     return () => clearInterval(interval);
   });
 
-  const activeComponent = $derived(
+  const activeLoader = $derived(
     activeTab ? componentMap[activeTab.component] : null,
   );
 </script>
@@ -55,9 +48,24 @@
 
       <main class="flex-1 min-h-0 p-6 pb-12 bg-neutral-100 overflow-y-auto">
         {#key activeTab?.id}
-          {#if activeComponent}
-            {@const DynamicComponent = activeComponent}
-            <DynamicComponent {...activeTab?.props || {}} />
+          {#if activeLoader}
+            {#await activeLoader()}
+              <div class="flex items-center justify-center h-full min-h-[400px]">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <p class="text-sm text-muted-foreground">로딩 중...</p>
+                </div>
+              </div>
+            {:then module}
+              {@const Comp = module.default}
+              <Comp {...activeTab?.props || {}} />
+            {:catch}
+              <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
+                <div class="text-5xl mb-4">!</div>
+                <h2 class="text-xl font-semibold text-slate-700 mb-2">페이지를 불러올 수 없습니다</h2>
+                <p class="text-sm text-slate-400">잠시 후 다시 시도해주세요.</p>
+              </div>
+            {/await}
           {:else if activeTab}
             <div class="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-slate-500">
               <div class="text-7xl mb-6 opacity-80">🚧</div>

@@ -26,6 +26,7 @@ export default defineConfig({
     }
   },
   build: {
+    chunkSizeWarningLimit: 1700,
     commonjsOptions: {
       include: [/@dagrejs/, /node_modules/],
       transformMixedEsModules: true,
@@ -33,8 +34,21 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          dagre: ['@dagrejs/dagre', '@dagrejs/graphlib']
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@xyflow') || id.includes('elkjs') || id.includes('@dagrejs')) {
+              return 'vendor-viz';
+            }
+            if (id.includes('@tanstack')) {
+              return 'vendor-table';
+            }
+            if (id.includes('bits-ui') || id.includes('svelte-sonner')) {
+              return 'vendor-ui';
+            }
+            if (id.includes('date-fns') || id.includes('@internationalized/date')) {
+              return 'vendor-date';
+            }
+          }
         }
       }
     }
