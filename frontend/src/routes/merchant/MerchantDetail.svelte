@@ -6,6 +6,7 @@
   import {
     type MerchantDto,
     type MerchantUpdateRequest,
+    type MerchantStatisticsDto,
     MerchantStatus,
     MERCHANT_BUSINESS_TYPE_LABELS,
   } from "@/types/merchant";
@@ -18,6 +19,8 @@
   import { formatBusinessNumber } from "@/utils/formatters";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
+  import { Input } from "$lib/components/ui/input";
+  import * as Select from "$lib/components/ui/select";
   import {
     Card,
     CardContent,
@@ -30,6 +33,10 @@
   import SettlementAccountManager from "@/components/settlement/SettlementAccountManager.svelte";
   import MerchantPgMappingManager from "@/components/merchant/MerchantPgMappingManager.svelte";
   import FeeConfigurationManager from "@/components/merchant/FeeConfigurationManager.svelte";
+  import ConfirmModal from "@/components/shared/ConfirmModal.svelte";
+  import { tabStore } from "@/stores/tab";
+  import MerchantTransactions from "./MerchantTransactions.svelte";
+  import MerchantSettlements from "./MerchantSettlements.svelte";
 
   interface Props {
     merchantId: string;
@@ -38,9 +45,11 @@
   let { merchantId }: Props = $props();
 
   let merchant = $state<MerchantDto | null>(null);
+  let statistics = $state<MerchantStatisticsDto | null>(null);
   let loading = $state(true);
   let editMode = $state(false);
   let saving = $state(false);
+  let deleting = $state(false);
   let error = $state<string | null>(null);
 
   let editName = $state("");
@@ -48,6 +57,9 @@
   let editContactPhone = $state("");
   let editContactEmail = $state("");
   let editAddress = $state("");
+  let editCorporateNumber = $state("");
+  let editRepresentative = $state("");
+  let editStatus = $state<MerchantStatus>(MerchantStatus.ACTIVE);
 
   let activeSection = $state<"basic" | "transaction" | "settlement">("basic");
 
@@ -55,15 +67,24 @@
   let organizationDetail = $state<Branch | null>(null);
   let organizationLoading = $state(false);
 
+  let showDeleteModal = $state(false);
+
   const STATUS_LABELS: Record<MerchantStatus, string> = {
     [MerchantStatus.ACTIVE]: "정상",
     [MerchantStatus.SUSPENDED]: "정지",
     [MerchantStatus.TERMINATED]: "해지",
   };
 
+  const STATUS_OPTIONS = [
+    { value: MerchantStatus.ACTIVE, label: "정상" },
+    { value: MerchantStatus.SUSPENDED, label: "정지" },
+    { value: MerchantStatus.TERMINATED, label: "해지" },
+  ];
+
   onMount(() => {
     if (merchantId) {
       loadMerchant();
+      loadStatistics();
     }
   });
 
@@ -80,9 +101,20 @@
         error = response.error?.message || "정보를 불러올 수 없습니다.";
       }
     } catch (err) {
-      error = "정보를 불러올 수 없습니다.";
+      error = err instanceof Error ? err.message : "정보를 불러올 수 없습니다.";
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadStatistics() {
+    try {
+      const response = await merchantApi.getStatistics(merchantId);
+      if (response.success && response.data) {
+        statistics = response.data;
+      }
+    } catch {
+      // 통계 로드 실패는 무시 (메인 데이터는 아님)
     }
   }
 
@@ -93,6 +125,9 @@
     editContactPhone = merchant.primaryContact?.phone || "";
     editContactEmail = merchant.primaryContact?.email || "";
     editAddress = merchant.address || "";
+    editCorporateNumber = merchant.corporateNumber || "";
+    editRepresentative = merchant.representativeName || "";
+    editStatus = merchant.status;
   }
 
   function toggleEditMode() {
@@ -110,10 +145,13 @@
     try {
       const updateData: MerchantUpdateRequest = {
         name: editName,
+        corporateNumber: editCorporateNumber,
+        representative: editRepresentative,
         contactName: editContactName,
         contactPhone: editContactPhone,
         contactEmail: editContactEmail,
         address: editAddress,
+        status: editStatus,
       };
 
       const response = await merchantApi.update(merchant.id, updateData);
@@ -125,9 +163,30 @@
         error = response.error?.message || "저장에 실패했습니다.";
       }
     } catch (err) {
-      error = "저장에 실패했습니다.";
+      error = err instanceof Error ? err.message : "저장에 실패했습니다.";
     } finally {
       saving = false;
+    }
+  }
+
+  async function handleDelete() {
+    if (!merchant) return;
+    deleting = true;
+
+    try {
+      const response = await merchantApi.delete(merchant.id);
+      if (response.success) {
+        toast.success("가맹점이 삭제되었습니다.");
+        showDeleteModal = false;
+        const activeTab = tabStore.getActiveTab();
+        if (activeTab) tabStore.closeTab(activeTab.id);
+      } else {
+        toast.error(response.error?.message || "삭제에 실패했습니다.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "삭제에 실패했습니다.");
+    } finally {
+      deleting = false;
     }
   }
 
@@ -160,6 +219,13 @@
     } catch {
       return "-";
     }
+  }
+
+  function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat("ko-KR", {
+      style: "currency",
+      currency: "KRW",
+    }).format(amount);
   }
 
   async function loadOrganizationDetail() {
@@ -213,7 +279,9 @@
 
 <div class="h-full flex flex-col bg-muted/30">
   {#if loading}
-    <div class="flex justify-between items-start p-6 bg-background border-b border-border">
+    <div
+      class="flex justify-between items-start p-6 bg-background border-b border-border"
+    >
       <div class="flex flex-col gap-2">
         <Skeleton class="h-8 w-48" />
         <div class="flex items-center gap-3">
@@ -262,6 +330,7 @@
       <Button variant="outline" onclick={loadMerchant}>다시 시도</Button>
     </div>
   {:else if merchant}
+    <!-- 헤더 -->
     <div
       class="flex justify-between items-start p-6 bg-background border-b border-border"
     >
@@ -292,11 +361,18 @@
             {saving ? "저장 중..." : "저장"}
           </Button>
         {:else}
+          <Button
+            variant="destructive"
+            onclick={() => (showDeleteModal = true)}
+          >
+            삭제
+          </Button>
           <Button onclick={toggleEditMode}>수정</Button>
         {/if}
       </div>
     </div>
 
+    <!-- 탭 -->
     <div class="flex gap-0 bg-background border-b border-border px-6">
       <button
         class="px-6 py-4 text-sm font-medium text-muted-foreground border-b-2 border-transparent transition-colors hover:text-foreground data-[active=true]:text-primary data-[active=true]:border-primary"
@@ -321,8 +397,43 @@
       </button>
     </div>
 
+    <!-- 통계 카드 -->
+    {#if statistics}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 pt-6">
+        <Card>
+          <CardContent class="pt-4 pb-4">
+            <div class="text-xs text-muted-foreground">총 거래</div>
+            <div class="text-lg font-bold">{statistics.totalTransactions}건</div>
+            <div class="text-sm text-muted-foreground">{formatCurrency(statistics.totalAmount)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="pt-4 pb-4">
+            <div class="text-xs text-muted-foreground">승인</div>
+            <div class="text-lg font-bold text-green-600">{statistics.approvedTransactions}건</div>
+            <div class="text-sm text-muted-foreground">{formatCurrency(statistics.approvedAmount)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="pt-4 pb-4">
+            <div class="text-xs text-muted-foreground">취소</div>
+            <div class="text-lg font-bold text-red-600">{statistics.cancelledTransactions}건</div>
+            <div class="text-sm text-muted-foreground">{formatCurrency(statistics.cancelledAmount)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="pt-4 pb-4">
+            <div class="text-xs text-muted-foreground">대기</div>
+            <div class="text-lg font-bold text-yellow-600">{statistics.pendingTransactions}건</div>
+            <div class="text-sm text-muted-foreground">{formatCurrency(statistics.pendingAmount)}</div>
+          </CardContent>
+        </Card>
+      </div>
+    {/if}
+
     <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
       {#if activeSection === "basic"}
+        <!-- 사업자정보 -->
         <Card>
           <CardHeader>
             <CardTitle class="text-base">사업자정보</CardTitle>
@@ -342,11 +453,7 @@
                   >상호</span
                 >
                 {#if editMode}
-                  <input
-                    type="text"
-                    bind:value={editName}
-                    class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <Input type="text" bind:value={editName} />
                 {:else}
                   <span class="text-sm">{merchant.name}</span>
                 {/if}
@@ -362,6 +469,38 @@
                       ] || merchant.businessType
                     : "-"}
                 </span>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-medium text-muted-foreground"
+                  >법인번호</span
+                >
+                {#if editMode}
+                  <Input
+                    type="text"
+                    bind:value={editCorporateNumber}
+                    placeholder="법인번호 입력"
+                  />
+                {:else}
+                  <span class="text-sm font-mono"
+                    >{merchant.corporateNumber || "-"}</span
+                  >
+                {/if}
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-medium text-muted-foreground"
+                  >대표자</span
+                >
+                {#if editMode}
+                  <Input
+                    type="text"
+                    bind:value={editRepresentative}
+                    placeholder="대표자명 입력"
+                  />
+                {:else}
+                  <span class="text-sm"
+                    >{merchant.representativeName || "-"}</span
+                  >
+                {/if}
               </div>
               <div class="flex flex-col gap-1.5">
                 <span class="text-xs font-medium text-muted-foreground"
@@ -593,16 +732,35 @@
                   >
                 {/if}
               </div>
+              {#if editMode}
+                <div class="flex flex-col gap-1.5">
+                  <span class="text-xs font-medium text-muted-foreground"
+                    >상태</span
+                  >
+                  <Select.Root type="single" bind:value={editStatus}>
+                    <Select.Trigger class="w-full">
+                      {#if editStatus}
+                        {STATUS_LABELS[editStatus] || editStatus}
+                      {:else}
+                        <span class="text-muted-foreground">상태 선택</span>
+                      {/if}
+                    </Select.Trigger>
+                    <Select.Content>
+                      {#each STATUS_OPTIONS as option}
+                        <Select.Item value={option.value}
+                          >{option.label}</Select.Item
+                        >
+                      {/each}
+                    </Select.Content>
+                  </Select.Root>
+                </div>
+              {/if}
               <div class="flex flex-col gap-1.5 col-span-2">
                 <span class="text-xs font-medium text-muted-foreground"
                   >주소</span
                 >
                 {#if editMode}
-                  <input
-                    type="text"
-                    bind:value={editAddress}
-                    class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <Input type="text" bind:value={editAddress} />
                 {:else}
                   <span class="text-sm">{merchant.address || "-"}</span>
                 {/if}
@@ -611,6 +769,7 @@
           </CardContent>
         </Card>
 
+        <!-- 담당자정보 -->
         <Card>
           <CardHeader>
             <CardTitle class="text-base">담당자정보</CardTitle>
@@ -622,11 +781,7 @@
                   >담당자명</span
                 >
                 {#if editMode}
-                  <input
-                    type="text"
-                    bind:value={editContactName}
-                    class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <Input type="text" bind:value={editContactName} />
                 {:else}
                   <span class="text-sm"
                     >{merchant.primaryContact?.name || "-"}</span
@@ -638,11 +793,10 @@
                   >연락처</span
                 >
                 {#if editMode}
-                  <input
+                  <Input
                     type="text"
                     bind:value={editContactPhone}
                     placeholder="010-0000-0000"
-                    class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 {:else}
                   <span class="text-sm"
@@ -655,11 +809,10 @@
                   >이메일</span
                 >
                 {#if editMode}
-                  <input
+                  <Input
                     type="email"
                     bind:value={editContactEmail}
                     placeholder="example@email.com"
-                    class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 {:else}
                   <span class="text-sm"
@@ -671,6 +824,7 @@
           </CardContent>
         </Card>
 
+        <!-- 등록정보 -->
         <Card>
           <CardHeader>
             <CardTitle class="text-base">등록정보</CardTitle>
@@ -725,5 +879,17 @@
         </Card>
       {/if}
     </div>
+
+    <!-- 삭제 확인 모달 -->
+    <ConfirmModal
+      bind:show={showDeleteModal}
+      title="가맹점 삭제"
+      message="이 가맹점을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      confirmText={deleting ? "삭제 중..." : "삭제"}
+      cancelText="취소"
+      type="danger"
+      onConfirm={handleDelete}
+      onCancel={() => (showDeleteModal = false)}
+    />
   {/if}
 </div>

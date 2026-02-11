@@ -5,6 +5,7 @@ import type {
   MerchantCreateRequest,
   MerchantUpdateRequest,
   MerchantListParams,
+  MerchantStatisticsDto,
   AccessibleOrganization,
   BlacklistCheckResponse
 } from '@/types/merchant';
@@ -48,6 +49,10 @@ class MerchantApi {
 
   async delete(id: string): Promise<ApiResponse<void>> {
     return apiClient.delete<void>(`/merchants/${id}`);
+  }
+
+  async getStatistics(id: string): Promise<ApiResponse<MerchantStatisticsDto>> {
+    return apiClient.get<MerchantStatisticsDto>(`/merchants/${id}/statistics`);
   }
 }
 

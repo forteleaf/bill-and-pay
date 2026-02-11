@@ -69,8 +69,11 @@ export interface MerchantDto {
 	name: string;
 	organizationId: string;
 	organizationName?: string;
+	orgPath?: string;
 	businessNumber?: string;
 	businessType?: BusinessType;
+	corporateNumber?: string;
+	representativeName?: string;
 	address?: string;
 	status: MerchantStatus;
 	config?: Record<string, unknown>;
@@ -93,12 +96,25 @@ export interface MerchantUpdateRequest {
 	name?: string;
 	businessNumber?: string;
 	businessType?: BusinessType;
+	corporateNumber?: string;
+	representative?: string;
 	contactName?: string;
 	contactEmail?: string;
 	contactPhone?: string;
 	address?: string;
 	status?: MerchantStatus;
 	config?: Record<string, unknown>;
+}
+
+export interface MerchantStatisticsDto {
+	totalTransactions: number;
+	totalAmount: number;
+	approvedTransactions: number;
+	approvedAmount: number;
+	cancelledTransactions: number;
+	cancelledAmount: number;
+	pendingTransactions: number;
+	pendingAmount: number;
 }
 
 /**

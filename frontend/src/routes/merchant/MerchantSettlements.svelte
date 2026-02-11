@@ -14,14 +14,18 @@
 
   let { merchantId }: Props = $props();
 
-  let settlements = $state<Settlement[]>([]);
+  let allSettlements = $state<Settlement[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
   let currentPage = $state(0);
-  let pageSize = $state(10);
-  let totalCount = $state(0);
-  let totalPages = $state(0);
+  let pageSize = 10;
+
+  let settlements = $derived(
+    allSettlements.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+  );
+  let totalCount = $derived(allSettlements.length);
+  let totalPages = $derived(Math.ceil(allSettlements.length / pageSize));
 
   const STATUS_LABELS: Record<string, string> = {
     'PENDING': '대기',
@@ -62,18 +66,18 @@
 
     try {
       const params = new URLSearchParams({
-        page: currentPage.toString(),
-        size: pageSize.toString(),
+        page: '0',
+        size: '100',
         sortBy: 'created_at',
-        direction: 'DESC'
+        direction: 'DESC',
+        merchantOnly: 'true'
       });
 
       const response = await apiClient.get<PagedResponse<Settlement>>(`/settlements?${params}`);
 
       if (response.success && response.data) {
-        settlements = response.data.content.filter(s => s.merchantId === merchantId);
-        totalCount = settlements.length;
-        totalPages = Math.ceil(totalCount / pageSize);
+        allSettlements = response.data.content.filter(s => s.merchantId === merchantId);
+        currentPage = 0;
       } else {
         error = response.error?.message || '정산내역을 불러올 수 없습니다.';
       }
@@ -181,7 +185,7 @@
           variant="outline"
           size="sm"
           disabled={currentPage === 0}
-          onclick={() => { currentPage--; loadSettlements(); }}
+          onclick={() => { currentPage--; }}
         >
           이전
         </Button>
@@ -194,7 +198,7 @@
           variant="outline"
           size="sm"
           disabled={currentPage >= totalPages - 1}
-          onclick={() => { currentPage++; loadSettlements(); }}
+          onclick={() => { currentPage++; }}
         >
           다음
         </Button>
