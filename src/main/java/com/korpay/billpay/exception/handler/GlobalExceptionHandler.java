@@ -107,7 +107,9 @@ public class GlobalExceptionHandler {
         String rootMessage = ex.getMostSpecificCause().getMessage();
         
         if (rootMessage != null) {
-            if (rootMessage.contains("merchant_pg_mappings_merchant_pg_unique")) {
+            if (rootMessage.contains("idx_settlement_accounts_unique_per_entity")) {
+                message = "동일한 은행의 계좌번호가 이미 등록되어 있습니다";
+            } else if (rootMessage.contains("merchant_pg_mappings_merchant_pg_unique")) {
                 message = "해당 가맹점에 이미 동일 PG 매핑이 존재합니다";
             } else if (rootMessage.contains("duplicate key")) {
                 message = "중복된 데이터가 존재합니다";

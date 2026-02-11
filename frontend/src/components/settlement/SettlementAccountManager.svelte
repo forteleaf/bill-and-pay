@@ -4,6 +4,7 @@
     Popover as PopoverPrimitive,
   } from "bits-ui";
   import { onMount } from "svelte";
+  import { toast } from "svelte-sonner";
   import { settlementAccountApi } from "@/api/settlementAccount";
   import {
     KOREAN_BANK_CODES,
@@ -36,7 +37,6 @@
   // State
   let accounts = $state<SettlementAccountDto[]>([]);
   let loading = $state(true);
-  let error = $state<string | null>(null);
 
   // Dialog state
   let dialogOpen = $state(false);
@@ -82,7 +82,6 @@
 
   async function loadAccounts() {
     loading = true;
-    error = null;
 
     try {
       const response = await settlementAccountApi.listByEntity(
@@ -92,11 +91,10 @@
       if (response.success && response.data) {
         accounts = Array.isArray(response.data) ? response.data : (response.data as any).content || [];
       } else {
-        error =
-          response.error?.message || "정산계좌 목록을 불러올 수 없습니다.";
+        toast.error(response.error?.message || "정산계좌 목록을 불러올 수 없습니다.");
       }
     } catch (err) {
-      error = "정산계좌 목록을 불러올 수 없습니다.";
+      toast.error("정산계좌 목록을 불러올 수 없습니다.");
     } finally {
       loading = false;
     }
@@ -140,7 +138,6 @@
     }
 
     saving = true;
-    error = null;
 
     try {
       if (dialogMode === "add") {
@@ -161,8 +158,9 @@
           }
           await loadAccounts();
           closeDialog();
+          toast.success("정산계좌가 등록되었습니다.");
         } else {
-          error = response.error?.message || "계좌 등록에 실패했습니다.";
+          toast.error(response.error?.message || "계좌 등록에 실패했습니다.");
         }
       } else if (editingAccount) {
         const request: SettlementAccountUpdateRequest = {
@@ -185,15 +183,17 @@
           }
           await loadAccounts();
           closeDialog();
+          toast.success("정산계좌가 수정되었습니다.");
         } else {
-          error = response.error?.message || "계좌 수정에 실패했습니다.";
+          toast.error(response.error?.message || "계좌 수정에 실패했습니다.");
         }
       }
     } catch (err) {
-      error =
+      toast.error(
         dialogMode === "add"
           ? "계좌 등록에 실패했습니다."
-          : "계좌 수정에 실패했습니다.";
+          : "계좌 수정에 실패했습니다.",
+      );
     } finally {
       saving = false;
     }
@@ -213,18 +213,18 @@
     if (!accountToDelete) return;
 
     deleting = true;
-    error = null;
 
     try {
       const response = await settlementAccountApi.delete(accountToDelete.id);
       if (response.success) {
         await loadAccounts();
         closeDeleteConfirm();
+        toast.success("정산계좌가 삭제되었습니다.");
       } else {
-        error = response.error?.message || "계좌 삭제에 실패했습니다.";
+        toast.error(response.error?.message || "계좌 삭제에 실패했습니다.");
       }
     } catch (err) {
-      error = "계좌 삭제에 실패했습니다.";
+      toast.error("계좌 삭제에 실패했습니다.");
     } finally {
       deleting = false;
     }
@@ -233,17 +233,16 @@
   async function handleSetPrimary(account: SettlementAccountDto) {
     if (account.isPrimary) return;
 
-    error = null;
-
     try {
       const response = await settlementAccountApi.setPrimary(account.id);
       if (response.success) {
         await loadAccounts();
+        toast.success("주계좌가 변경되었습니다.");
       } else {
-        error = response.error?.message || "주계좌 설정에 실패했습니다.";
+        toast.error(response.error?.message || "주계좌 설정에 실패했습니다.");
       }
     } catch (err) {
-      error = "주계좌 설정에 실패했습니다.";
+      toast.error("주계좌 설정에 실패했습니다.");
     }
   }
 
@@ -288,25 +287,6 @@
           class="w-8 h-8 border-3 border-muted border-t-primary rounded-full animate-spin"
         ></div>
         <span class="text-sm">불러오는 중...</span>
-      </div>
-    {:else if error}
-      <div
-        class="flex flex-col items-center justify-center py-8 gap-3 text-destructive"
-      >
-        <svg
-          class="w-10 h-10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 8v4m0 4h.01" />
-        </svg>
-        <span class="text-sm">{error}</span>
-        <Button variant="outline" size="sm" onclick={loadAccounts}
-          >다시 시도</Button
-        >
       </div>
     {:else if accounts.length === 0}
       <div

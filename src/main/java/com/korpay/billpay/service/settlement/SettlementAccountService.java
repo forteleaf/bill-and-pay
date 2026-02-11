@@ -25,6 +25,15 @@ public class SettlementAccountService {
 
     @Transactional
     public SettlementAccount create(SettlementAccountCreateRequest request) {
+        List<SettlementAccount> existing = settlementAccountRepository
+                .findByAccountNumberAndBankCode(request.getAccountNumber(), request.getBankCode());
+        boolean duplicateInEntity = existing.stream()
+                .anyMatch(a -> a.getEntityType() == request.getEntityType()
+                        && a.getEntityId().equals(request.getEntityId()));
+        if (duplicateInEntity) {
+            throw new IllegalArgumentException("동일한 은행의 계좌번호가 이미 등록되어 있습니다.");
+        }
+
         if (Boolean.TRUE.equals(request.getIsPrimary())) {
             unsetPrimaryForEntity(request.getEntityType(), request.getEntityId());
         }
@@ -53,6 +62,16 @@ public class SettlementAccountService {
     @Transactional
     public SettlementAccount update(UUID id, SettlementAccountCreateRequest request) {
         SettlementAccount account = findById(id);
+
+        List<SettlementAccount> existing = settlementAccountRepository
+                .findByAccountNumberAndBankCode(request.getAccountNumber(), request.getBankCode());
+        boolean duplicateInEntity = existing.stream()
+                .anyMatch(a -> !a.getId().equals(id)
+                        && a.getEntityType() == request.getEntityType()
+                        && a.getEntityId().equals(request.getEntityId()));
+        if (duplicateInEntity) {
+            throw new IllegalArgumentException("동일한 은행의 계좌번호가 이미 등록되어 있습니다.");
+        }
 
         if (Boolean.TRUE.equals(request.getIsPrimary()) && !account.getIsPrimary()) {
             unsetPrimaryForEntity(request.getEntityType(), request.getEntityId());
