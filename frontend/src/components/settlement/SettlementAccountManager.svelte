@@ -90,7 +90,7 @@
         entityId,
       );
       if (response.success && response.data) {
-        accounts = response.data.content || [];
+        accounts = Array.isArray(response.data) ? response.data : (response.data as any).content || [];
       } else {
         error =
           response.error?.message || "정산계좌 목록을 불러올 수 없습니다.";
@@ -146,6 +146,7 @@
       if (dialogMode === "add") {
         const request: SettlementAccountCreateRequest = {
           bankCode: formBankCode,
+          bankName: KOREAN_BANK_CODES[formBankCode] || formBankCode,
           accountNumber: formAccountNumber,
           accountHolder: formAccountHolder,
           memo: formMemo || undefined,
@@ -166,9 +167,12 @@
       } else if (editingAccount) {
         const request: SettlementAccountUpdateRequest = {
           bankCode: formBankCode,
+          bankName: KOREAN_BANK_CODES[formBankCode] || formBankCode,
           accountNumber: formAccountNumber,
           accountHolder: formAccountHolder,
           memo: formMemo || undefined,
+          entityType,
+          entityId,
         };
 
         const response = await settlementAccountApi.update(

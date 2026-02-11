@@ -33,6 +33,7 @@ export interface SettlementAccountDto {
 // Create Settlement Account Request
 export interface SettlementAccountCreateRequest {
 	bankCode: string;
+	bankName: string;
 	accountNumber: string;
 	accountHolder: string;
 	memo?: string;
@@ -43,10 +44,13 @@ export interface SettlementAccountCreateRequest {
 // Update Settlement Account Request
 export interface SettlementAccountUpdateRequest {
 	bankCode?: string;
+	bankName?: string;
 	accountNumber?: string;
 	accountHolder?: string;
 	memo?: string;
 	status?: SettlementAccountStatus;
+	entityType?: SettlementAccountEntityType;
+	entityId?: string;
 }
 
 // Settlement Account List Params

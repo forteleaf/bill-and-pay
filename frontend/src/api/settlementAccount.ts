@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiResponse, PagedResponse } from '@/types/api';
+import type { ApiResponse } from '@/types/api';
 import type {
 	SettlementAccountDto,
 	SettlementAccountCreateRequest,
@@ -48,7 +48,7 @@ class SettlementAccountApi {
 		entityType: string,
 		entityId: string,
 		params: SettlementAccountListParams = {}
-	): Promise<ApiResponse<PagedResponse<SettlementAccountDto>>> {
+	): Promise<ApiResponse<SettlementAccountDto[]>> {
 		const queryParams = new URLSearchParams();
 		if (params.page !== undefined) queryParams.set('page', params.page.toString());
 		if (params.size !== undefined) queryParams.set('size', params.size.toString());
@@ -57,7 +57,7 @@ class SettlementAccountApi {
 		const queryString = queryParams.toString();
 		const endpoint = `/settlement-accounts/entity/${entityType}/${entityId}${queryString ? `?${queryString}` : ''}`;
 
-		return apiClient.get<PagedResponse<SettlementAccountDto>>(endpoint);
+		return apiClient.get<SettlementAccountDto[]>(endpoint);
 	}
 
 	/**
