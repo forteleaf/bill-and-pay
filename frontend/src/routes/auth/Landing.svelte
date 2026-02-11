@@ -6,9 +6,10 @@
   interface Props {
     onLogin: () => void;
     onDemo: () => void;
+    onPlatformLogin?: () => void;
   }
 
-  let { onLogin, onDemo }: Props = $props();
+  let { onLogin, onDemo, onPlatformLogin }: Props = $props();
 
   const features = [
     {
@@ -234,6 +235,14 @@
           <p class="text-muted-foreground text-sm">
             © 2024 Bill&Pay. All rights reserved.
           </p>
+          {#if onPlatformLogin}
+            <button
+              class="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-2"
+              onclick={onPlatformLogin}
+            >
+              Platform Admin
+            </button>
+          {/if}
         </div>
 
         <div>

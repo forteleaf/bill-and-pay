@@ -77,7 +77,8 @@ public class MultiTenantConfiguration implements WebMvcConfigurer {
                         "/api/health",
                         "/api/actuator/**",
                         "/api/public/**",
-                        "/api/v1/auth/**"
+                        "/api/v1/auth/**",
+                        "/api/v1/platform/**"
                 );
     }
 }

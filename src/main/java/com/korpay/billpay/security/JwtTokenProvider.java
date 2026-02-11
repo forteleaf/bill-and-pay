@@ -16,6 +16,9 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
+    public static final String TOKEN_TYPE_TENANT = "TENANT";
+    public static final String TOKEN_TYPE_PLATFORM = "PLATFORM";
+
     private final SecretKey secretKey;
     private final long jwtExpiration;
     private final long refreshExpiration;
@@ -28,6 +31,8 @@ public class JwtTokenProvider {
         this.jwtExpiration = jwtExpiration;
         this.refreshExpiration = refreshExpiration;
     }
+
+    // === 기존 테넌트 사용자 토큰 (변경 없음) ===
 
     public String generateAccessToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -54,14 +59,57 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    // === 플랫폼 관리자 토큰 ===
+
+    public String generatePlatformAccessToken(String username, String role, String adminId) {
+        return generatePlatformToken(username, role, adminId, jwtExpiration);
+    }
+
+    public String generatePlatformRefreshToken(String username, String role, String adminId) {
+        return generatePlatformToken(username, role, adminId, refreshExpiration);
+    }
+
+    private String generatePlatformToken(String username, String role, String adminId, long expiration) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expiration);
+
+        return Jwts.builder()
+                .subject(username)
+                .claim("type", TOKEN_TYPE_PLATFORM)
+                .claim("role", role)
+                .claim("adminId", adminId)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(secretKey, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    // === 토큰 파싱 ===
+
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
+        return getClaims(token).getSubject();
+    }
+
+    public String getTokenType(String token) {
+        Claims claims = getClaims(token);
+        String type = claims.get("type", String.class);
+        return type != null ? type : TOKEN_TYPE_TENANT;
+    }
+
+    public String getRoleFromToken(String token) {
+        return getClaims(token).get("role", String.class);
+    }
+
+    public String getAdminIdFromToken(String token) {
+        return getClaims(token).get("adminId", String.class);
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
-        return claims.getSubject();
     }
 
     public boolean validateToken(String token) {

@@ -43,6 +43,8 @@ public class SecurityConfig {
                         .requestMatchers("/v1/auth/**").permitAll()
                         .requestMatchers("/v1/public/**").permitAll()
                         .requestMatchers("/webhook/**").permitAll()
+                        .requestMatchers("/v1/platform/auth/**").permitAll()
+                        .requestMatchers("/v1/platform/**").hasAnyRole("SUPER_ADMIN", "PLATFORM_OPERATOR", "PLATFORM_VIEWER")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
