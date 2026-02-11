@@ -155,10 +155,10 @@
       };
 
       const response = await merchantApi.update(merchant.id, updateData);
-      if (response.success && response.data) {
-        merchant = response.data;
+      if (response.success) {
         editMode = false;
         toast.success("저장되었습니다.");
+        await loadMerchant();
       } else {
         error = response.error?.message || "저장에 실패했습니다.";
       }
