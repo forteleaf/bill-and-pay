@@ -50,7 +50,7 @@ export type {
   BranchListParams
 } from './branch';
 
-export { BusinessType, BRANCH_TYPE_LABELS, BRANCH_CODE_PREFIX } from './branch';
+export { BusinessType, BRANCH_TYPE_LABELS, BRANCH_CODE_PREFIX, ORG_STATUS_LABELS } from './branch';
 export type { BranchType } from './branch';
 
 // Merchant Types
@@ -66,7 +66,7 @@ export type {
   MerchantUpdateRequest
 } from './merchant';
 
-export { MerchantStatus, ContactRole, MERCHANT_BUSINESS_TYPE_LABELS } from './merchant';
+export { MerchantStatus, ContactRole, MERCHANT_BUSINESS_TYPE_LABELS, MERCHANT_STATUS_LABELS } from './merchant';
 export type { MerchantBusinessType } from './merchant';
 
 // User Types
@@ -136,3 +136,5 @@ export type {
   SettlementBatchListParams,
   OrganizationSettlementParams
 } from './settlement';
+
+export { SETTLEMENT_STATUS_LABELS, TRANSACTION_STATUS_LABELS } from './settlement';

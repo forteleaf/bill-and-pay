@@ -30,3 +30,11 @@ dist/
 
 # OhMyCode state files
 .sisyphus/
+
+# Claude Code
+.claude/plans/
+**/CLAUDE.md
+
+# Misc
+nohup.out
+frontend/frontend/

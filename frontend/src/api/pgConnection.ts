@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { buildEndpoint } from './queryUtils';
 import type { ApiResponse, PagedResponse } from '@/types/api';
 import type {
   PgConnectionDto,
@@ -14,14 +15,10 @@ export interface PgConnectionListParams {
 
 class PgConnectionApi {
   async getAll(params: PgConnectionListParams = {}): Promise<ApiResponse<PagedResponse<PgConnectionDto>>> {
-    const queryParams = new URLSearchParams();
-    if (params.page !== undefined) queryParams.set('page', params.page.toString());
-    if (params.size !== undefined) queryParams.set('size', params.size.toString());
-
-    const queryString = queryParams.toString();
-    const endpoint = `/pg-connections${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<PagedResponse<PgConnectionDto>>(endpoint);
+    return apiClient.get<PagedResponse<PgConnectionDto>>(buildEndpoint('/pg-connections', {
+      page: params.page,
+      size: params.size,
+    }));
   }
 
   async getById(id: number): Promise<ApiResponse<PgConnectionDto>> {

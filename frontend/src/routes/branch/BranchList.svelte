@@ -6,9 +6,12 @@
     type Branch,
     type BranchListParams,
     BRANCH_TYPE_LABELS,
+    ORG_STATUS_LABELS,
     OrgType,
     OrgStatus
   } from '@/types/branch';
+  import { getStatusBadgeVariant } from '@/utils/statusVariants';
+  import * as Select from '$lib/components/ui/select';
   import { format } from 'date-fns';
   import { formatBusinessNumber } from '@/utils/formatters';
   import { Button } from '$lib/components/ui/button';
@@ -43,11 +46,6 @@
 
   let sentinelEl: HTMLDivElement;
 
-  const STATUS_LABELS: Record<OrgStatus, string> = {
-    [OrgStatus.ACTIVE]: '정상',
-    [OrgStatus.SUSPENDED]: '정지',
-    [OrgStatus.TERMINATED]: '해지'
-  };
 
   const ORG_TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
     DISTRIBUTOR: {
@@ -83,18 +81,6 @@
     return `${colors.bg} ${colors.border} ${colors.text} border`;
   }
 
-  function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
-    switch (status) {
-      case OrgStatus.ACTIVE:
-        return 'default';
-      case OrgStatus.SUSPENDED:
-        return 'secondary';
-      case OrgStatus.TERMINATED:
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  }
 
   function formatDate(dateStr?: string): string {
     if (!dateStr) return '-';
@@ -250,32 +236,42 @@
 
       <!-- Type Filter -->
       <div class="flex flex-col gap-1.5">
-        <Label for="type">영업점유형</Label>
-        <select
-          id="type"
-          bind:value={typeFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(OrgType) as type}
-            <option value={type}>{BRANCH_TYPE_LABELS[type]}</option>
-          {/each}
-        </select>
+        <Label>영업점유형</Label>
+        <Select.Root type="single" bind:value={typeFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if typeFilter}
+              {BRANCH_TYPE_LABELS[typeFilter as OrgType] || typeFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(OrgType) as type}
+              <Select.Item value={type}>{BRANCH_TYPE_LABELS[type]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
 
       <!-- Status Filter -->
       <div class="flex flex-col gap-1.5">
-        <Label for="status">상태</Label>
-        <select
-          id="status"
-          bind:value={statusFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(OrgStatus) as status}
-            <option value={status}>{STATUS_LABELS[status]}</option>
-          {/each}
-        </select>
+        <Label>상태</Label>
+        <Select.Root type="single" bind:value={statusFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if statusFilter}
+              {ORG_STATUS_LABELS[statusFilter as OrgStatus] || statusFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(OrgStatus) as status}
+              <Select.Item value={status}>{ORG_STATUS_LABELS[status]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
 
       <!-- Date Range -->
@@ -397,8 +393,8 @@
                 <span class="font-medium text-muted-foreground">{branch.merchantCount ?? 0}</span>
               </TableCell>
               <TableCell class="text-center">
-                <Badge variant={getStatusVariant(branch.status)}>
-                  {STATUS_LABELS[branch.status as OrgStatus] || branch.status}
+                <Badge variant={getStatusBadgeVariant(branch.status)}>
+                  {ORG_STATUS_LABELS[branch.status as OrgStatus] || branch.status}
                 </Badge>
               </TableCell>
               <TableCell>

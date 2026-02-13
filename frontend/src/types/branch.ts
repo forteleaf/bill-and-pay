@@ -128,6 +128,12 @@ export interface BranchListParams {
 	endDate?: string;
 }
 
+export const ORG_STATUS_LABELS: Record<OrgStatus, string> = {
+	[OrgStatus.ACTIVE]: "활성",
+	[OrgStatus.SUSPENDED]: "정지",
+	[OrgStatus.TERMINATED]: "해지",
+};
+
 // Korean labels for branch types
 export const BRANCH_TYPE_LABELS: Record<OrgType, string> = {
 	[OrgType.DISTRIBUTOR]: "대리점",

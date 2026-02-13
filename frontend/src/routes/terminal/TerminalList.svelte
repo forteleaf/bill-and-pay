@@ -15,6 +15,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Badge } from '$lib/components/ui/badge';
+  import * as Select from '$lib/components/ui/select';
   import {
     Table,
     TableBody,
@@ -235,32 +236,42 @@
 
       <!-- Type Filter -->
       <div class="flex flex-col gap-1.5">
-        <Label for="type">단말기유형</Label>
-        <select
-          id="type"
-          bind:value={typeFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(TerminalType) as type}
-            <option value={type}>{TERMINAL_TYPE_LABELS[type]}</option>
-          {/each}
-        </select>
+        <Label>단말기유형</Label>
+        <Select.Root type="single" bind:value={typeFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if typeFilter}
+              {TERMINAL_TYPE_LABELS[typeFilter as TerminalType] || typeFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(TerminalType) as type}
+              <Select.Item value={type}>{TERMINAL_TYPE_LABELS[type]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
 
       <!-- Status Filter -->
       <div class="flex flex-col gap-1.5">
-        <Label for="status">상태</Label>
-        <select
-          id="status"
-          bind:value={statusFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(TerminalStatus) as status}
-            <option value={status}>{TERMINAL_STATUS_LABELS[status]}</option>
-          {/each}
-        </select>
+        <Label>상태</Label>
+        <Select.Root type="single" bind:value={statusFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if statusFilter}
+              {TERMINAL_STATUS_LABELS[statusFilter as TerminalStatus] || statusFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(TerminalStatus) as status}
+              <Select.Item value={status}>{TERMINAL_STATUS_LABELS[status]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
 

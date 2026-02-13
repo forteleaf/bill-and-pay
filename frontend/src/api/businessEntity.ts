@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { buildEndpoint } from './queryUtils';
 import type { ApiResponse, PagedResponse } from '@/types/api';
 import type {
   BusinessEntity,
@@ -7,14 +8,10 @@ import type {
 
 class BusinessEntityApi {
   async getAll(params: { page?: number; size?: number } = {}): Promise<ApiResponse<PagedResponse<BusinessEntity>>> {
-    const queryParams = new URLSearchParams();
-    if (params.page !== undefined) queryParams.set('page', params.page.toString());
-    if (params.size !== undefined) queryParams.set('size', params.size.toString());
-
-    const queryString = queryParams.toString();
-    const endpoint = `/business-entities${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<PagedResponse<BusinessEntity>>(endpoint);
+    return apiClient.get<PagedResponse<BusinessEntity>>(buildEndpoint('/business-entities', {
+      page: params.page,
+      size: params.size,
+    }));
   }
 
   async getById(id: string): Promise<ApiResponse<BusinessEntity>> {

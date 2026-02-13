@@ -9,6 +9,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
   import { DateRangePicker } from '$lib/components/ui/date-range-picker';
+  import * as Select from '$lib/components/ui/select';
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
   import { Skeleton } from '$lib/components/ui/skeleton';
   
@@ -118,19 +119,31 @@
     <CardContent class="pt-6">
       <div class="flex flex-wrap gap-4 items-end">
         <div class="space-y-2">
-          <Label for="status">Status</Label>
-          <select 
-            id="status" 
-            bind:value={statusFilter}
-            onchange={() => { currentPage = 0; loadBatches(); }}
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="ALL">All</option>
-            <option value="PENDING">Pending</option>
-            <option value="PROCESSING">Processing</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="FAILED">Failed</option>
-          </select>
+          <Label>Status</Label>
+          <Select.Root type="single" bind:value={statusFilter} onValueChange={() => { currentPage = 0; loadBatches(); }}>
+            <Select.Trigger class="w-[160px]">
+              {#if statusFilter === 'ALL'}
+                All
+              {:else if statusFilter === 'PENDING'}
+                Pending
+              {:else if statusFilter === 'PROCESSING'}
+                Processing
+              {:else if statusFilter === 'COMPLETED'}
+                Completed
+              {:else if statusFilter === 'FAILED'}
+                Failed
+              {:else}
+                All
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="ALL">All</Select.Item>
+              <Select.Item value="PENDING">Pending</Select.Item>
+              <Select.Item value="PROCESSING">Processing</Select.Item>
+              <Select.Item value="COMPLETED">Completed</Select.Item>
+              <Select.Item value="FAILED">Failed</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div class="flex flex-row items-end gap-3">

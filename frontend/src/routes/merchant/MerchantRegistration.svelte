@@ -63,7 +63,9 @@
   function generateMerchantCode() {
     const now = new Date();
     const timestamp = now.toISOString().slice(0, 10).replace(/-/g, "");
-    const random = Math.floor(1000 + Math.random() * 9000);
+    const arr = new Uint16Array(1);
+    crypto.getRandomValues(arr);
+    const random = 1000 + (arr[0] % 9000);
     merchantCode = `MER-${timestamp}-${random}`;
   }
 

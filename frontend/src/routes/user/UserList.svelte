@@ -14,6 +14,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Badge } from '$lib/components/ui/badge';
+  import * as Select from '$lib/components/ui/select';
   import {
     Table,
     TableBody,
@@ -195,31 +196,41 @@
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <Label for="status">상태</Label>
-        <select
-          id="status"
-          bind:value={statusFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(UserStatus) as status}
-            <option value={status}>{USER_STATUS_LABELS[status]}</option>
-          {/each}
-        </select>
+        <Label>상태</Label>
+        <Select.Root type="single" bind:value={statusFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if statusFilter}
+              {USER_STATUS_LABELS[statusFilter as UserStatus] || statusFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(UserStatus) as status}
+              <Select.Item value={status}>{USER_STATUS_LABELS[status]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <Label for="role">역할</Label>
-        <select
-          id="role"
-          bind:value={roleFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(UserRole) as role}
-            <option value={role}>{USER_ROLE_LABELS[role]}</option>
-          {/each}
-        </select>
+        <Label>역할</Label>
+        <Select.Root type="single" bind:value={roleFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if roleFilter}
+              {USER_ROLE_LABELS[roleFilter as UserRole] || roleFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(UserRole) as role}
+              <Select.Item value={role}>{USER_ROLE_LABELS[role]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
 

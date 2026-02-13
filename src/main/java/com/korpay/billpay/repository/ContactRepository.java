@@ -44,4 +44,9 @@ public interface ContactRepository extends JpaRepository<Contact, UUID> {
 
     @Query("SELECT c FROM Contact c WHERE c.phone = :phone AND c.deletedAt IS NULL")
     List<Contact> findByPhone(@Param("phone") String phone);
+
+    @Query("SELECT c FROM Contact c WHERE c.entityType = :entityType AND c.entityId IN :entityIds AND c.isPrimary = true AND c.deletedAt IS NULL")
+    List<Contact> findPrimaryByEntityTypeAndEntityIds(
+            @Param("entityType") ContactEntityType entityType,
+            @Param("entityIds") List<UUID> entityIds);
 }

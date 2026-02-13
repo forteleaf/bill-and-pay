@@ -33,7 +33,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -50,33 +52,32 @@ public class MerchantService {
     private final MerchantOrgHistoryRepository merchantOrgHistoryRepository;
     private final ContactRepository contactRepository;
     private final AccessControlService accessControlService;
+    private final BlacklistCheckService blacklistCheckService;
 
     public Page<Merchant> findAccessibleMerchants(User user, Pageable pageable) {
-        List<Merchant> allMerchants = merchantRepository.findAll();
-        
-        List<Merchant> accessibleMerchants = allMerchants.stream()
-                .filter(merchant -> accessControlService.hasAccessToMerchant(user, merchant))
-                .collect(Collectors.toList());
-        
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), accessibleMerchants.size());
-        
-        List<Merchant> pageContent = accessibleMerchants.subList(start, end);
-        
-        return new PageImpl<>(pageContent, pageable, accessibleMerchants.size());
+        if (accessControlService.isMasterAdmin(user)) {
+            return merchantRepository.findAllNotDeleted(pageable);
+        }
+        return merchantRepository.findByOrgPathDescendants(user.getOrgPath(), pageable);
     }
 
     public Page<MerchantDto> findAccessibleMerchantsWithPrimaryContact(User user, Pageable pageable) {
         Page<Merchant> merchantPage = findAccessibleMerchants(user, pageable);
-        
-        List<MerchantDto> dtos = merchantPage.getContent().stream()
-                .map(merchant -> {
-                    Contact primaryContact = contactRepository.findPrimaryByEntityTypeAndEntityId(
-                            ContactEntityType.MERCHANT, merchant.getId()).orElse(null);
-                    return MerchantDto.from(merchant, primaryContact, null);
-                })
+
+        List<UUID> merchantIds = merchantPage.getContent().stream()
+                .map(Merchant::getId)
                 .collect(Collectors.toList());
-        
+
+        Map<UUID, Contact> primaryContactMap = new HashMap<>();
+        if (!merchantIds.isEmpty()) {
+            contactRepository.findPrimaryByEntityTypeAndEntityIds(ContactEntityType.MERCHANT, merchantIds)
+                    .forEach(c -> primaryContactMap.put(c.getEntityId(), c));
+        }
+
+        List<MerchantDto> dtos = merchantPage.getContent().stream()
+                .map(merchant -> MerchantDto.from(merchant, primaryContactMap.get(merchant.getId()), null))
+                .collect(Collectors.toList());
+
         return new PageImpl<>(dtos, pageable, merchantPage.getTotalElements());
     }
 
@@ -316,16 +317,14 @@ public class MerchantService {
     public void delete(UUID id, User user) {
         Merchant merchant = findById(id, user);
         merchant.setStatus(MerchantStatus.DELETED);
-        merchant.setDeletedAt(OffsetDateTime.now());
-        merchantRepository.save(merchant);
+        merchantRepository.delete(merchant);
         log.info("Soft deleted merchant: {} ({})", merchant.getMerchantCode(), id);
     }
 
     public BlacklistCheckResponse checkBlacklist(String businessNumber) {
-        // Mock implementation: hardcode "1234567890" as blacklisted
-        boolean isBlacklisted = "1234567890".equals(businessNumber);
-        String reason = isBlacklisted ? "테스트용 블랙리스트" : null;
-        
+        boolean isBlacklisted = blacklistCheckService.isBlacklisted(businessNumber);
+        String reason = isBlacklisted ? blacklistCheckService.getReason(businessNumber) : null;
+
         return BlacklistCheckResponse.builder()
                 .isBlacklisted(isBlacklisted)
                 .reason(reason)

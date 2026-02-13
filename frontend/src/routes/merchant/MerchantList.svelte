@@ -6,9 +6,12 @@
     type MerchantDto,
     type MerchantListParams,
     MerchantStatus,
-    MERCHANT_BUSINESS_TYPE_LABELS
+    MERCHANT_BUSINESS_TYPE_LABELS,
+    MERCHANT_STATUS_LABELS
   } from '@/types/merchant';
   import { BusinessType } from '@/types/branch';
+  import { getStatusBadgeVariant } from '@/utils/statusVariants';
+  import * as Select from '$lib/components/ui/select';
   import { format } from 'date-fns';
   import { formatBusinessNumber } from '@/utils/formatters';
   import { Button } from '$lib/components/ui/button';
@@ -40,24 +43,6 @@
 
   let sentinelEl: HTMLDivElement;
 
-  const STATUS_LABELS: Record<MerchantStatus, string> = {
-    [MerchantStatus.ACTIVE]: '정상',
-    [MerchantStatus.SUSPENDED]: '정지',
-    [MerchantStatus.TERMINATED]: '해지'
-  };
-
-  function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
-    switch (status) {
-      case MerchantStatus.ACTIVE:
-        return 'default';
-      case MerchantStatus.SUSPENDED:
-        return 'secondary';
-      case MerchantStatus.TERMINATED:
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  }
 
   function formatDate(dateStr?: string): string {
     if (!dateStr) return '-';
@@ -229,32 +214,42 @@
 
       <!-- Business Type Filter -->
       <div class="flex flex-col gap-1.5">
-        <Label for="businessType">사업자유형</Label>
-        <select
-          id="businessType"
-          bind:value={businessTypeFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(BusinessType) as type}
-            <option value={type}>{MERCHANT_BUSINESS_TYPE_LABELS[type]}</option>
-          {/each}
-        </select>
+        <Label>사업자유형</Label>
+        <Select.Root type="single" bind:value={businessTypeFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if businessTypeFilter}
+              {MERCHANT_BUSINESS_TYPE_LABELS[businessTypeFilter as BusinessType] || businessTypeFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(BusinessType) as type}
+              <Select.Item value={type}>{MERCHANT_BUSINESS_TYPE_LABELS[type]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
 
       <!-- Status Filter -->
       <div class="flex flex-col gap-1.5">
-        <Label for="status">상태</Label>
-        <select
-          id="status"
-          bind:value={statusFilter}
-          class="h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-[140px]"
-        >
-          <option value="">전체</option>
-          {#each Object.values(MerchantStatus) as status}
-            <option value={status}>{STATUS_LABELS[status]}</option>
-          {/each}
-        </select>
+        <Label>상태</Label>
+        <Select.Root type="single" bind:value={statusFilter}>
+          <Select.Trigger class="min-w-[140px]">
+            {#if statusFilter}
+              {MERCHANT_STATUS_LABELS[statusFilter as MerchantStatus] || statusFilter}
+            {:else}
+              <span class="text-muted-foreground">전체</span>
+            {/if}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="">전체</Select.Item>
+            {#each Object.values(MerchantStatus) as status}
+              <Select.Item value={status}>{MERCHANT_STATUS_LABELS[status]}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
 
@@ -377,8 +372,8 @@
                 {/if}
               </TableCell>
               <TableCell class="text-center">
-                <Badge variant={getStatusVariant(merchant.status)}>
-                  {STATUS_LABELS[merchant.status] || merchant.status}
+                <Badge variant={getStatusBadgeVariant(merchant.status)}>
+                  {MERCHANT_STATUS_LABELS[merchant.status as MerchantStatus] || merchant.status}
                 </Badge>
               </TableCell>
               <TableCell>

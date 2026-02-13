@@ -64,6 +64,12 @@ jwt:
 
 # Webhook configuration
 app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:5174
+      - http://localhost:5175
+      - http://localhost:3000
   webhook:
     # Base URL for webhook endpoints (used to generate full webhook URLs for PG configuration)
     # Override via WEBHOOK_BASE_URL environment variable in production

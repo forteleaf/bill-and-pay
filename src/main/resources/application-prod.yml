@@ -43,6 +43,14 @@ spring:
     baseline-on-migrate: false
     default-schema: public
 
+jwt:
+  secret: ${JWT_SECRET}
+
+app:
+  cors:
+    allowed-origins:
+      - https://bnp.cardbin.net
+
 logging:
   level:
     root: INFO

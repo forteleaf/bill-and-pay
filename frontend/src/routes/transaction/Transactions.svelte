@@ -19,6 +19,7 @@
   } from "$lib/components/ui/table";
   import { DateRangePicker } from "$lib/components/ui/date-range-picker";
   import { Alert, AlertTitle, AlertDescription } from "$lib/components/ui/alert";
+  import * as Select from "$lib/components/ui/select";
 
   let transactions = $state<Transaction[]>([]);
   let loading = $state(true);
@@ -209,30 +210,50 @@
     <CardContent class="pt-6 space-y-4">
       <div class="flex flex-wrap gap-4 items-end">
         <div class="space-y-2">
-          <Label for="status">상태</Label>
-          <select
-            id="status"
-            bind:value={statusFilter}
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="ALL">전체</option>
-            <option value="APPROVED">승인</option>
-            <option value="CANCELLED">취소</option>
-            <option value="PARTIAL_CANCELLED">부분취소</option>
-          </select>
+          <Label>상태</Label>
+          <Select.Root type="single" bind:value={statusFilter}>
+            <Select.Trigger class="w-[140px]">
+              {#if statusFilter === 'ALL'}
+                전체
+              {:else if statusFilter === 'APPROVED'}
+                승인
+              {:else if statusFilter === 'CANCELLED'}
+                취소
+              {:else if statusFilter === 'PARTIAL_CANCELLED'}
+                부분취소
+              {:else}
+                <span class="text-muted-foreground">전체</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="ALL">전체</Select.Item>
+              <Select.Item value="APPROVED">승인</Select.Item>
+              <Select.Item value="CANCELLED">취소</Select.Item>
+              <Select.Item value="PARTIAL_CANCELLED">부분취소</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div class="space-y-2">
-          <Label for="dateType">날짜 유형</Label>
-          <select
-            id="dateType"
-            bind:value={dateType}
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="CREATED">거래일자</option>
-            <option value="APPROVED">승인일자</option>
-            <option value="CANCELLED">취소일자</option>
-          </select>
+          <Label>날짜 유형</Label>
+          <Select.Root type="single" bind:value={dateType}>
+            <Select.Trigger class="w-[140px]">
+              {#if dateType === 'CREATED'}
+                거래일자
+              {:else if dateType === 'APPROVED'}
+                승인일자
+              {:else if dateType === 'CANCELLED'}
+                취소일자
+              {:else}
+                거래일자
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="CREATED">거래일자</Select.Item>
+              <Select.Item value="APPROVED">승인일자</Select.Item>
+              <Select.Item value="CANCELLED">취소일자</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div class="flex flex-row items-end gap-3">

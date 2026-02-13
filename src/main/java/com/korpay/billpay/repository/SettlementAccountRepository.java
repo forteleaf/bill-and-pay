@@ -4,6 +4,7 @@ import com.korpay.billpay.domain.entity.SettlementAccount;
 import com.korpay.billpay.domain.enums.AccountStatus;
 import com.korpay.billpay.domain.enums.ContactEntityType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -46,4 +47,8 @@ public interface SettlementAccountRepository extends JpaRepository<SettlementAcc
 
     @Query("SELECT sa FROM SettlementAccount sa WHERE sa.status = :status AND sa.deletedAt IS NULL ORDER BY sa.createdAt ASC")
     List<SettlementAccount> findByStatus(@Param("status") AccountStatus status);
+
+    @Modifying
+    @Query("UPDATE SettlementAccount sa SET sa.isPrimary = false WHERE sa.entityType = :entityType AND sa.entityId = :entityId AND sa.isPrimary = true AND sa.deletedAt IS NULL")
+    int unsetPrimaryByEntityTypeAndEntityId(@Param("entityType") ContactEntityType entityType, @Param("entityId") UUID entityId);
 }

@@ -17,6 +17,7 @@
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Label } from "$lib/components/ui/label";
   import { DatePicker } from "$lib/components/ui/date-picker";
+  import * as Select from "$lib/components/ui/select";
 
   let currentStep = $state(1);
   const totalSteps = 3;
@@ -556,18 +557,21 @@
               </h3>
               <div class="grid grid-cols-2 gap-5">
                 <div class="flex flex-col gap-2">
-                  <Label for="orgType"
-                    >영업점 유형 <span class="text-destructive">*</span></Label
-                  >
-                  <select
-                    id="orgType"
-                    bind:value={orgType}
-                    class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all"
-                  >
-                    {#each Object.values(OrgType) as type}
-                      <option value={type}>{BRANCH_TYPE_LABELS[type]}</option>
-                    {/each}
-                  </select>
+                  <Label>영업점 유형 <span class="text-destructive">*</span></Label>
+                  <Select.Root type="single" bind:value={orgType}>
+                    <Select.Trigger class="w-full">
+                      {#if orgType}
+                        {BRANCH_TYPE_LABELS[orgType as OrgType] || orgType}
+                      {:else}
+                        <span class="text-muted-foreground">유형 선택</span>
+                      {/if}
+                    </Select.Trigger>
+                    <Select.Content>
+                      {#each Object.values(OrgType) as type}
+                        <Select.Item value={type}>{BRANCH_TYPE_LABELS[type]}</Select.Item>
+                      {/each}
+                    </Select.Content>
+                  </Select.Root>
                 </div>
                 <div class="flex flex-col gap-2">
                   <Label for="orgName"
@@ -616,18 +620,20 @@
                   <Label for="businessType"
                     >사업자 구분 <span class="text-destructive">*</span></Label
                   >
-                  <select
-                    id="businessType"
-                    bind:value={businessInfo.businessType}
-                    disabled={!!selectedBusinessEntity}
-                    class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {selectedBusinessEntity
-                      ? 'bg-muted cursor-not-allowed'
-                      : ''}"
-                  >
-                    {#each Object.values(BusinessType) as type}
-                      <option value={type}>{businessTypeLabels[type]}</option>
-                    {/each}
-                  </select>
+                  <Select.Root type="single" bind:value={businessInfo.businessType} disabled={!!selectedBusinessEntity}>
+                    <Select.Trigger class="w-full {selectedBusinessEntity ? 'bg-muted cursor-not-allowed' : ''}">
+                      {#if businessInfo.businessType}
+                        {businessTypeLabels[businessInfo.businessType as BusinessType] || businessInfo.businessType}
+                      {:else}
+                        <span class="text-muted-foreground">사업자 구분 선택</span>
+                      {/if}
+                    </Select.Trigger>
+                    <Select.Content>
+                      {#each Object.values(BusinessType) as type}
+                        <Select.Item value={type}>{businessTypeLabels[type]}</Select.Item>
+                      {/each}
+                    </Select.Content>
+                  </Select.Root>
                 </div>
                 {#if businessInfo.businessType !== BusinessType.NON_BUSINESS}
                   <div class="flex flex-col gap-2 col-span-2">
@@ -989,20 +995,20 @@
                   <Label for="bankCode"
                     >은행 <span class="text-destructive">*</span></Label
                   >
-                  <select
-                    id="bankCode"
-                    value={bankAccount.bankCode}
-                    onchange={(e) =>
-                      handleBankSelect((e.target as HTMLSelectElement).value)}
-                    class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.bankCode
-                      ? 'border-destructive focus:ring-destructive/20'
-                      : ''}"
-                  >
-                    <option value="">은행을 선택하세요</option>
-                    {#each banks as bank}
-                      <option value={bank.code}>{bank.name}</option>
-                    {/each}
-                  </select>
+                  <Select.Root type="single" value={bankAccount.bankCode} onValueChange={(v) => handleBankSelect(v)}>
+                    <Select.Trigger class="w-full {errors.bankCode ? 'border-destructive' : ''}">
+                      {#if bankAccount.bankCode}
+                        {banks.find(b => b.code === bankAccount.bankCode)?.name || bankAccount.bankCode}
+                      {:else}
+                        <span class="text-muted-foreground">은행을 선택하세요</span>
+                      {/if}
+                    </Select.Trigger>
+                    <Select.Content>
+                      {#each banks as bank}
+                        <Select.Item value={bank.code}>{bank.name}</Select.Item>
+                      {/each}
+                    </Select.Content>
+                  </Select.Root>
                   {#if errors.bankCode}<span
                       class="text-xs text-destructive -mt-1"
                       >{errors.bankCode}</span

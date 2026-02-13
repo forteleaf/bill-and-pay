@@ -4,6 +4,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Badge } from '$lib/components/ui/badge';
+  import * as Select from '$lib/components/ui/select';
 
   interface Props {
     onBack: () => void;
@@ -253,33 +254,39 @@
                   
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="space-y-2">
-                      <Label for="employeeCount">임직원 수</Label>
-                      <select
-                        id="employeeCount"
-                        bind:value={formData.employeeCount}
-                        disabled={loading}
-                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <option value="">선택해주세요</option>
-                        {#each employeeOptions as option}
-                          <option value={option.value}>{option.label}</option>
-                        {/each}
-                      </select>
+                      <Label>임직원 수</Label>
+                      <Select.Root type="single" bind:value={formData.employeeCount} disabled={loading}>
+                        <Select.Trigger class="w-full">
+                          {#if formData.employeeCount}
+                            {employeeOptions.find(o => o.value === formData.employeeCount)?.label || formData.employeeCount}
+                          {:else}
+                            <span class="text-muted-foreground">선택해주세요</span>
+                          {/if}
+                        </Select.Trigger>
+                        <Select.Content>
+                          {#each employeeOptions as option}
+                            <Select.Item value={option.value}>{option.label}</Select.Item>
+                          {/each}
+                        </Select.Content>
+                      </Select.Root>
                     </div>
-                    
+
                     <div class="space-y-2">
-                      <Label for="monthlyVolume">월 거래액</Label>
-                      <select
-                        id="monthlyVolume"
-                        bind:value={formData.monthlyVolume}
-                        disabled={loading}
-                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <option value="">선택해주세요</option>
-                        {#each volumeOptions as option}
-                          <option value={option.value}>{option.label}</option>
-                        {/each}
-                      </select>
+                      <Label>월 거래액</Label>
+                      <Select.Root type="single" bind:value={formData.monthlyVolume} disabled={loading}>
+                        <Select.Trigger class="w-full">
+                          {#if formData.monthlyVolume}
+                            {volumeOptions.find(o => o.value === formData.monthlyVolume)?.label || formData.monthlyVolume}
+                          {:else}
+                            <span class="text-muted-foreground">선택해주세요</span>
+                          {/if}
+                        </Select.Trigger>
+                        <Select.Content>
+                          {#each volumeOptions as option}
+                            <Select.Item value={option.value}>{option.label}</Select.Item>
+                          {/each}
+                        </Select.Content>
+                      </Select.Root>
                     </div>
                   </div>
                   

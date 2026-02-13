@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { buildEndpoint } from './queryUtils';
 import type { ApiResponse, PagedResponse } from '@/types/api';
 import type {
   MerchantPgMappingDto,
@@ -14,14 +15,10 @@ export interface MerchantPgMappingListParams {
 
 class MerchantPgMappingApi {
   async getAll(params: MerchantPgMappingListParams = {}): Promise<ApiResponse<PagedResponse<MerchantPgMappingDto>>> {
-    const queryParams = new URLSearchParams();
-    if (params.page !== undefined) queryParams.set('page', params.page.toString());
-    if (params.size !== undefined) queryParams.set('size', params.size.toString());
-
-    const queryString = queryParams.toString();
-    const endpoint = `/merchant-pg-mappings${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<PagedResponse<MerchantPgMappingDto>>(endpoint);
+    return apiClient.get<PagedResponse<MerchantPgMappingDto>>(buildEndpoint('/merchant-pg-mappings', {
+      page: params.page,
+      size: params.size,
+    }));
   }
 
   async getById(id: string): Promise<ApiResponse<MerchantPgMappingDto>> {

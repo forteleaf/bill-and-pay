@@ -8,6 +8,12 @@ export enum MerchantStatus {
 	TERMINATED = "TERMINATED",
 }
 
+export const MERCHANT_STATUS_LABELS: Record<MerchantStatus, string> = {
+	[MerchantStatus.ACTIVE]: "활성",
+	[MerchantStatus.SUSPENDED]: "정지",
+	[MerchantStatus.TERMINATED]: "해지",
+};
+
 export const MERCHANT_BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
 	[BusinessType.INDIVIDUAL]: "개인사업자",
 	[BusinessType.CORPORATION]: "법인사업자",

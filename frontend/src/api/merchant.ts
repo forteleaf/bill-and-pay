@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { buildEndpoint } from './queryUtils';
 import type { ApiResponse, PagedResponse } from '@/types/api';
 import type {
   MerchantDto,
@@ -25,18 +26,14 @@ class MerchantApi {
   }
 
   async getMerchants(params: MerchantListParams = {}): Promise<ApiResponse<PagedResponse<MerchantDto>>> {
-    const queryParams = new URLSearchParams();
-    if (params.page !== undefined) queryParams.set('page', params.page.toString());
-    if (params.size !== undefined) queryParams.set('size', params.size.toString());
-    if (params.status) queryParams.set('status', params.status);
-    if (params.businessType) queryParams.set('businessType', params.businessType);
-    if (params.organizationId) queryParams.set('organizationId', params.organizationId);
-    if (params.search) queryParams.set('search', params.search);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/merchants${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<PagedResponse<MerchantDto>>(endpoint);
+    return apiClient.get<PagedResponse<MerchantDto>>(buildEndpoint('/merchants', {
+      page: params.page,
+      size: params.size,
+      status: params.status,
+      businessType: params.businessType,
+      organizationId: params.organizationId,
+      search: params.search,
+    }));
   }
 
   async getMerchantById(id: string): Promise<ApiResponse<MerchantDto>> {

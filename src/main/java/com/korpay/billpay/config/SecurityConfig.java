@@ -32,6 +32,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
+    private final CorsProperties corsProperties;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,9 +45,9 @@ public class SecurityConfig {
                         .requestMatchers("/v1/public/**").permitAll()
                         .requestMatchers("/webhook/**").permitAll()
                         .requestMatchers("/v1/platform/auth/**").permitAll()
-                        .requestMatchers("/v1/platform/**").hasAnyRole("SUPER_ADMIN", "PLATFORM_OPERATOR", "PLATFORM_VIEWER")
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/v1/platform/**")
+                        .hasAnyRole("SUPER_ADMIN", "PLATFORM_OPERATOR", "PLATFORM_VIEWER")
+                        .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -56,12 +57,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:5173", 
-            "http://localhost:5174", 
-            "http://localhost:3000",
-            "https://bnp.cardbin.net"
-        ));
+        configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("X-Total-Count", "X-Total-Pages", "Authorization"));

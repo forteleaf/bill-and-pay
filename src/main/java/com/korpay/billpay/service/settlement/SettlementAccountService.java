@@ -148,12 +148,6 @@ public class SettlementAccountService {
 
     @Transactional
     private void unsetPrimaryForEntity(ContactEntityType entityType, UUID entityId) {
-        List<SettlementAccount> accounts = settlementAccountRepository.findByEntityTypeAndEntityId(entityType, entityId);
-        for (SettlementAccount account : accounts) {
-            if (Boolean.TRUE.equals(account.getIsPrimary())) {
-                account.setIsPrimary(false);
-                settlementAccountRepository.save(account);
-            }
-        }
+        settlementAccountRepository.unsetPrimaryByEntityTypeAndEntityId(entityType, entityId);
     }
 }

@@ -2,6 +2,21 @@
  * Settlement API request parameter types
  */
 
+export const SETTLEMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: '대기',
+  COMPLETED: '완료',
+  FAILED: '실패',
+  CANCELLED: '취소',
+};
+
+export const TRANSACTION_STATUS_LABELS: Record<string, string> = {
+  APPROVED: '승인',
+  CANCELLED: '취소',
+  PARTIAL_CANCELLED: '부분취소',
+  PENDING: '대기',
+  FAILED: '실패',
+};
+
 export interface SettlementListParams {
   page?: number;
   size?: number;

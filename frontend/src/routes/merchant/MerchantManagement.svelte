@@ -9,6 +9,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
   import { Separator } from '$lib/components/ui/separator';
+  import * as Select from '$lib/components/ui/select';
   
   let merchants = $state<Merchant[]>([]);
   let organizations = $state<Organization[]>([]);
@@ -334,19 +335,23 @@
             </div>
             
             <div class="space-y-2">
-              <Label for="targetOrg">Target Organization *</Label>
-              <select 
-                id="targetOrg" 
-                bind:value={targetOrgId}
-                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">Select an organization</option>
-                {#each organizations as org}
-                  <option value={org.id}>
-                    {org.name} ({getOrgTypeLabel(org.orgType)}) - {org.path}
-                  </option>
-                {/each}
-              </select>
+              <Label>Target Organization *</Label>
+              <Select.Root type="single" bind:value={targetOrgId}>
+                <Select.Trigger class="w-full">
+                  {#if targetOrgId}
+                    {(() => { const org = organizations.find(o => o.id === targetOrgId); return org ? `${org.name} (${getOrgTypeLabel(org.orgType)})` : targetOrgId; })()}
+                  {:else}
+                    <span class="text-muted-foreground">Select an organization</span>
+                  {/if}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each organizations as org}
+                    <Select.Item value={org.id}>
+                      {org.name} ({getOrgTypeLabel(org.orgType)}) - {org.path}
+                    </Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
             </div>
             
             <div class="space-y-2">

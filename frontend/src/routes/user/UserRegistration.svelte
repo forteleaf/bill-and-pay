@@ -11,6 +11,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
 
   interface Props {
     oncomplete?: () => void;
@@ -312,35 +313,43 @@
             </h3>
             <div class="grid grid-cols-2 gap-5">
               <div class="flex flex-col gap-2">
-                <Label for="orgId">소속 영업점 <span class="text-destructive">*</span></Label>
-                <select
-                  id="orgId"
-                  bind:value={orgId}
-                  disabled={loadingOrgs}
-                  class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all {errors.orgId ? 'border-destructive focus:ring-destructive/20' : ''} {loadingOrgs ? 'opacity-50' : ''}"
-                >
-                  <option value="">
-                    {loadingOrgs ? '불러오는 중...' : '영업점을 선택하세요'}
-                  </option>
-                  {#each organizations as org}
-                    <option value={org.id}>{org.name}</option>
-                  {/each}
-                </select>
+                <Label>소속 영업점 <span class="text-destructive">*</span></Label>
+                <Select.Root type="single" bind:value={orgId} disabled={loadingOrgs}>
+                  <Select.Trigger class="w-full {errors.orgId ? 'border-destructive' : ''}">
+                    {#if orgId}
+                      {organizations.find(o => o.id === orgId)?.name || orgId}
+                    {:else}
+                      <span class="text-muted-foreground">
+                        {loadingOrgs ? '불러오는 중...' : '영업점을 선택하세요'}
+                      </span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each organizations as org}
+                      <Select.Item value={org.id}>{org.name}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
                 {#if errors.orgId}
                   <span class="text-xs text-destructive">{errors.orgId}</span>
                 {/if}
               </div>
               <div class="flex flex-col gap-2">
-                <Label for="role">역할 <span class="text-destructive">*</span></Label>
-                <select
-                  id="role"
-                  bind:value={role}
-                  class="h-11 px-4 pr-8 rounded-md border-[1.5px] border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-all"
-                >
-                  {#each Object.values(UserRole) as r}
-                    <option value={r}>{USER_ROLE_LABELS[r]}</option>
-                  {/each}
-                </select>
+                <Label>역할 <span class="text-destructive">*</span></Label>
+                <Select.Root type="single" bind:value={role}>
+                  <Select.Trigger class="w-full">
+                    {#if role}
+                      {USER_ROLE_LABELS[role as UserRole] || role}
+                    {:else}
+                      <span class="text-muted-foreground">역할 선택</span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each Object.values(UserRole) as r}
+                      <Select.Item value={r}>{USER_ROLE_LABELS[r]}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
               </div>
             </div>
           </div>

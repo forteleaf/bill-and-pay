@@ -22,6 +22,15 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Map<String, String> CONSTRAINT_MESSAGES = Map.of(
+            "idx_settlement_accounts_unique_per_entity", "동일한 은행의 계좌번호가 이미 등록되어 있습니다",
+            "merchant_pg_mappings_merchant_pg_unique", "해당 가맹점에 이미 동일 PG 매핑이 존재합니다",
+            "merchants_merchant_code_key", "이미 존재하는 가맹점 코드입니다",
+            "organizations_org_code_key", "이미 존재하는 조직 코드입니다",
+            "users_username_key", "이미 존재하는 사용자명입니다",
+            "users_email_key", "이미 존재하는 이메일입니다"
+    );
+
     @ExceptionHandler(TenantNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleTenantNotFound(TenantNotFoundException ex) {
         log.warn("Tenant not found: {}", ex.getMessage());
@@ -103,23 +112,27 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        String message = "데이터 무결성 오류가 발생했습니다";
         String rootMessage = ex.getMostSpecificCause().getMessage();
-        
-        if (rootMessage != null) {
-            if (rootMessage.contains("idx_settlement_accounts_unique_per_entity")) {
-                message = "동일한 은행의 계좌번호가 이미 등록되어 있습니다";
-            } else if (rootMessage.contains("merchant_pg_mappings_merchant_pg_unique")) {
-                message = "해당 가맹점에 이미 동일 PG 매핑이 존재합니다";
-            } else if (rootMessage.contains("duplicate key")) {
-                message = "중복된 데이터가 존재합니다";
-            }
-        }
-        
+        String message = resolveConstraintMessage(rootMessage);
+
         log.warn("Data integrity violation: {}", rootMessage);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("DATA_INTEGRITY_ERROR", message));
+    }
+
+    private String resolveConstraintMessage(String rootMessage) {
+        if (rootMessage != null) {
+            for (var entry : CONSTRAINT_MESSAGES.entrySet()) {
+                if (rootMessage.contains(entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+            if (rootMessage.contains("duplicate key")) {
+                return "중복된 데이터가 존재합니다";
+            }
+        }
+        return "데이터 무결성 오류가 발생했습니다";
     }
 
     @ExceptionHandler(Exception.class)

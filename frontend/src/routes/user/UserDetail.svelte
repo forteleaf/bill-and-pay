@@ -14,6 +14,8 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
+  import { getStatusBadgeVariant } from '@/utils/statusVariants';
 
   interface Props {
     userId: string;
@@ -191,18 +193,6 @@
     passwordError = null;
   }
 
-  function getStatusVariant(status: UserStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
-    switch (status) {
-      case UserStatus.ACTIVE:
-        return 'default';
-      case UserStatus.SUSPENDED:
-        return 'secondary';
-      case UserStatus.DELETED:
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  }
 
   function formatDate(dateStr?: string): string {
     if (!dateStr) return '-';
@@ -242,7 +232,7 @@
           <Badge variant="secondary" class="text-xs">
             {USER_ROLE_LABELS[user.role]}
           </Badge>
-          <Badge variant={getStatusVariant(user.status)}>
+          <Badge variant={getStatusBadgeVariant(user.status)}>
             {USER_STATUS_LABELS[user.status]}
           </Badge>
         </div>
@@ -314,14 +304,20 @@
             <div class="flex flex-col gap-1.5">
               <Label class="text-xs font-medium text-muted-foreground">역할</Label>
               {#if editMode}
-                <select
-                  bind:value={editRole}
-                  class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {#each Object.values(UserRole) as role}
-                    <option value={role}>{USER_ROLE_LABELS[role]}</option>
-                  {/each}
-                </select>
+                <Select.Root type="single" bind:value={editRole}>
+                  <Select.Trigger class="w-full">
+                    {#if editRole}
+                      {USER_ROLE_LABELS[editRole as UserRole] || editRole}
+                    {:else}
+                      <span class="text-muted-foreground">역할 선택</span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each Object.values(UserRole) as role}
+                      <Select.Item value={role}>{USER_ROLE_LABELS[role]}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
               {:else}
                 <Badge variant="secondary" class="w-fit">{USER_ROLE_LABELS[user.role]}</Badge>
               {/if}
@@ -329,16 +325,22 @@
             <div class="flex flex-col gap-1.5">
               <Label class="text-xs font-medium text-muted-foreground">상태</Label>
               {#if editMode}
-                <select
-                  bind:value={editStatus}
-                  class="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {#each Object.values(UserStatus) as status}
-                    <option value={status}>{USER_STATUS_LABELS[status]}</option>
-                  {/each}
-                </select>
+                <Select.Root type="single" bind:value={editStatus}>
+                  <Select.Trigger class="w-full">
+                    {#if editStatus}
+                      {USER_STATUS_LABELS[editStatus as UserStatus] || editStatus}
+                    {:else}
+                      <span class="text-muted-foreground">상태 선택</span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each Object.values(UserStatus) as status}
+                      <Select.Item value={status}>{USER_STATUS_LABELS[status]}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
               {:else}
-                <Badge variant={getStatusVariant(user.status)} class="w-fit">{USER_STATUS_LABELS[user.status]}</Badge>
+                <Badge variant={getStatusBadgeVariant(user.status)} class="w-fit">{USER_STATUS_LABELS[user.status]}</Badge>
               {/if}
             </div>
           </div>

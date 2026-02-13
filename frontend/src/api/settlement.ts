@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { buildEndpoint, toApiDateFormat, toApiDateTime } from './queryUtils';
 import type {
   ApiResponse,
   PagedResponse,
@@ -9,14 +10,10 @@ import type {
   OrganizationSettlementDetail,
   DailySettlementSummary,
   DailySettlementDetail,
-  MerchantSettlementBreakdown,
   MerchantStatement,
-  DailyStatementRow,
   OrgDailySettlementSummary,
   OrgDailySettlementDetail,
-  OrgSettlementBreakdown,
   OrgStatement,
-  DailyOrgStatementRow
 } from '@/types/api';
 import type {
   SettlementListParams,
@@ -28,7 +25,6 @@ import type {
   OrgDailySettlementParams,
   OrgStatementParams
 } from '@/types/settlement';
-import { toApiDateTime } from '$lib/utils';
 
 // Re-export types for convenience
 export type {
@@ -44,66 +40,38 @@ export type {
 
 class SettlementApi {
   async getSettlements(params: SettlementListParams = {}): Promise<ApiResponse<PagedResponse<Settlement>>> {
-    const queryParams = new URLSearchParams();
-
-    if (params.page !== undefined) queryParams.set('page', params.page.toString());
-    if (params.size !== undefined) queryParams.set('size', params.size.toString());
-    if (params.entityType) queryParams.set('entityType', params.entityType);
-    if (params.status) queryParams.set('status', params.status);
-    if (params.sortBy) queryParams.set('sortBy', params.sortBy);
-    if (params.direction) queryParams.set('direction', params.direction);
-
-    const startDateTime = toApiDateTime(params.startDate, '00:00:00');
-    const endDateTime = toApiDateTime(params.endDate, '23:59:59');
-
-    if (startDateTime) queryParams.set('startDate', startDateTime);
-    if (endDateTime) queryParams.set('endDate', endDateTime);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/settlements${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<PagedResponse<Settlement>>(endpoint);
+    return apiClient.get<PagedResponse<Settlement>>(buildEndpoint('/settlements', {
+      page: params.page,
+      size: params.size,
+      entityType: params.entityType,
+      status: params.status,
+      sortBy: params.sortBy,
+      direction: params.direction,
+      startDate: toApiDateTime(params.startDate, '00:00:00'),
+      endDate: toApiDateTime(params.endDate, '23:59:59'),
+    }));
   }
 
   async getSummary(params: SettlementSummaryParams = {}): Promise<ApiResponse<SettlementSummary>> {
-    const queryParams = new URLSearchParams();
-
-    if (params.entityType) queryParams.set('entityType', params.entityType);
-
-    const startDateTime = toApiDateTime(params.startDate, '00:00:00');
-    const endDateTime = toApiDateTime(params.endDate, '23:59:59');
-
-    if (startDateTime) queryParams.set('startDate', startDateTime);
-    if (endDateTime) queryParams.set('endDate', endDateTime);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/settlements/summary${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<SettlementSummary>(endpoint);
+    return apiClient.get<SettlementSummary>(buildEndpoint('/settlements/summary', {
+      entityType: params.entityType,
+      startDate: toApiDateTime(params.startDate, '00:00:00'),
+      endDate: toApiDateTime(params.endDate, '23:59:59'),
+    }));
   }
 
   async getDailyBatchReport(date: string): Promise<ApiResponse<Settlement[]>> {
-    const dateApi = date.replace(/\//g, '-');
-    return apiClient.get<Settlement[]>(`/settlements/batch/${dateApi}`);
+    return apiClient.get<Settlement[]>(`/settlements/batch/${toApiDateFormat(date)}`);
   }
 
   async getBatches(params: SettlementBatchListParams = {}): Promise<ApiResponse<PagedResponse<SettlementBatch>>> {
-    const queryParams = new URLSearchParams();
-
-    if (params.page !== undefined) queryParams.set('page', params.page.toString());
-    if (params.size !== undefined) queryParams.set('size', params.size.toString());
-    if (params.status) queryParams.set('status', params.status);
-
-    const startDateApi = params.startDate?.replace(/\//g, '-');
-    const endDateApi = params.endDate?.replace(/\//g, '-');
-
-    if (startDateApi) queryParams.set('startDate', startDateApi);
-    if (endDateApi) queryParams.set('endDate', endDateApi);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/settlements/batches${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<PagedResponse<SettlementBatch>>(endpoint);
+    return apiClient.get<PagedResponse<SettlementBatch>>(buildEndpoint('/settlements/batches', {
+      page: params.page,
+      size: params.size,
+      status: params.status,
+      startDate: toApiDateFormat(params.startDate),
+      endDate: toApiDateFormat(params.endDate),
+    }));
   }
 
   async getSettlementById(id: string): Promise<ApiResponse<Settlement>> {
@@ -111,21 +79,12 @@ class SettlementApi {
   }
 
   async getSettlementsByOrganization(params: OrganizationSettlementParams = {}): Promise<ApiResponse<OrganizationSettlementSummary[]>> {
-    const queryParams = new URLSearchParams();
-
-    if (params.orgType) queryParams.set('orgType', params.orgType);
-    if (params.search) queryParams.set('search', params.search);
-
-    const startDateTime = toApiDateTime(params.startDate, '00:00:00');
-    const endDateTime = toApiDateTime(params.endDate, '23:59:59');
-
-    if (startDateTime) queryParams.set('startDate', startDateTime);
-    if (endDateTime) queryParams.set('endDate', endDateTime);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/settlements/by-organization${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<OrganizationSettlementSummary[]>(endpoint);
+    return apiClient.get<OrganizationSettlementSummary[]>(buildEndpoint('/settlements/by-organization', {
+      orgType: params.orgType,
+      search: params.search,
+      startDate: toApiDateTime(params.startDate, '00:00:00'),
+      endDate: toApiDateTime(params.endDate, '23:59:59'),
+    }));
   }
 
   async resettleByEventId(transactionEventId: string): Promise<ApiResponse<Settlement[]>> {
@@ -137,62 +96,48 @@ class SettlementApi {
     startDate?: string,
     endDate?: string
   ): Promise<ApiResponse<OrganizationSettlementDetail>> {
-    const queryParams = new URLSearchParams();
-
-    const startDateTime = toApiDateTime(startDate, '00:00:00');
-    const endDateTime = toApiDateTime(endDate, '23:59:59');
-
-    if (startDateTime) queryParams.set('startDate', startDateTime);
-    if (endDateTime) queryParams.set('endDate', endDateTime);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/settlements/organization/${organizationId}/details${queryString ? `?${queryString}` : ''}`;
-
-    return apiClient.get<OrganizationSettlementDetail>(endpoint);
+    return apiClient.get<OrganizationSettlementDetail>(buildEndpoint(`/settlements/organization/${organizationId}/details`, {
+      startDate: toApiDateTime(startDate, '00:00:00'),
+      endDate: toApiDateTime(endDate, '23:59:59'),
+    }));
   }
 
   async getMerchantDailySummary(params: DailySettlementParams = {}): Promise<ApiResponse<DailySettlementSummary[]>> {
-    const queryParams = new URLSearchParams();
-    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
-    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
-    if (params.status) queryParams.set('status', params.status);
-    const queryString = queryParams.toString();
-    return apiClient.get<DailySettlementSummary[]>(`/settlements/merchant-daily${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get<DailySettlementSummary[]>(buildEndpoint('/settlements/merchant-daily', {
+      startDate: toApiDateFormat(params.startDate),
+      endDate: toApiDateFormat(params.endDate),
+      status: params.status,
+    }));
   }
 
   async getMerchantDailyDetail(date: string): Promise<ApiResponse<DailySettlementDetail>> {
-    const dateApi = date.replace(/\//g, '-');
-    return apiClient.get<DailySettlementDetail>(`/settlements/merchant-daily/${dateApi}`);
+    return apiClient.get<DailySettlementDetail>(`/settlements/merchant-daily/${toApiDateFormat(date)}`);
   }
 
   async getMerchantStatement(params: MerchantStatementParams): Promise<ApiResponse<MerchantStatement>> {
-    const queryParams = new URLSearchParams();
-    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
-    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
-    const queryString = queryParams.toString();
-    return apiClient.get<MerchantStatement>(`/settlements/merchant-statement/${params.merchantId}${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get<MerchantStatement>(buildEndpoint(`/settlements/merchant-statement/${params.merchantId}`, {
+      startDate: toApiDateFormat(params.startDate),
+      endDate: toApiDateFormat(params.endDate),
+    }));
   }
 
   async getOrgDailySummary(params: OrgDailySettlementParams = {}): Promise<ApiResponse<OrgDailySettlementSummary[]>> {
-    const queryParams = new URLSearchParams();
-    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
-    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
-    if (params.status) queryParams.set('status', params.status);
-    const queryString = queryParams.toString();
-    return apiClient.get<OrgDailySettlementSummary[]>(`/settlements/org-daily${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get<OrgDailySettlementSummary[]>(buildEndpoint('/settlements/org-daily', {
+      startDate: toApiDateFormat(params.startDate),
+      endDate: toApiDateFormat(params.endDate),
+      status: params.status,
+    }));
   }
 
   async getOrgDailyDetail(date: string): Promise<ApiResponse<OrgDailySettlementDetail>> {
-    const dateApi = date.replace(/\//g, '-');
-    return apiClient.get<OrgDailySettlementDetail>(`/settlements/org-daily/${dateApi}`);
+    return apiClient.get<OrgDailySettlementDetail>(`/settlements/org-daily/${toApiDateFormat(date)}`);
   }
 
   async getOrgStatement(params: OrgStatementParams): Promise<ApiResponse<OrgStatement>> {
-    const queryParams = new URLSearchParams();
-    if (params.startDate) queryParams.set('startDate', params.startDate.replace(/\//g, '-'));
-    if (params.endDate) queryParams.set('endDate', params.endDate.replace(/\//g, '-'));
-    const queryString = queryParams.toString();
-    return apiClient.get<OrgStatement>(`/settlements/org-statement/${params.orgId}${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get<OrgStatement>(buildEndpoint(`/settlements/org-statement/${params.orgId}`, {
+      startDate: toApiDateFormat(params.startDate),
+      endDate: toApiDateFormat(params.endDate),
+    }));
   }
 }
 

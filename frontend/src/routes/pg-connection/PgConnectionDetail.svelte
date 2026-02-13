@@ -15,6 +15,8 @@
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
+  import { getStatusBadgeVariant } from '@/utils/statusVariants';
 
   interface Props {
     connectionId: string | null;
@@ -179,18 +181,6 @@
     }
   }
 
-  function getStatusVariant(status: PgConnectionStatus): 'default' | 'secondary' | 'outline' {
-    switch (status) {
-      case PgConnectionStatus.ACTIVE:
-        return 'default';
-      case PgConnectionStatus.INACTIVE:
-        return 'secondary';
-      case PgConnectionStatus.MAINTENANCE:
-        return 'outline';
-      default:
-        return 'secondary';
-    }
-  }
 
   function formatDate(dateStr?: string): string {
     if (!dateStr) return '-';
@@ -248,7 +238,7 @@
           <h1 class="text-2xl font-bold text-foreground">{connection.pgName}</h1>
           <div class="flex items-center gap-3">
             <span class="font-mono text-sm text-muted-foreground">{connection.pgCode}</span>
-            <Badge variant={getStatusVariant(connection.status)}>
+            <Badge variant={getStatusBadgeVariant(connection.status)}>
               {PG_CONNECTION_STATUS_LABELS[connection.status]}
             </Badge>
           </div>
@@ -357,19 +347,24 @@
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <Label for="status" class="text-xs font-medium text-muted-foreground">상태</Label>
+              <Label class="text-xs font-medium text-muted-foreground">상태</Label>
               {#if editMode}
-                <select
-                  id="status"
-                  bind:value={formStatus}
-                  class="h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {#each Object.values(PgConnectionStatus) as status}
-                    <option value={status}>{PG_CONNECTION_STATUS_LABELS[status]}</option>
-                  {/each}
-                </select>
+                <Select.Root type="single" bind:value={formStatus}>
+                  <Select.Trigger class="w-full">
+                    {#if formStatus}
+                      {PG_CONNECTION_STATUS_LABELS[formStatus as PgConnectionStatus] || formStatus}
+                    {:else}
+                      <span class="text-muted-foreground">상태 선택</span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each Object.values(PgConnectionStatus) as status}
+                      <Select.Item value={status}>{PG_CONNECTION_STATUS_LABELS[status]}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
               {:else}
-                <Badge variant={getStatusVariant(connection?.status || PgConnectionStatus.INACTIVE)}>
+                <Badge variant={getStatusBadgeVariant(connection?.status || PgConnectionStatus.INACTIVE)}>
                   {connection ? PG_CONNECTION_STATUS_LABELS[connection.status] : '-'}
                 </Badge>
               {/if}

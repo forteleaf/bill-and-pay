@@ -8,6 +8,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Label } from '$lib/components/ui/label';
   import { DateRangePicker } from '$lib/components/ui/date-range-picker';
+  import * as Select from '$lib/components/ui/select';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { format } from 'date-fns';
   
@@ -98,20 +99,32 @@
     <CardContent class="pt-6">
       <div class="flex flex-wrap gap-4 items-end">
         <div class="space-y-2">
-          <Label for="entityType">Entity Type</Label>
-          <select 
-            id="entityType" 
-            bind:value={entityType}
-            onchange={() => loadSummary()}
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">All</option>
-            <option value="DISTRIBUTOR">Distributor</option>
-            <option value="AGENCY">Agency</option>
-            <option value="DEALER">Dealer</option>
-            <option value="SELLER">Seller</option>
-            <option value="VENDOR">Vendor</option>
-          </select>
+          <Label>Entity Type</Label>
+          <Select.Root type="single" bind:value={entityType} onValueChange={() => loadSummary()}>
+            <Select.Trigger class="w-[160px]">
+              {#if entityType === 'DISTRIBUTOR'}
+                Distributor
+              {:else if entityType === 'AGENCY'}
+                Agency
+              {:else if entityType === 'DEALER'}
+                Dealer
+              {:else if entityType === 'SELLER'}
+                Seller
+              {:else if entityType === 'VENDOR'}
+                Vendor
+              {:else}
+                <span class="text-muted-foreground">All</span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="">All</Select.Item>
+              <Select.Item value="DISTRIBUTOR">Distributor</Select.Item>
+              <Select.Item value="AGENCY">Agency</Select.Item>
+              <Select.Item value="DEALER">Dealer</Select.Item>
+              <Select.Item value="SELLER">Seller</Select.Item>
+              <Select.Item value="VENDOR">Vendor</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div class="flex flex-row items-end gap-3">
