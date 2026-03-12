@@ -53,6 +53,7 @@
 - 전화번호, 사업자번호, 주민등록번호, 계좌번호 숫자만 저장한다.
 
 ## 문서 참조
+- [PRD-00: 용어 사전](docs/PRD-00_glossary.md)
 - [PRD-01: 아키텍처](docs/PRD-01_architecture.md)
 - [PRD-02: 조직 구조](docs/PRD-02_organization.md)
 - [PRD-03: 원장/정산](docs/PRD-03_ledger.md)
@@ -377,13 +378,14 @@ $effect(() => {
 #### 핵심 통계
 | 항목 | 개수 |
 |------|------|
-| Controller | 16개 |
-| Entity | 20개 |
-| Repository | 20개 |
-| Service | 33개 |
-| DTO | 52개 |
+| Controller | 25개 (Tenant API 17 + Platform 7 + Webhook 1) |
+| Entity | 28개 |
+| Repository | 28개 |
+| Service | 38개 |
+| DTO | 74개 |
 | Enum | 22개 |
-| Flyway 마이그레이션 | 6개 (public 3, tenant 3) |
+| Flyway 마이그레이션 | 12개 (public 4, tenant 8) |
+| API Endpoint | 125개 |
 
 #### 아키텍처
 - ✅ 멀티테넌트 아키텍처 (ScopedValue, TenantRoutingDataSource)
@@ -394,7 +396,7 @@ $effect(() => {
   - JwtTokenProvider, JwtAuthenticationFilter, CustomUserDetailsService
   - AuthService, AuthController
 
-#### API Controllers (16개)
+#### Tenant API Controllers (17개)
 | Controller | 기능 |
 |------------|------|
 | AuthController | 로그인, 토큰 리프레시, 로그아웃 |
@@ -402,29 +404,50 @@ $effect(() => {
 | ContactController | 담당자 관리 CRUD |
 | DashboardController | 대시보드 매출 지표 |
 | DemoRequestController | 데모 요청 관리 |
+| FeeConfigurationController | 수수료 설정 CRUD + 이력 조회 |
 | MerchantController | 가맹점 CRUD + 이동/거래/정산 조회 |
 | MerchantPgMappingController | 가맹점-PG 매핑 관리 |
 | OrganizationController | 영업점 계층 관리 |
+| PaymentMethodController | 결제수단 목록 조회 |
 | PgConnectionController | PG 연결 설정 관리 |
 | PreferentialBusinessController | 우대 사업자 조회 |
-| SettlementAccountController | 정산 계좌 관리 |
-| SettlementController | 정산 내역 조회 |
-| TerminalController | 단말기 CRUD |
+| SettlementAccountController | 정산 계좌 관리 + 검증 |
+| SettlementController | 정산 조회 + 배치 + 재정산 |
+| TerminalController | 단말기 CRUD + 상태 관리 |
 | TransactionController | 거래 내역 조회 |
 | UserController | 사용자 CRUD + 비밀번호 변경 |
+
+#### Platform Controllers (7개)
+| Controller | 기능 |
+|------------|------|
+| PlatformAdminController | 플랫폼 관리자 CRUD |
+| PlatformAnnouncementController | 공지사항 관리 |
+| PlatformAuditController | 감사 로그 조회 |
+| PlatformAuthController | 플랫폼 인증 |
+| PlatformDashboardController | 플랫폼 대시보드 |
+| PlatformMonitoringController | 모니터링 |
+| TenantManagementController | 테넌트 관리 |
+
+#### Webhook Controller (1개)
+| Controller | 기능 |
+|------------|------|
 | WebhookController | KORPAY 웹훅 처리 |
 
-#### Entities (20개)
-AuthUser, BusinessEntity, CardCompany, Contact, DemoRequest, FeeConfiguration, Merchant, MerchantOrgHistory, MerchantPgMapping, Organization, PaymentMethod, PgConnection, Settlement, SettlementAccount, SettlementBatch, Terminal, Transaction, TransactionEvent, User, WebhookLog
+#### Entities (28개)
+AuthUser, BusinessEntity, CardCompany, Contact, DemoRequest, FeeConfiguration, FeeConfigHistory, Holiday, Merchant, MerchantOrgHistory, MerchantPgMapping, Organization, PaymentMethod, PgConnection, PlatformAdmin, PlatformAnnouncement, PlatformAuditLog, Settlement, SettlementAccount, SettlementBatch, SettlementEvent, Tenant, Terminal, Transaction, TransactionEvent, UnmappedTransaction, User, WebhookLog
 
-#### 정산 엔진
-- ✅ FeeConfiguration 엔티티 (fee_configurations 테이블)
-- ✅ FeeConfigResolver (수수료율 조회)
-- ✅ FeeCalculationService (계층별 마진 계산)
+#### 정산 엔진 (10개 서비스)
 - ✅ SettlementCreationService (이벤트 기반 정산 생성)
-- ✅ ZeroSumValidator (검증)
+- ✅ SettlementService (정산 메인 로직)
+- ✅ FeeCalculationService (계층별 마진 계산, BigDecimal)
+- ✅ FeeConfigResolver (수수료율 조회)
+- ✅ SettlementQueryService (정산 통계/조회 쿼리)
+- ✅ DailySettlementService (일일 정산 배치)
+- ✅ SettlementBatchService + SettlementBatchScheduler (배치 관리/스케줄링)
+- ✅ SettlementResettlementService (재정산)
+- ✅ ZeroSumValidator (Zero-Sum 원칙 검증)
 - ✅ PartialCancelCalculator (부분취소 비례 계산)
-- ✅ WebhookProcessingService (Settlement 자동 생성 연동)
+- ✅ BusinessDayCalculator (영업일 계산)
 
 #### Webhook 처리
 - ✅ KORPAY PG 웹훅 처리 (HMAC-SHA256, 중복 방지)
@@ -436,11 +459,12 @@ AuthUser, BusinessEntity, CardCompany, Contact, DemoRequest, FeeConfiguration, M
 #### 핵심 통계
 | 항목 | 개수 |
 |------|------|
-| 라우트/페이지 | 28개 |
+| 라우트/페이지 | 42개 |
 | 비즈니스 컴포넌트 | 20개 |
 | UI 컴포넌트 | 95개 (19개 카테고리) |
-| API 클라이언트 | 12개 |
-| 타입 정의 | 8개 |
+| API 클라이언트 | 15개 |
+| 타입 정의 | 12개 |
+| Store | 3개 (auth, tenant, tab) |
 
 #### UI 시스템 (shadcn-svelte)
 - ✅ Tailwind CSS v4 기반 유틸리티 클래스
@@ -457,35 +481,45 @@ AuthUser, BusinessEntity, CardCompany, Contact, DemoRequest, FeeConfiguration, M
 - ✅ API 클라이언트 (토큰 자동 포함, 401 자동 리프레시)
 - ✅ 로그인 화면, 인증 가드
 
-#### 페이지 (28개)
+#### 페이지 (42개)
 | 카테고리 | 페이지 |
 |----------|--------|
-| 메인 | Dashboard, Landing, Login |
-| 거래/정산 | Transactions, Settlements, SettlementSummary, SettlementBatches |
+| 인증 | Landing, Login |
+| 대시보드 | Dashboard |
+| 거래 | Transactions |
+| 정산 | Settlements, SettlementSummary, SettlementBatches, OrgDailySettlement, OrgStatement, MerchantDailySettlement, MerchantStatement |
 | 가맹점 | MerchantList, MerchantDetail, MerchantRegistration, MerchantTransactions, MerchantSettlements, MerchantManagement |
 | 영업점 | BranchList, BranchDetail, BranchRegistration, BranchOrganization, BranchSettlement |
 | 단말기 | TerminalList, TerminalDetail |
 | 사용자 | UserList, UserDetail, UserRegistration |
 | PG연결 | PgConnectionList, PgConnectionDetail |
-| 기타 | Organizations, DemoRequest, PreferentialBusinessInquiry |
+| 조직/기타 | Organizations, DemoRequest, PreferentialBusinessInquiry |
+| 플랫폼관리 | PlatformDashboard, PlatformLogin, PlatformAdminList, PlatformAnnouncementList, PlatformAuditLog, PlatformMonitoring, TenantList, TenantDetail, TenantCreate |
 
-#### 비즈니스 컴포넌트 (20개)
-ConfirmModal, ContactManager, Header, Layout, MerchantPgMappingManager, NewHeader, NewLayout, NewSidebar, OrgFlowNode, OrgForm, OrgTree, OrgTreeNode, OrganizationPickerDialog, OrganizationSettlementDetailModal, ParentSelector, SettlementAccountManager, SettlementDetailModal, Sidebar, StatusBar, TabBar
+#### 비즈니스 컴포넌트 (22개)
+ConfirmModal, ContactManager, FeeConfigurationManager, Header, Layout, MerchantPgMappingManager, NewHeader, NewLayout, NewSidebar, OrgFlowNode, OrgForm, OrgTree, OrgTreeNode, OrganizationPickerDialog, OrganizationSettlementDetailModal, ParentSelector, PlatformLayout, PlatformSidebar, SettlementAccountManager, SettlementDetailModal, Sidebar, StatusBar, TabBar
 
-#### API 클라이언트 (12개)
-api.ts, authStore.ts, branchApi.ts, contactApi.ts, merchantApi.ts, merchantPgMappingApi.ts, pgConnectionApi.ts, settlementAccountApi.ts, settlementApi.ts, terminalApi.ts, transactionApi.ts, userApi.ts
+#### API 클라이언트 (15개)
+client.ts, branchApi.ts, businessEntityApi.ts, contactApi.ts, feeConfigApi.ts, merchantApi.ts, merchantPgMappingApi.ts, pgConnectionApi.ts, platformApi.ts, queryUtils.ts, settlementAccountApi.ts, settlementApi.ts, terminalApi.ts, transactionApi.ts, userApi.ts
 
 ### 인프라 (Docker)
 - ✅ PostgreSQL 18 + ltree 확장
 - ✅ Spring Boot 멀티스테이지 빌드
 - ✅ Svelte Vite 개발 서버
+- ✅ Nginx Reverse Proxy (운영)
 - ✅ compose.yaml (로컬), compose.nixos.yaml (NixOS), compose.prod.yaml (운영)
-- ✅ 환경변수 관리 (.env, .env.production)
+- ✅ 환경변수 관리 (.env.example, application-prod.yml)
+- ✅ Health checks 구현
+
+### 문서 (20개)
+- PRD 문서 8개 (PRD-00 ~ PRD-07)
+- 운영 가이드 12개 (DOCKER_GUIDE, API_ENDPOINTS, WEBHOOK_TESTING_GUIDE 등)
 
 ### 미구현 항목
-- ⏳ 통합 테스트 (JUnit + MockMvc)
-- ⏳ 로깅 및 모니터링 (Logback, Micrometer)
+- ⏳ 테스트 (백엔드 2개만 존재, 프론트 0개 — 커버리지 거의 0%)
+- ⏳ CI/CD 파이프라인 (GitHub Actions 미구현)
 - ⏳ 2FA (TOTP)
+- ⏳ 로깅/모니터링 상세 설정
 
 ## 실행 가이드
 
