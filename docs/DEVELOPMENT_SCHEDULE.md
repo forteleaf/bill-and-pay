@@ -42,7 +42,6 @@
 | 우선순위 | 항목 | 상태 |
 |----------|------|------|
 | **Critical** | 테스트 (BE 2개, FE 0개) | ❌ |
-| **Critical** | CI/CD 파이프라인 | ❌ |
 | **High** | 2FA (TOTP) | ❌ (DB 스키마만 존재) |
 | **High** | 모니터링 (Micrometer + Prometheus) | ❌ |
 | **High** | 구조화 로깅 (JSON) | 🟡 기본만 |
@@ -73,16 +72,15 @@ Week 4 ─── 통합 테스트 & 운영 준비 & 문서화
 
 ### Week 1: 코드 안정화 & 테스트 인프라 (02/24 ~ 02/28)
 
-> 목표: 안정적인 테스트 환경 구축, CI 파이프라인 기본 셋업
+> 목표: 안정적인 테스트 환경 구축
 
 | # | 작업 항목 | 영역 | 우선순위 | 산출물 |
 |---|----------|------|----------|--------|
 | 1-1 | 테스트 인프라 구축 (BE) | BE | Critical | build.gradle 테스트 설정, TestContainers 도입 |
 | 1-2 | 테스트 인프라 구축 (FE) | FE | Critical | vitest 설정, testing-library/svelte 도입 |
-| 1-3 | GitHub Actions CI 파이프라인 | Infra | Critical | .github/workflows/ci.yml |
-| 1-4 | .gitignore 정비 | Infra | High | nohup.out, backend.log, .ruff_cache 제외 |
-| 1-5 | 환경변수 보안 강화 | BE | High | 하드코딩된 시크릿 제거, 프로덕션 필수값 검증 |
-| 1-6 | Testcontainers PostgreSQL 설정 | BE | High | 멀티테넌트 테스트용 DB 컨텍스트 |
+| 1-3 | .gitignore 정비 | Infra | High | nohup.out, backend.log, .ruff_cache 제외 |
+| 1-4 | 환경변수 보안 강화 | BE | High | 하드코딩된 시크릿 제거, 프로덕션 필수값 검증 |
+| 1-5 | Testcontainers PostgreSQL 설정 | BE | High | 멀티테넌트 테스트용 DB 컨텍스트 |
 
 #### 상세 설명
 
@@ -97,17 +95,6 @@ Week 4 ─── 통합 테스트 & 운영 준비 & 문서화
 - vitest 의존성 추가 (`bun add -D vitest @testing-library/svelte`)
 - vite.config.ts에 테스트 설정 추가
 - 샘플 테스트 작성 (utils.ts 단위 테스트)
-- CI에서 프론트엔드 테스트 실행 확인
-
-**1-3. CI 파이프라인**
-```yaml
-# 기본 구조
-on: [push, pull_request]
-jobs:
-  backend-test:    # ./gradlew test
-  frontend-test:   # bun run test
-  build-check:     # ./gradlew build + bun run build
-```
 
 ---
 
@@ -267,7 +254,6 @@ management:
 ### M1: 테스트 기반 확보 (Week 1 완료 시점)
 - [ ] 백엔드 테스트 실행 환경 (Testcontainers) 정상 동작
 - [ ] 프론트엔드 테스트 실행 환경 (vitest) 정상 동작
-- [ ] GitHub Actions CI가 PR마다 자동 실행
 - [ ] .gitignore에 민감 파일 제외 완료
 - [ ] 하드코딩 시크릿 제거 완료
 
@@ -311,7 +297,6 @@ management:
 |--------|------|----------|
 | AES-256 암호화 적용 시 기존 데이터 마이그레이션 | 데이터 손실 가능 | 백업 후 마이그레이션, 롤백 스크립트 준비 |
 | 정산 배치 대량 데이터 처리 성능 | 배치 타임아웃 | 청크 단위 처리, 배치 사이즈 조절 |
-| CI 파이프라인 빌드 시간 초과 | 개발 속도 저하 | Gradle 캐시 활용, 병렬 빌드 설정 |
 
 ### 낮은 리스크
 
@@ -331,8 +316,7 @@ management:
 | Grafana 모니터링 대시보드 | High | Prometheus 연동 후 구축 |
 | ELK Stack 로그 수집 | Medium | 운영 로그 검색/분석 |
 | 분산 추적 (OpenTelemetry) | Medium | 멀티테넌트 요청 추적 |
-| 정적 분석 (SonarQube) | Medium | CI 파이프라인에 통합 |
-| CD 파이프라인 (Blue-Green 배포) | Medium | 무중단 배포 자동화 |
+| 정적 분석 (SonarQube) | Medium | 코드 품질 자동 점검 |
 | Redis 세션 저장소 | Low | 다중 인스턴스 환경 대비 |
 | 부하 테스트 (k6/JMeter) | Low | SLA 목표값 검증 |
 | 프론트엔드 E2E 테스트 (Playwright) | Low | 주요 사용자 시나리오 자동화 |
