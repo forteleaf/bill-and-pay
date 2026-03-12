@@ -20,6 +20,7 @@ import com.korpay.billpay.repository.UnmappedTransactionRepository;
 import com.korpay.billpay.repository.WebhookIdempotencyKeyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -75,32 +76,30 @@ public class WebhookProcessingService {
             throw new SignatureVerificationFailedException("Invalid webhook signature");
         }
 
+        TransactionDto transactionDto = null;
         try {
             webhookLoggingService.updateToProcessing(webhookLog.getId());
 
-            TransactionDto transactionDto = adapter.parse(rawBody, headers);
+            transactionDto = adapter.parse(rawBody, headers);
             log.info("Parsed webhook data. PG TID: {}, Merchant No: {}, Event Type: {}",
                     transactionDto.getPgTid(),
                     transactionDto.getPgMerchantNo(),
                     transactionDto.getEventType());
 
-            // 멱등성 체크
-            Optional<WebhookIdempotencyKey> existingKey = webhookIdempotencyKeyRepository
-                    .findByPgConnectionIdAndPgTid(pgConnectionId, transactionDto.getPgTid());
-            if (existingKey.isPresent()) {
+            // 원자적 멱등성 보장: INSERT 시도 → 중복이면 DataIntegrityViolationException catch
+            WebhookIdempotencyKey idempotencyKey = WebhookIdempotencyKey.builder()
+                    .pgConnectionId(pgConnectionId)
+                    .pgTid(transactionDto.getPgTid())
+                    .build();
+            try {
+                webhookIdempotencyKeyRepository.saveAndFlush(idempotencyKey);
+            } catch (DataIntegrityViolationException e) {
                 log.info("Duplicate webhook detected (idempotent): pgConnectionId={}, pgTid={}",
                         pgConnectionId, transactionDto.getPgTid());
                 webhookLoggingService.updateToIgnored(webhookLog.getId(),
                         "Duplicate webhook: " + transactionDto.getPgTid());
                 return WebhookResponse.duplicate(transactionDto.getPgTid());
             }
-
-            // 멱등성 키 등록
-            WebhookIdempotencyKey idempotencyKey = WebhookIdempotencyKey.builder()
-                    .pgConnectionId(pgConnectionId)
-                    .pgTid(transactionDto.getPgTid())
-                    .build();
-            webhookIdempotencyKeyRepository.save(idempotencyKey);
 
             MerchantPgMapping merchantPgMapping;
             try {
@@ -129,6 +128,7 @@ public class WebhookProcessingService {
             }
 
             final MerchantPgMapping finalMapping = merchantPgMapping;
+            final TransactionDto finalDto = transactionDto;
 
             // 트랜잭션 격리 수준 설정 (REPEATABLE_READ)
             transactionTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
@@ -137,9 +137,9 @@ public class WebhookProcessingService {
 
             TransactionResult result = transactionTemplate.execute(status -> {
                 Transaction transaction = transactionService.createOrUpdateFromWebhook(
-                        transactionDto, finalMapping);
+                        finalDto, finalMapping);
 
-                TransactionEvent event = transactionService.createTransactionEvent(transaction, transactionDto);
+                TransactionEvent event = transactionService.createTransactionEvent(transaction, finalDto);
 
                 settlementService.processTransactionEvent(event);
 
@@ -168,9 +168,11 @@ public class WebhookProcessingService {
         } catch (Exception e) {
             log.error("Webhook processing failed for PG: {}", pgCode, e);
 
-            // 멱등성 키 상태 업데이트 (FAILED)
+            // 멱등성 키 상태 업데이트 (FAILED) - 실제 pgTid 전달
             try {
-                webhookIdempotencyKeyRepository.updateStatus(pgConnectionId, null, "FAILED");
+                if (transactionDto != null && transactionDto.getPgTid() != null) {
+                    webhookIdempotencyKeyRepository.updateStatus(pgConnectionId, transactionDto.getPgTid(), "FAILED");
+                }
             } catch (Exception keyUpdateException) {
                 log.warn("Failed to update idempotency key status", keyUpdateException);
             }

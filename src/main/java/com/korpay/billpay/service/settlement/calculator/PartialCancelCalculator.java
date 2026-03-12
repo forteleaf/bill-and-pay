@@ -46,11 +46,13 @@ public class PartialCancelCalculator {
 
         List<Settlement> cancelSettlements = new ArrayList<>();
         for (Settlement original : originalSettlements) {
-            long cancelAmountAbs = calculateProportionalAmount(original.getAmount(), cancelRatio);
-            long cancelFeeAmount = calculateProportionalAmount(original.getFeeAmount(), cancelRatio);
+            long cancelAmountAbs = calculateProportionalAmount(Math.abs(original.getAmount()), cancelRatio);
+            long cancelFeeAbs = calculateProportionalAmount(original.getFeeAmount(), cancelRatio);
 
             long debitAmount = -cancelAmountAbs;
-            long debitFee = -cancelFeeAmount;
+            // fee_amount는 항상 양수 (DB 제약조건 fee_amount >= 0)
+            long debitFee = cancelFeeAbs;
+            // net_amount = amount + fee_amount (DEBIT: 음수 + 양수)
             long debitNet = debitAmount + debitFee;
 
             Settlement cancelSettlement = Settlement.builder()

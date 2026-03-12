@@ -145,7 +145,10 @@ public class OrganizationService {
                     .orElseThrow(() -> new EntityNotFoundException("Parent organization not found: " + request.getParentId()));
             
             accessControlService.validateOrganizationCreation(user, parent.getPath());
-            
+
+            // 부모 조직 유형에 따른 자식 유형 검증 (DISTRIBUTOR→AGENCY→DEALER→SELLER→VENDOR)
+            validateChildOrgType(parent.getOrgType(), request.getOrgType());
+
             newPath = generatePath(parent, request.getOrgType());
             newLevel = parent.getLevel() + 1;
         } else {
@@ -283,6 +286,27 @@ public class OrganizationService {
         log.info("Moved organization {} from {} to {}", organization.getId(), oldPath, newPath);
     }
     
+    private void validateChildOrgType(OrganizationType parentType, OrganizationType childType) {
+        OrganizationType expectedChild = getExpectedChildType(parentType);
+        if (expectedChild == null) {
+            throw new ValidationException("Organization type " + parentType + " cannot have child organizations");
+        }
+        if (childType != expectedChild) {
+            throw new ValidationException(
+                    "Invalid child type: " + childType + " under " + parentType + ". Expected: " + expectedChild);
+        }
+    }
+
+    private OrganizationType getExpectedChildType(OrganizationType parentType) {
+        return switch (parentType) {
+            case DISTRIBUTOR -> OrganizationType.AGENCY;
+            case AGENCY -> OrganizationType.DEALER;
+            case DEALER -> OrganizationType.SELLER;
+            case SELLER -> OrganizationType.VENDOR;
+            case VENDOR -> null; // VENDOR는 하위 조직 생성 불가
+        };
+    }
+
     private int getTypeIndex(OrganizationType type) {
         return switch (type) {
             case DISTRIBUTOR -> 0;

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,9 +42,9 @@ public class WebhookSignatureVerifier {
     private String computeHmacSha256(String data, String secret) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA256_ALGORITHM);
-            SecretKeySpec secretKeySpec = new SecretKeySpec(secret.getBytes(), HMAC_SHA256_ALGORITHM);
+            SecretKeySpec secretKeySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA256_ALGORITHM);
             mac.init(secretKeySpec);
-            byte[] hmacBytes = mac.doFinal(data.getBytes());
+            byte[] hmacBytes = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hmacBytes);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("Failed to compute HMAC-SHA256", e);
@@ -52,6 +53,6 @@ public class WebhookSignatureVerifier {
     }
 
     private boolean isEqual(String a, String b) {
-        return MessageDigest.isEqual(a.getBytes(), b.getBytes());
+        return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
     }
 }

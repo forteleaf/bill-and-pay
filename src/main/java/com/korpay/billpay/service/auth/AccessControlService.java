@@ -117,7 +117,8 @@ public class AccessControlService {
         }
 
         // User can only create organizations under their own path
-        return parentPath.startsWith(user.getOrgPath());
+        String userPath = user.getOrgPath();
+        return parentPath.equals(userPath) || parentPath.startsWith(userPath + ".");
     }
 
     /**
@@ -173,9 +174,10 @@ public class AccessControlService {
             return false;
         }
 
-        // Check if target path is a descendant of user's path
+        // Check if target path is a descendant of or equal to user's path
         // In ltree terms: targetPath <@ userPath means target is descendant
-        // In Java string terms: targetPath.startsWith(userPath)
-        return targetPath.startsWith(userOrgPath);
+        // Must check exact match OR dot-separated prefix to avoid false positives
+        // e.g., "agcy_001" should NOT match "agcy_00" (sibling)
+        return targetPath.equals(userOrgPath) || targetPath.startsWith(userOrgPath + ".");
     }
 }

@@ -3,6 +3,7 @@ package com.korpay.billpay.service.settlement;
 import com.korpay.billpay.domain.entity.Merchant;
 import com.korpay.billpay.domain.entity.Settlement;
 import com.korpay.billpay.domain.entity.TransactionEvent;
+import com.korpay.billpay.domain.enums.EntryType;
 import com.korpay.billpay.domain.enums.EventType;
 import com.korpay.billpay.domain.enums.SettlementStatus;
 import com.korpay.billpay.exception.settlement.SettlementCalculationException;
@@ -86,7 +87,42 @@ public class SettlementCreationService {
             Merchant merchant,
             String paymentMethodCode) {
 
-        return feeCalculationService.calculateFees(event, merchant, paymentMethodCode);
+        // 전액취소: 원본 APPROVAL 정산을 조회하여 역분개 (현재 수수료율이 아닌 원본 금액 기반)
+        TransactionEvent approvalEvent = findOriginalApprovalEvent(event);
+        List<Settlement> originalSettlements = settlementRepository
+                .findByTransactionEventId(approvalEvent.getId());
+
+        if (originalSettlements.isEmpty()) {
+            log.warn("Original approval settlements not found, falling back to fee recalculation: eventId={}",
+                    event.getId());
+            return feeCalculationService.calculateFees(event, merchant, paymentMethodCode);
+        }
+
+        List<Settlement> cancelSettlements = new java.util.ArrayList<>();
+        for (Settlement original : originalSettlements) {
+            Settlement cancelSettlement = Settlement.builder()
+                    .transactionEventId(event.getId())
+                    .transactionId(event.getTransactionId())
+                    .merchantId(event.getMerchantId())
+                    .orgPath(event.getOrgPath())
+                    .entityId(original.getEntityId())
+                    .entityType(original.getEntityType())
+                    .entityPath(original.getEntityPath())
+                    .entryType(EntryType.DEBIT)
+                    .amount(-Math.abs(original.getAmount()))
+                    .feeAmount(original.getFeeAmount()) // 양수 유지 (DB 제약조건)
+                    .netAmount(-Math.abs(original.getNetAmount()))
+                    .currency(original.getCurrency())
+                    .feeRate(original.getFeeRate())
+                    .feeConfig(original.getFeeConfig())
+                    .status(SettlementStatus.PENDING)
+                    .createdAt(java.time.OffsetDateTime.now())
+                    .updatedAt(java.time.OffsetDateTime.now())
+                    .build();
+            cancelSettlements.add(cancelSettlement);
+        }
+
+        return cancelSettlements;
     }
 
     private List<Settlement> createPartialCancelSettlements(TransactionEvent cancelEvent) {

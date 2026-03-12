@@ -47,10 +47,11 @@ public class FeeCalculationService {
         long merchantSettlementAmount = eventAbsAmount - merchantFeeAmount;
 
         long signedMerchantSettlement = isCredit ? merchantSettlementAmount : -merchantSettlementAmount;
-        long signedMerchantFee = isCredit ? merchantFeeAmount : -merchantFeeAmount;
+        // fee_amount는 항상 양수 (DB 제약조건 fee_amount >= 0)
+        long absMerchantFee = merchantFeeAmount;
 
         Settlement merchantSettlement = buildMerchantSettlement(
-                event, merchant, entryType, signedMerchantSettlement, signedMerchantFee, merchantFeeRate);
+                event, merchant, entryType, signedMerchantSettlement, absMerchantFee, merchantFeeRate);
         settlements.add(merchantSettlement);
 
         breakdowns.add(FeeBreakdown.builder()
@@ -58,7 +59,7 @@ public class FeeCalculationService {
                 .entityType(merchant.getOrganization().getOrgType())
                 .feeRate(merchantFeeRate)
                 .settlementAmount(signedMerchantSettlement)
-                .description("Merchant settlement")
+                .description("Merchant settlement (fee=" + absMerchantFee + ")")
                 .build());
 
         List<Organization> ancestors = organizationRepository.findAncestors(merchant.getOrgPath());
@@ -147,10 +148,13 @@ public class FeeCalculationService {
             long feeAmount,
             BigDecimal feeRate) {
 
-        // DB constraint: CREDIT → net = amount - fee, DEBIT → net = amount + fee
+        // fee_amount는 항상 양수 (DB 제약조건 fee_amount >= 0)
+        long absFee = Math.abs(feeAmount);
+        // net_amount = amount - fee (CREDIT: 양수 - 양수, DEBIT: 음수 - 양수)
+        // DB constraint: net_amount = amount - fee_amount (CREDIT) / amount + fee_amount (DEBIT)
         long netAmount = (entryType == EntryType.CREDIT)
-                ? settlementAmount - feeAmount
-                : settlementAmount + feeAmount;
+                ? settlementAmount - absFee
+                : settlementAmount + absFee;
 
         return Settlement.builder()
                 .transactionEventId(event.getId())
@@ -162,7 +166,7 @@ public class FeeCalculationService {
                 .entityPath(merchant.getOrgPath())
                 .entryType(entryType)
                 .amount(settlementAmount)
-                .feeAmount(feeAmount)
+                .feeAmount(absFee)
                 .netAmount(netAmount)
                 .currency(event.getCurrency())
                 .feeRate(feeRate)

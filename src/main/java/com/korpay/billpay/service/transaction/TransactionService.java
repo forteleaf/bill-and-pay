@@ -30,24 +30,34 @@ public class TransactionService {
         log.info("Creating or updating transaction from webhook. PG TID: {}, Event Type: {}",
                 dto.getPgTid(), dto.getEventType());
 
-        // PG별 거래고유번호로 중복 체크 (pg_connection_id + pg_transaction_id)
-        Optional<Transaction> existingTransaction = transactionRepository.findByPgConnectionIdAndPgTransactionId(
-                merchantPgMapping.getPgConnectionId(), dto.getPgTid());
+        if (dto.getEventType() == EventType.APPROVAL) {
+            // 승인: pgTid로 중복 체크
+            Optional<Transaction> existingTransaction = transactionRepository.findByPgConnectionIdAndPgTransactionId(
+                    merchantPgMapping.getPgConnectionId(), dto.getPgTid());
 
-        if (existingTransaction.isPresent()) {
-            if (dto.getEventType() == EventType.APPROVAL) {
+            if (existingTransaction.isPresent()) {
                 log.warn("Duplicate approval transaction detected: pgConnectionId={}, pgTid={}",
                         merchantPgMapping.getPgConnectionId(), dto.getPgTid());
                 throw new DuplicateTransactionException(dto.getPgTid());
             }
-            return updateTransaction(existingTransaction.get(), dto);
-        } else {
-            if (dto.getEventType() != EventType.APPROVAL) {
-                log.error("Cannot create cancel/partial_cancel without original transaction: pgConnectionId={}, pgTid={}",
-                        merchantPgMapping.getPgConnectionId(), dto.getPgTid());
-                throw new WebhookProcessingException("Original transaction not found for cancel event");
-            }
             return createTransaction(dto, merchantPgMapping);
+        } else {
+            // 취소/부분취소: pgOtid(원본 TID)로 원본 거래 조회
+            String originalTid = dto.getPgOtid();
+            if (originalTid == null || originalTid.isEmpty()) {
+                log.error("Cancel event missing pgOtid: pgTid={}", dto.getPgTid());
+                throw new WebhookProcessingException("Cancel event requires pgOtid (original transaction ID)");
+            }
+
+            Optional<Transaction> originalTransaction = transactionRepository.findByPgConnectionIdAndPgTransactionId(
+                    merchantPgMapping.getPgConnectionId(), originalTid);
+
+            if (originalTransaction.isEmpty()) {
+                log.error("Original transaction not found for cancel: pgConnectionId={}, pgOtid={}",
+                        merchantPgMapping.getPgConnectionId(), originalTid);
+                throw new WebhookProcessingException("Original transaction not found for cancel event: " + originalTid);
+            }
+            return updateTransaction(originalTransaction.get(), dto);
         }
     }
 
@@ -59,7 +69,6 @@ public class TransactionService {
         Integer nextSequence = calculateNextEventSequence(transaction);
 
         TransactionEvent event = TransactionEvent.builder()
-                .id(transaction.getId())
                 .createdAt(OffsetDateTime.now())
                 .eventType(dto.getEventType())
                 .eventSequence(nextSequence)
@@ -127,7 +136,7 @@ public class TransactionService {
         if (dto.getEventType() == EventType.CANCEL) {
             transaction.setStatus(TransactionStatus.CANCELLED);
             transaction.setCancelledAt(dto.getCanceledAt());
-            transaction.setAmount(0L);
+            // amount는 원래 금액을 유지 (DB 제약조건 amount > 0)
         } else if (dto.getEventType() == EventType.PARTIAL_CANCEL) {
             transaction.setStatus(TransactionStatus.PARTIAL_CANCELLED);
             transaction.setCancelledAt(dto.getCanceledAt());
